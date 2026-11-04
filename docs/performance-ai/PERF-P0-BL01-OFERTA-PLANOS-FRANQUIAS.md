@@ -195,3 +195,10 @@ Somente planejamento; não iniciar programação ou cobranças.
 **Aprovado funcionalmente (Opção B):** o primeiro dia da contratação de adicional é cobrado somente pela fração de tempo após a disponibilização efetiva da capacidade, considerando horas e minutos restantes, sem cobrar a totalidade do dia quando houver liberação parcial. A regra integra a fórmula aprovada de duração real do ciclo. O preço integral do adicional começa no ciclo seguinte, na mesma data de vencimento da assinatura principal. Referência: [AD01, seção 14](PERF-P0-AD01-CONTAGEM-CAMPANHAS-GRUPOS-ADICIONAIS-v0.1.md).
 
 **Aguardam decisão:** fuso e precisão técnica, regra exata de arredondamento, tratamento de diferenças de pagamento e falhas, homologação financeira/jurídica/técnica e preços reais. Sem programação nem faturamento efetivo.
+
+
+## 18. Arredondamento final do pró-rata em centavos — aprovado (04/11/2026)
+
+**Aprovação funcional:** o valor proporcional dos adicionais deverá ser calculado com precisão interna durante todas as operações e **arredondado somente ao final para duas casas decimais (R$ 0,01)**, sem arredondamentos sucessivos nas frações de dias, horas, minutos ou componentes intermediários. Exibir ao cliente o valor final de contratação e, no próximo ciclo, a mensalidade integral com vencimento unificado. Manter o marco de disponibilidade efetiva e o primeiro dia fracionado já aprovados. [Referência AD01, seção 15](PERF-P0-AD01-CONTAGEM-CAMPANHAS-GRUPOS-ADICIONAIS-v0.1.md).
+
+**Ainda em aberto:** modalidade de arredondamento em casos de exatamente meio centavo, fuso e precisão de timestamps, diferenças entre pré-pagamento e habilitação real, política de restituição/crédito, impostos, valores de tabela, homologação financeira/jurídica/técnica. Não iniciar programação nem faturamento.
