@@ -331,3 +331,35 @@ Se houver pagamento confirmado para uma data estimada de liberação, mas a capa
 **Recomendação para análise:** **C**, por preservar a simplicidade dos adicionais já simulados e evitar surpresa na contratação; homologar custos, definição de “configuração padrão”, limites de trabalho e orçamento antes de aprovar. **Nenhum valor ou taxa nova é aprovado por esta minuta.** Não confundir com a taxa de ativação inicial do produto, cujos valores também permanecem em estudo.
 
 **Fase:** documentação e planejamento apenas; sem programação, gastos, publicação de anúncios ou cobranças reais.
+
+
+## 19. Configuração padrão incluída no adicional e orçamento excepcional — APROVADA FUNCIONALMENTE (04/11/2026)
+
+**Deliberação:** o responsável respondeu “ok” à recomendação de **Opção C** apresentada após AD01-18.1. Fica aprovado funcionalmente o **modelo comercial**, com a configuração inicial padrão de novas campanhas adicionais **incluída no preço recorrente do pacote adicional**, sem cobrança automática de taxa única de configuração. Essa regra não elimina a **taxa de ativação inicial do produto**, ainda em estudo quanto aos valores, nem altera a cobrança proporcional aprovada para o primeiro ciclo.
+
+**Aplicação aprovada:**
+- A nova campanha dentro da estrutura padrão já contratada poderá demandar briefing, planejamento, organização de grupos/conjuntos, pesquisa de públicos/palavras-chave e preparação ordinária: tais atividades integram a oferta do adicional, conforme os limites de escopo a definir, **sem nova taxa fixa por criação**.
+- Otimizações e substituições ordinárias recomendadas pela Imagine dentro da capacidade contratada continuam **sem taxa por substituição** e sem franquia mensal de trocas.
+- **Excepcionalidade real:** quando houver necessidade comprovada de serviços extraordinários e **fora do escopo padrão contratado**, apresentar **escopo, entregáveis, preço único ou condição específica e aprovação expressa** antes de assumir obrigação financeira ou iniciar trabalho extraordinário. **Não** converter automaticamente região, estado, número de lojas, número de anúncios ou variação de criativo em item faturável.
+- O motor e os agentes não podem ampliar ou fragmentar campanhas/grupos para gerar cobranças; devem recomendar a estrutura mais adequada ao objetivo do cliente, respeitando limites, orçamento publicitário e autonomia homologada.
+- Pagamento de capacidade adicional não equivale a autorização técnica para publicar campanha, alterar verba ou usar dados e contas sem permissões/aceites próprios.
+
+**Fronteiras:** a aprovação **não** estabelece preços finais (mensalidade, taxa de ativação inicial ou orçamento extraordinário), lista definitiva de serviços incluídos, limites de criativos/IA, custos humanos, direitos de integração, taxas de terceiros ou critérios de homologação. Não baixar P0 ou iniciar programação por esta decisão.
+
+### 19.1 Próximo estudo — fronteira entre configuração padrão e extraordinária (NÃO APROVADO)
+
+Proposta de classificação para análise:
+
+| Atividade | Classificação candidata | Observação |
+|---|---|---|
+| Pesquisa ordinária de palavras-chave, públicos, objetivos e regiões dentro de canal/conta autorizados | **Incluída** | Vinculada à campanha adicional contratada |
+| Criar campanha, organizar grupos/conjuntos, segmentar regiões e preparar anúncios conforme cotas e direitos já contratados | **Incluída** | Sem cobrar por estado, cidade ou loja |
+| Ajustar rastreamento/UTMs e configurações simples suportadas pela estrutura atual | **Incluída** | Sem presumir implantação de integrações externas |
+| Implantar uma conta publicitária independente, com novas permissões, governança ou estrutura não prevista | **Avaliação extraordinária** | Pode exigir orçamento/alteração de capacidade contratual |
+| Nova mensuração avançada, infraestrutura adicional, integrações personalizadas ou desenvolvimento | **Avaliação extraordinária** | Escopo e aprovação prévios; não presumir fornecedor, custo ou viabilidade |
+| Produção criativa de grande volume ou vídeo além da franquia do plano | **Franquia/recurso próprio** | Não etiquetar automaticamente como serviço extraordinário sem contrato e preço definidos |
+| Substituir ou reestruturar campanhas/grupos por recomendação Imagine dentro do escopo | **Incluída** | Não aplicar taxa por troca nem contador de substituições |
+
+**Recomendação para futura decisão:** usar **recurso/capacidade comercial contratado** e **entregáveis adicionais que realmente escapem ao serviço padrão** para classificar exceções. Não estabelecer complexidade baseada exclusivamente em número de regiões ou campanhas; estas já são dimensões da franquia. Custos reais do BL-04 deverão informar o refinamento do que é padrão, sem introduzir cobrança surpresa.
+
+**Status:** seção 19 aprovada funcionalmente; **tabela 19.1 é somente proposta**, pendente de deliberação. Somente documentação, sem programação, campanhas reais, gastos, contratos ou faturamento.
