@@ -198,14 +198,23 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 
 ### 11.2 Critérios de cálculo e execução ainda pendentes de aprovação
 
-- Definir **unidade de pró-rata** (dias corridos, data/hora de vigência, fuso, divisores de dias reais do ciclo ou mês comercial) e **arredondamento monetário**, inclusive mês de 28, 29, 30 ou 31 dias.
+- **APROVADO em 11.3:** dias corridos e divisor igual aos dias reais do ciclo de faturamento. **Ainda pendentes:** data/hora de vigência, fuso, contagem inclusiva do dia inicial/final e arredondamento monetário, inclusive ciclos que cruzem meses de 28, 29, 30 ou 31 dias.
 - Definir momento de **cobrança proporcional**, emissão do documento fiscal quando aplicável, confirmação de pagamento, eventual atraso/falha e **quando a capacidade é efetivamente liberada**.
 - Definir processamento de múltiplas ampliações no mesmo ciclo, pagamentos duplicados, estornos cabíveis, reconciliação, reversão segura e ajustes em upgrades/downgrades.
 - Definir se haverá **taxa de configuração** de novas campanhas/grupos fora de substituição ordinária; não presumir taxa ou gratuidade.
 - Validar cálculo e cobrança com **BL-02/BL-04**, contratos, tributos, custos de agentes de IA, supervisão humana, riscos, LGPD e homologações técnicas, sem afetar P0 existentes.
 
-### 11.3 Próxima proposta, NÃO aprovada — fórmula de pró-rata e vigência
+### 11.3 Fórmula de pró-rata APROVADA FUNCIONALMENTE; marcos de vigência pendentes (04/11/2026)
 
-**Candidata recomendada:** usar os **dias corridos efetivamente restantes do ciclo contratado**, com início de vigência no marco formal de contratação/habilitação, e apresentar antecipadamente fórmula, subtotal proporcional, total atual, total recorrente futuro e data de renovação. Regras de arredondamento e falha de pagamento devem ser formalizadas para evitar diferença de centavos e liberação sem autorização. **Esta fórmula específica ainda requer deliberação**.
+**Deliberação:** o responsável respondeu “ok” à fórmula sugerida: **valor proporcional = mensalidade do adicional ÷ dias corridos do ciclo real de faturamento × dias corridos restantes do mesmo ciclo**. O divisor é a duração efetiva do ciclo contratado, sem presumir mês fixo de 30 dias; considerar meses de 28, 29, 30 e 31 dias. O cliente deverá visualizar antecipadamente o valor proporcional, o valor integral recorrente na próxima mensalidade e a data de renovação. **A data/hora inicial da vigência, a contagem inclusiva/exclusiva do primeiro/último dia, fuso, arredondamento monetário, ordem de confirmação do pagamento/habilitação e tratamento de falhas ainda exigem decisão e homologação.**
 
-**Situação:** só o **modelo geral de pró-rata com mensalidade consolidada no ciclo seguinte** está aprovado. Não há valor monetário, data, fórmula, gatilho de ativação ou nova taxa aprovada. Não iniciar programação, faturamento, conexão, campanhas, operações reais ou gastos.
+**Situação:** o **modelo geral e a fórmula de dias corridos do ciclo real** estão aprovados funcionalmente. Não há valor de tabela, marco exato de início da contagem, regra de arredondamento, gatilho de ativação ou nova taxa aprovados. Não iniciar programação, faturamento, conexão, campanhas, operações reais ou gastos.
+
+
+## 12. Próximo detalhamento para decisão (NÃO APROVADO): início da cobrança, arredondamento e habilitação
+
+**Proposta de experiência comercial:** calcular e exibir o pró-rata na confirmação do pedido, com competência e próximo vencimento visíveis. A capacidade extra só ficará disponível depois de aceitação expressa e confirmação financeira, respeitando autorizações do contrato e do canal. Para evitar cobrança por um período em que a capacidade ainda não poderia ser utilizada, a vigência proporcional deverá ser sincronizada com a liberação efetiva da capacidade, mediante regra de contabilização exata.
+
+**Pendências para deliberação:** (1) considerar o dia da habilitação como dia inteiro, contar horas proporcionais ou começar no dia seguinte; (2) arredondar apenas o valor final em centavos segundo regra monetária única; (3) definir expiração/cancelamento seguro quando o pagamento falhar; (4) se o adicional precisar de trabalho de configuração, distinguir disponibilidade de capacidade do início efetivo dos anúncios; (5) reconciliação e tratamento de ajustes retroativos legalmente devidos. Nenhuma dessas opções é adotada automaticamente por esta minuta.
+
+**Fronteira:** preço de ativação inicial, taxa de implantação de expansões, precificação definitiva, meios de pagamento, descontos e quaisquer P0 restantes continuam em aberto. Sem programação ou cobrança real.
