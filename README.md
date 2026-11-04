@@ -12,6 +12,7 @@ Repositório dedicado ao **planejamento funcional, arquitetura, governança, dec
 - [Roadmap de canais — Google/Meta no lançamento; TikTok/LinkedIn na segunda fase](docs/performance-ai/PERF-ROADMAP-CANAIS-LANCAMENTO-EXPANSAO.md)
 - [Estudo preliminar de custos e viabilidade — IA, operação e escala 0–700](docs/performance-ai/PERF-P0-ESTUDO-VIABILIDADE-PACOTES-IA-CUSTOS-2026-11-04.md)
 - [Estudo preliminar de infraestrutura, rateio e escala 0–700 clientes](docs/performance-ai/PERF-P0-ESTUDO-INFRAESTRUTURA-RATEIO-ESCALA-2026-11-04.md)
+- [Validação de servidores, licenciamento n8n e capacidade humana — 04/11/2026](docs/performance-ai/PERF-P0-VALIDACAO-SERVIDORES-N8N-EQUIPE-2026-11-04.md)
 
 ## Repositórios do ecossistema
 
