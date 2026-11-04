@@ -241,3 +241,12 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 **Recomendação de simplicidade de faturamento:** contar **dias corridos**, incluindo como **primeiro dia de uso o dia local em que a capacidade fica efetivamente disponível**, e calcular o divisor pelos dias do ciclo de cobrança, arredondando **somente o valor final** a duas casas decimais, com critério monetário único documentado. Exibir o intervalo contabilizado, esclarecer que a fração de dia inicial entra como um dia completo e validar compatibilidade com cobrança antecipada/atrasos e direitos do consumidor. Como alternativa mais exata, pode-se usar frações de dia desde o timestamp de liberação, mas isso aumenta a complexidade e exige regra de corte precisa.
 
 **Estado:** toda a seção 13.1 segue **proposta**, aguardando deliberação. Sem programação, faturamento, contas ou despesas.
+
+
+## 14. Pró-rata: primeiro dia fracionado (decisão de 04/11/2026)
+
+**Aprovado funcionalmente:** opção B — calcular o primeiro dia por tempo efetivo desde a disponibilização real da capacidade adicional. Se a liberação ocorrer durante o dia, cobrar apenas a fração restante, sem incluir horas anteriores. Esta decisão prevalece sobre a alternativa de cobrar o dia inicial por inteiro, citada na seção 13.1.
+
+**Cálculo conceitual:** valor mensal do adicional multiplicado pela razão entre o tempo efetivo restante do ciclo e sua duração total. O ciclo continua baseado em dias corridos reais; a primeira data é fracionada em horas e minutos. O valor exibido ao cliente será em reais e centavos. Preço integral no ciclo seguinte, sem novo vencimento.
+
+**Permanecem pendentes:** especificação de precisão temporal, fuso, arredondamento monetário, reconciliação de pagamento, estorno/crédito, falhas de habilitação e validações técnicas, financeiras e jurídicas. Sem programação, publicação de campanhas ou faturamento efetivo.
