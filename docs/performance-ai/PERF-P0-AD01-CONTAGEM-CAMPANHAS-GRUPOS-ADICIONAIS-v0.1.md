@@ -303,3 +303,31 @@ Se houver pagamento confirmado para uma data estimada de liberação, mas a capa
 **Recomendação:** pedidos de adicionais não pagos **não ocupam nem reservam vagas contratadas**, pois a capacidade é comercial e vinculada somente à contratação confirmada. A validade do **pedido/pagamento pendente** deverá respeitar o vencimento e as regras do meio escolhido, informados na contratação, sem fixar um prazo igual para Pix, cartão e boleto antes da definição dos meios aceitos no Performance AI. Ao expirar, o Portal encerraria o pedido ainda não pago, **sem cancelar o plano-base nem interferir em adicionais anteriores**. Pagamento confirmado tardiamente após encerramento precisaria de reconciliação financeira e aceite/novo orçamento quando necessário, sem ativação automática indevida.
 
 **Em aberto:** prazos por meio de pagamento, política de reabertura, vínculo com valores promocionais, avisos, eventual pagamento em atraso já liquidado, formas disponíveis, direito do cliente e homologação.
+
+
+## 18. Validade de pedidos de adicionais pendentes — APROVADA FUNCIONALMENTE (04/11/2026)
+
+**Deliberação:** o responsável respondeu “ok” à recomendação de controlar a validade dos pedidos não pagos conforme **vencimento/regras do meio de pagamento selecionado**, informados no momento do pedido, **sem reservar capacidade antes de contratação e confirmação financeira**. Não fixar prazo único para Pix, cartão ou boleto, nem presumir quais meios de pagamento estarão disponíveis no Performance AI.
+
+**Regras funcionais aprovadas:**
+1. Pedido pendente, recusado ou ainda não confirmado **não ocupa nem reserva** a franquia contratada de campanhas/grupos, não gera cobrança de assinatura-base e não autoriza criação, ativação ou gasto de mídia.
+2. O Portal informa o vencimento/validade aplicável ao pedido e o estado real do pagamento; em vencimento efetivo sem confirmação oficial, pode **encerrar automaticamente o pedido não pago**, com estado rastreável, sem afetar assinatura-base, campanhas ou adicionais anteriores pagos.
+3. Não declarar inadimplência ou encerrar irreversivelmente um pedido cujo pagamento esteja **inconclusivo no provedor** sem reconciliação adequada; status posterior válido prevalece sobre inferências por timeout.
+4. Se houver **pagamento confirmado depois do encerramento**, encaminhar à reconciliação financeira e, quando necessário, revalidar preços/condições e solicitar novo aceite, sem disponibilização automática indevida e sem duplicar recebimento.
+5. Histórico de pedido, meio, prazo, aceite, tentativas, mudanças de estado, reconciliações e decisões fica auditável; nenhum agente de IA altera preço, validade ou status de pagamento sem autorização e confirmação oficial.
+
+**Continuam pendentes:** prazos específicos por meio, meios aceitos, regras de cobrança/expiração no provedor, avisos ao cliente, política de reabertura, valores promocionais expirados, estorno/restituição em pagamento tardio, cálculo fiscal, homologação técnico-financeira e integração com BL-02/BL-04. Nenhum preço ou quantidade de campanha/grupo é aprovado aqui.
+
+### 18.1 Próxima decisão proposta: configuração de campanha adicional (NÃO APROVADA)
+
+**Questão:** o pacote mensal de **campanha adicional** remunera só a **gestão recorrente** ou também sua **estruturação inicial**, como briefing específico, pesquisa de palavras-chave/públicos e configuração de mensuração?
+
+**Opção A:** incluir a configuração padrão de novas campanhas no adicional mensal; sem taxa única adicional. Simplifica a oferta, mas requer dimensionar custo de implantação e limites de serviços especiais.
+
+**Opção B:** cobrar **taxa única de configuração** para uma nova campanha que aumenta a capacidade, além da mensalidade adicional, com preço transparente e aceite; **não cobrar** por substituições/otimizações ordinárias recomendadas pela Imagine dentro da capacidade atual. Melhora recuperação de custo inicial; pode elevar barreira comercial.
+
+**Opção C:** configuração padrão incluída no pacote adicional; **orçamento único somente** quando houver escopo extraordinário (nova conta, mensuração/integrações complexas ou preparação excepcional), após proposta e autorização explícitas.
+
+**Recomendação para análise:** **C**, por preservar a simplicidade dos adicionais já simulados e evitar surpresa na contratação; homologar custos, definição de “configuração padrão”, limites de trabalho e orçamento antes de aprovar. **Nenhum valor ou taxa nova é aprovado por esta minuta.** Não confundir com a taxa de ativação inicial do produto, cujos valores também permanecem em estudo.
+
+**Fase:** documentação e planejamento apenas; sem programação, gastos, publicação de anúncios ou cobranças reais.
