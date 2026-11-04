@@ -98,3 +98,68 @@
 - **P09:** reconciliar com BL01/BL02/BL04, RES01-D01..D16, CT-PERF-17/18/20, P0 existentes e política LGPD.
 
 **Fase:** somente documentação. Não há implementação, contrato, acesso a plataformas, testes reais, despesa, faturamento ou alteração da proposta pública.
+
+
+## 9. Proposta AD01-P10 — ocupação e liberação de capacidade no escopo de gestão (04/11/2026)
+
+**Estado:** proposta de detalhamento funcional após “ok” para prosseguir com o planejamento; **não houve deliberação expressa aprovando toda a política a seguir**. Não alterar a aprovação RES01-D05 (campanhas **ativas ou pausadas sob gestão** consomem franquia) nem a diretriz aprovada de **não cobrar/não limitar substituições ordinárias recomendadas pela Imagine**.
+
+### 9.1 Estados distintos (propostos)
+
+1. `Existente fora do escopo`: campanha/grupo encontrado na conta externa; sem gestão Imagine e sem ocupar capacidade, embora possa haver descoberta diagnóstica autorizada.
+2. `Proposto para inclusão`: IA recomendou ou usuário pediu; ainda não ocupa capacidade comercial até inclusão formal, nem autoriza execução na plataforma.
+3. `Sob gestão`: escopo vigente, ativo ou pausado no Google/Meta; ocupa uma vaga de campanha e as vagas de grupos/conjuntos efetivamente incluídos no escopo, conforme tipo elegível, independentemente do status de veiculação.
+4. `Proposto para retirada/substituição`: recomendação não libera capacidade nem revoga autorizações anteriores por si só.
+5. `Fora do escopo após retirada formal`: exclusão do perímetro contratual/monitoramento a partir da confirmação oficial e auditada; libera capacidade, sem significar exclusão, arquivamento, desligamento ou titularidade modificada no Google/Meta.
+
+**Princípio:** mudança de status no provedor (pausar/reativar) é diferente de mudança de escopo do serviço; nenhuma reclassificação automática para faturar adicionais.
+
+### 9.2 Cálculo candidato de capacidade simultânea sob gestão
+
+Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando previsto:
+- `capacidade_contratada = franquia_base + adicionais_contratados_vigentes`, mantendo cota de campanha distinta da cota de grupos/conjuntos;
+- `ocupação = número de estruturas distintas, formalmente sob gestão no instante de referência`, incluindo **pausadas**, excluindo estruturas somente descobertas ou retiradas formalmente;
+- `disponível = máximo(0, capacidade_contratada - ocupação)`;
+- pacote de campanha com grupos embutidos acrescenta ambas as capacidades uma única vez, sem cobrança dupla;
+- franquias do Google e Meta permanecem separadas na interface; não transferir saldos entre canais por inferência;
+- a contabilização é **por capacidade contratada e escopo presente**, não pelo número cumulativo de IDs substituídos no mês e **sem contador de trocas**.
+
+**Importante:** este algoritmo de capacidade é **proposta** para decisão e futura homologação; não substituir políticas de contrato/ciclo ainda abertas.
+
+### 9.3 Substituição de campanha ou grupos conduzida pela Imagine
+
+1. Agente de IA e/ou profissional Imagine produz recomendação fundamentada; cliente visualiza objetivo, efeitos esperados e orçamento proposto quando aplicável.
+2. Respeitar nível de autonomia, permissões e aprovação humana/cliente exigida pelo tipo de mudança; **recomendação não implica execução ou gasto autorizados**.
+3. Transição da gestão: registrar evidências da retirada da estrutura antiga do escopo e inclusão da nova no mesmo fluxo lógico (operação correlacionada e idempotente); **não contar como duas unidades permanentes** quando for substituição genuína dentro da franquia.
+4. Se for necessário coexistir temporariamente por homologação, experimento ou continuidade, prever **exceção operacional transitória, supervisionada e auditável, sem cobrança automática**, sujeita a limites de risco/custo a homologar; não prometer ilimitado nem estabelecer prazo inventado.
+5. Se o cliente deseja **manter ambas sob gestão permanentemente** e isso ultrapassa a capacidade, oferecer adicional ou upgrade **antes** da expansão, com aceite expresso.
+6. Retirar uma estrutura do escopo do serviço **não** autoriza excluí-la, pausar anúncios, remover propriedade, encerrar conta ou mexer em verba no Google/Meta. Qualquer ação externa exige autorização específica conforme políticas.
+
+### 9.4 Adicionais, liberação de vagas e reflexos financeiros
+
+- Liberar vaga ao **confirmar a retirada formal da gestão**; pausar uma campanha, por si só, **não libera**.
+- **Capacidade livre não cancela um adicional recorrente contratado**: o cliente pode alocar outra campanha/grupo dentro dela. Cancelamento/redução de adicionais requer fluxo contratual explícito do Portal.
+- O **momento em que uma redução altera a próxima fatura** (próximo ciclo ou pró-rata), termos de fidelidade e calendário de cobrança **permanecem não deliberados**: não fixar regra por este documento.
+- Não cobrar substituição ordinária recomendada pela Imagine; não produzir cobrança automática por aparente pico transitório de escopo ou por mudança de ID; sem autorização comercial explícita, bloquear apenas novas expansões comerciais, respeitando continuidade das campanhas existentes.
+- Mostrar ao cliente capacidades **contratadas, ocupadas, disponíveis e adicionais vigentes**, com o escopo nominal associado. Alertas e avisos devem ser informativos e livres de pressão indevida.
+
+### 9.5 Casos candidatos à validação
+
+| Caso | Resultado funcional pretendido |
+|---|---|
+| Plano de 3 campanhas e 9 grupos: 2 campanhas/7 grupos sob gestão | 1 campanha/2 grupos disponíveis |
+| Terceira campanha sob gestão, mas pausada | Zero vagas de campanha; não libera só por pausa |
+| Imagine substitui campanha A por B, com saída formal de A | B ocupa a vaga liberada, sem nova cobrança |
+| Campanha A passa a ser apenas histórica fora do escopo | Libera a vaga, sem eliminar dados/ativos do cliente |
+| Cliente deseja A e B simultâneas em caráter permanente além da franquia | Solicitar aceite de capacidade adicional/upgrade |
+| Adicional recorrente continua contratado após campanha sair do escopo | A capacidade adicional permanece disponível; mensalidade contratada não é cancelada implicitamente |
+| Sugestão da IA rejeitada ou não homologada | Nenhuma alteração externa ou nova cobrança |
+
+### 9.6 Pendências específicas
+
+- **AD01-P10:** aprovação explícita da contagem por **ocupação simultânea sob gestão** e da liberação imediata após saída formal; confirmar impacto de escopos híbridos de monitoramento e administração.
+- **AD01-P11:** contrato e financeira: vigência/cobrança de adicional, cancelamento, redução e pró-rata; não presumir condições do CRM/Sites.
+- **AD01-P12:** critérios técnicos para retirada/inclusão formal, estados idempotentes, provas de autorização, período de transição controlada, auditoria e tratamento de falhas.
+- **AD01-P13:** grupos sob campanhas parcialmente geridas, ativos especiais (Performance Max), experimentos, orçamento e permissões por plataforma.
+
+**Não há programação, ativação de contas/campanhas, gasto ou precificação final autorizados por esta proposta.**
