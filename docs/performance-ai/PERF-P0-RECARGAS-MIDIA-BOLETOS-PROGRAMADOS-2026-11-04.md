@@ -9,6 +9,8 @@
 
 > **Investigação Pix por API (04/11/2026):** [ver dossiê técnico Pix Google/Meta](PERF-P0-PESQUISA-API-PIX-GOOGLE-META-2026-11-04.md). A própria equipe da Google Ads API informou publicamente (15/09/2025) que não é possível adicionar fundos pela API, e a documentação de faturamento atual não oferece criação de recarga Pix. Na Meta, os SDKs consultados mostram informações financeiras da conta, mas **não um endpoint público documentado para gerar QR Code/código Pix de recarga**. O fluxo de Pix programado **não pode ser oferecido como geração automática via API sem homologação oficial**. Permanecem viáveis agendamento, notificações e interface oficial do provedor, sujeitos à elegibilidade da conta.
 
+> **Extensão funcional (04/11/2026):** [Avisos de recarga programada para todos os clientes](PERF-P0-AVISOS-RECARGA-PROGRAMADA-GOOGLE-META-2026-11-04.md). A geração de Pix/boleto **não é requisito** para os lembretes. Cliente pode configurar dia de recarga por conta; avisos padrão 7 dias antes, 3 dias antes e no próprio dia, com preferências de notificação, pausa e distinção entre recarga declarada e oficialmente confirmada. Datas especiais, custos de comunicação e detalhes técnicos continuam pendentes.
+
 ## 1. Objetivo da funcionalidade
 
 O cliente poderá habilitar **opcionalmente** a Central de Recargas de Mídia no Portal Imagine Performance AI, para configurar **por plataforma e por conta publicitária**:
