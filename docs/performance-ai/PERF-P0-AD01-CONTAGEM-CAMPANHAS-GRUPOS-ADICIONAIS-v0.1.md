@@ -236,11 +236,11 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 
 **Integrações relevantes:** BL-01, BL-02, BL-04, RES01-D05/D11/D12/D13, CT-PERF-17/18, estados auditáveis e controle de aprovações. Esta aprovação **não** resolve os P0 ou homologa a execução.
 
-### 13.1 Próxima decisão proposta (NÃO aprovada)
+### 13.1 Histórico da alternativa de primeiro dia inteiro (SUPERADA)
 
 **Recomendação de simplicidade de faturamento:** contar **dias corridos**, incluindo como **primeiro dia de uso o dia local em que a capacidade fica efetivamente disponível**, e calcular o divisor pelos dias do ciclo de cobrança, arredondando **somente o valor final** a duas casas decimais, com critério monetário único documentado. Exibir o intervalo contabilizado, esclarecer que a fração de dia inicial entra como um dia completo e validar compatibilidade com cobrança antecipada/atrasos e direitos do consumidor. Como alternativa mais exata, pode-se usar frações de dia desde o timestamp de liberação, mas isso aumenta a complexidade e exige regra de corte precisa.
 
-**Estado:** toda a seção 13.1 segue **proposta**, aguardando deliberação. Sem programação, faturamento, contas ou despesas.
+**Estado:** a alternativa de cobrar o primeiro dia inteiro foi descartada pela aprovação da seção 14. Este trecho é mantido apenas como histórico; a regra atual é a proporção do tempo efetivo. Sem programação, faturamento, contas ou despesas.
 
 
 ## 14. Pró-rata: primeiro dia fracionado (decisão de 04/11/2026)
@@ -250,3 +250,16 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 **Cálculo conceitual:** valor mensal do adicional multiplicado pela razão entre o tempo efetivo restante do ciclo e sua duração total. O ciclo continua baseado em dias corridos reais; a primeira data é fracionada em horas e minutos. O valor exibido ao cliente será em reais e centavos. Preço integral no ciclo seguinte, sem novo vencimento.
 
 **Permanecem pendentes:** especificação de precisão temporal, fuso, arredondamento monetário, reconciliação de pagamento, estorno/crédito, falhas de habilitação e validações técnicas, financeiras e jurídicas. Sem programação, publicação de campanhas ou faturamento efetivo.
+
+
+## 15. Arredondamento apenas do valor final a centavos — aprovado funcionalmente (04/11/2026)
+
+**Deliberação:** o responsável respondeu "ok" à recomendação de **preservar a precisão em todas as etapas do pró-rata e arredondar somente o montante monetário final para duas casas decimais (centavos de real)**. Não arredondar prematuramente fator temporal, preço por dia/minuto/hora, rateios nem parcelas intermediárias; o Portal exibe o valor final em BRL e pode explicar o período de competência e a próxima mensalidade. Reutilizar o mesmo valor final consolidado para a autorização do cliente, conciliação e faturamento, ressalvados ajustes formalmente justificados por mudança da data de disponibilidade efetiva.
+
+**Escopo preservado:** o início da cobrança segue a disponibilidade real de capacidade após confirmação do pagamento; o primeiro dia é proporcional às horas e minutos efetivos; o divisor segue a duração real do ciclo; o valor integral passa a compor a mensalidade no próximo vencimento. A regra aprovada **não** fixa o algoritmo de desempate no meio centavo (por exemplo, meio para cima ou meio para par), precisão do registro temporal/fuso ou tratamento fiscal de arredondamentos, que ainda devem ser harmonizados e homologados.
+
+### 15.1 Próxima proposta: conciliação de valor pré-pago versus disponibilidade efetiva (NÃO aprovada)
+
+Se houver pagamento confirmado para uma data estimada de liberação, mas a capacidade for disponibilizada mais tarde, **não cobrar pelo tempo anterior**. Recomenda-se calcular o valor devido desde o instante real, comparar com o valor efetivamente liquidado e **devolver a diferença ou disponibilizar crédito conforme escolha informada e direitos legais**, mantendo evidências e evitando cobrança duplicada. Se a capacidade não chegar a ser liberada, prever cancelamento seguro da contratação e restituição cabível. A escolha entre reembolso e crédito, prazos, forma de pagamento, encargos e exceções aguardam deliberação jurídica/comercial; nenhum crédito compulsório é aprovado por esta proposta.
+
+**Permanecem pendentes:** política exata de empate monetário/arredondamento, fuso e precisão técnica, pagamento e sua falha, ajuste de valor autorizado, estorno/reembolso/crédito, notas fiscais e homologação financeira/jurídica/técnica. Nenhum preço final, franquia quantitativa ou taxa de configuração foi aprovado. Somente planejamento.
