@@ -385,8 +385,19 @@ Aprovação expressa do quadro de classificação de serviços apresentado ao re
 **Ainda pendentes:** marco exato de início da contagem e horário de corte/fuso, política de extensão de proposta já emitida, versionamento e revisão, aprovação interna, avisos, tratamento fiscal/financeiro, integração com Portal e homologação. Não há preço novo aprovado, nem programação.
 
 
-### 20.3 Próxima decisão proposta — renovação de orçamento vencido (NÃO APROVADA)
+### 20.3 Renovação de orçamento vencido pelo Portal — APROVADA FUNCIONALMENTE (04/11/2026)
 
-**Recomendação:** permitir ao cliente usar o Portal para **solicitar revisão/renovação** do orçamento vencido sem abrir novo chamado. A Imagine revalida escopo, custos, disponibilidade e condições e publica **nova versão** com novo prazo de validade, preservando a versão anterior para auditoria. A nova proposta exige **novo aceite expresso**; não reativar, executar, cobrar ou mudar automaticamente preços/escopo do orçamento anterior. Solicitação de revisão é gratuita por padrão, mas novos serviços adicionais seguem orçamento próprio. Regras de frequência, fila, responsáveis, notificações e eventual desistência ainda precisam de decisão.
+**Deliberação expressa (“aprovado”):** o cliente poderá solicitar **diretamente no Portal Imagine a revisão/renovação de um orçamento extraordinário vencido, sem abrir chamado**. A Imagine deverá revalidar escopo, custos, disponibilidade, condições contratuais/financeiras, dependências e eventuais fornecedores e publicar **nova versão identificada**, com **novo prazo de validade** claramente exibido. A versão expirada será preservada para consulta e auditoria, sem possibilidade de aceite tardio automático. A proposta revisada exigirá **novo aceite expresso** do cliente. Não renovar, alterar preço/escopo, cobrar, executar ou reativar automaticamente serviços com base no orçamento anterior. A **solicitação de revisão em si não gera taxa**; trabalhos extraordinários eventualmente contratados seguem orçamento próprio e aprovação expressa.
+
+**Estados mínimos de negócio a detalhar:** vencido → revisão solicitada → em análise Imagine → nova versão apresentada → aceito/recusado/expirado; registrar cada transição e a identidade do responsável. Sugestões por IA não substituem aprovação da Imagine sobre preço/escopo nem aceite do cliente.
+
+**Permanece pendente de definição:** limites de frequência/repetição de solicitações, fila, responsável pela revalidação, notificações, desistência, processamento simultâneo, referência exata ao marco de validade, meios financeiros e homologação jurídica/técnica.
 
 Somente planejamento; sem programação, contratações, faturamento ou gastos reais.
+
+
+### 20.4 Próxima proposta — notificações e histórico dos orçamentos (NÃO APROVADA)
+
+**Recomendação:** apresentar ao cliente no Portal o status do orçamento, valor, validade e histórico das versões; emitir comunicação quando **uma nova versão estiver disponível** e lembrete antes do vencimento, por canais aprovados e com preferências de comunicação. Para orçamentos que vençam em 15 dias, sugerir **um único lembrete 3 dias corridos antes** da expiração, evitando mensagens excessivas; se o prazo for reduzido administrativamente, ajustar/dispensar o lembrete conforme a validade efetiva. Notificações não aprovam orçamento por silêncio, não iniciam gastos e não substituem o aceite expresso.
+
+**Pendentes:** canal efetivo de envio, horários/fuso, consentimentos e regras LGPD, reenvios idempotentes, templates, obrigações legais e política de notificações. **O lembrete de 3 dias é apenas candidato**, não aprovado. Tudo segue na fase de planejamento.
