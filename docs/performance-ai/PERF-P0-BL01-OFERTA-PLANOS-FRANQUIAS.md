@@ -188,3 +188,10 @@ O responsável aprovou expressamente por “ok” a fórmula **mensalidade do ad
 **Não aprovados ainda:** critério de inclusão do dia inicial/fração de dia, fuso, arredondamento exato, modalidades de estorno/crédito em atraso, falhas de pagamento, regras fiscais, setup de expansão, valores e homologação técnica. Habilitar a capacidade comercial **não** equivale a publicar anúncios, mudar orçamento, autorizar gasto ou executar automaticamente na plataforma. [Referência AD01, seção 13](PERF-P0-AD01-CONTAGEM-CAMPANHAS-GRUPOS-ADICIONAIS-v0.1.md).
 
 Somente planejamento; não iniciar programação ou cobranças.
+
+
+## 17. Primeiro dia de pró-rata fracionado por tempo efetivo (04/11/2026)
+
+**Aprovado funcionalmente (Opção B):** o primeiro dia da contratação de adicional é cobrado somente pela fração de tempo após a disponibilização efetiva da capacidade, considerando horas e minutos restantes, sem cobrar a totalidade do dia quando houver liberação parcial. A regra integra a fórmula aprovada de duração real do ciclo. O preço integral do adicional começa no ciclo seguinte, na mesma data de vencimento da assinatura principal. Referência: [AD01, seção 14](PERF-P0-AD01-CONTAGEM-CAMPANHAS-GRUPOS-ADICIONAIS-v0.1.md).
+
+**Aguardam decisão:** fuso e precisão técnica, regra exata de arredondamento, tratamento de diferenças de pagamento e falhas, homologação financeira/jurídica/técnica e preços reais. Sem programação nem faturamento efetivo.
