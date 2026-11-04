@@ -155,3 +155,10 @@ Itens que permanecem **não definidos**: quantidade/volume de leads, política d
 ## 11. Estudo AD01 — contagem de campanhas e grupos/conjuntos (04/11/2026)
 
 A [PERF-P0-AD01 v0.1](PERF-P0-AD01-CONTAGEM-CAMPANHAS-GRUPOS-ADICIONAIS-v0.1.md) detalha **proposta sujeita a aprovação** para medir os grupos de anúncios Google e conjuntos Meta formalmente sob gestão, com franquias de campanhas, adicionais, saldos por canal, política de substituições e cuidados com formatos especiais (como Performance Max). **Não altera RES01-D05 já aprovada**: campanhas ativas **ou pausadas** sob gestão consomem franquia; campanhas fora de escopo não consomem automaticamente. O método de contagem no ciclo, tarifas e capacidades adicionais **não estão aprovados**. Preservar os nomes de canais “Google Ads”, “Meta (Instagram e/ou Facebook)” e “Google Ads + Meta (Instagram e/ou Facebook)”. Sem programação ou publicação comercial.
+
+
+## 12. Diretriz atualizada: sem franquia de substituições (04/11/2026)
+
+O responsável **descartou a necessidade de franquia de substituições**, porque a Imagine Performance AI deverá **recomendar e orientar as trocas de campanhas e grupos/conjuntos** como parte da otimização do serviço. Conforme [AD01 revisada](PERF-P0-AD01-CONTAGEM-CAMPANHAS-GRUPOS-ADICIONAIS-v0.1.md), **substituições ordinárias dentro da capacidade contratada não são cobradas isoladamente e não exigem saldo mensal de trocas**. Esta deliberação **substitui a recomendação anterior de franquia de substituições**; o restante dos limites e preços permanece sujeito a validação.
+
+Preservar **RES01-D05**: campanha sob gestão, mesmo pausada, consome capacidade até a retirada **formal do escopo**. Substituições propostas pela IA não autorizam, por si, publicação, alteração de verba ou remoção na plataforma; aprovações e alçadas permanecem obrigatórias quando aplicáveis. Ampliação permanente de campanhas ou grupos fora do limite contratado exige autorização comercial prévia; **sem cobrança surpresa**. Regras de transição, rastreabilidade, escopo extraordinário e homologação técnica continuam pendentes. Somente planejamento.
