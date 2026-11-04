@@ -183,16 +183,29 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 **Deliberação:** o responsável respondeu “ok” à proposta apresentada em 04/11/2026; ficam **aprovadas funcionalmente** as regras de cancelamento de adicionais acima, inclusive autoatendimento pelo Portal, cancelamento sem multa específica, capacidade disponível até o término do ciclo pago e redução da mensalidade a partir do ciclo seguinte, sem abatimento retroativo padrão. **Não** aprova preços, impostos, meios de pagamento, cobrança proporcional de contratação, regras de estorno legal ou homologação técnica. Somente planejamento; sem programação ou cobranças.
 
 
-## 11. Próximo estudo — inclusão de adicionais durante o ciclo (NÃO APROVADO)
+## 11. AD01-P14 — Contratação de adicionais durante o ciclo: pró-rata APROVADO FUNCIONALMENTE (04/11/2026)
 
-**Questão em aberto:** quando o cliente contrata uma campanha ou pacote de grupos adicionais no decorrer de um ciclo de mensalidade, como começar a cobrar sem gerar custo desproporcional e sem criar datas de vencimento fragmentadas?
+**Deliberação:** após a apresentação das opções, o responsável respondeu “ok” à recomendação da **Opção A — cobrança proporcional até o próximo vencimento**. A aprovação é funcional/comercial e se limita ao modelo geral; não constitui homologação financeira, jurídica ou técnica e não aprova valores de tabela.
 
-**Opção A — pró-rata até o próximo vencimento:** calcular e apresentar, antes do aceite, valor proporcional pelos dias restantes do ciclo; a partir do próximo ciclo cobrar o adicional integral junto à assinatura-base. Ativação da capacidade somente após pagamento/autorização conforme regras financeiras definitivas e homologação futura. Vantagem: fatura unificada e proporcionalidade; atenção a diferenças de prazos de competência, tributos, estorno e eventos de pagamento.
+### 11.1 Regras comerciais aprovadas
 
-**Opção B — primeiro mês integral, com ciclo de adicional próprio:** cobrança cheia na contratação; o adicional pode ter vencimento separado. Vantagem: simplicidade de precificação; risco: cliente ter múltiplos vencimentos, reduzir transparência de fatura e pagar período sobreposto.
+1. Ao contratar **campanhas ou grupos/conjuntos adicionais no decorrer do ciclo**, o cliente deverá visualizar o **preço proporcional referente ao período restante** da competência, antes de expressar aceite.
+2. **Na renovação seguinte**, o preço **integral recorrente do adicional** integra a mensalidade da assinatura-base, em **uma mesma data de vencimento**; não criar ciclos paralelos ou datas de vencimento fragmentadas para cada adicional.
+3. Contratação de adicional **não gera autorização tácita** para publicação de campanhas, gasto de mídia ou alteração externa. O fluxo de ampliação, pagamento e habilitação depende das autorizações e condições técnicas/financeiras futuramente definidas.
+4. Adicionais **não são contratados nem cobrados automaticamente** por recomendações da IA, saldos insuficientes ou estruturas sugeridas. Preço, capacidade, vigência e novos totais devem ser exibidos no Portal e aprovados expressamente.
+5. A regra distinta de **cancelamento de adicional já aprovada em AD01-P11** permanece: direito de uso até o fim do ciclo pago; redução da mensalidade no ciclo seguinte, sem multa específica e sem abatimento retroativo padrão, resguardados direitos legais.
+6. **Verba de anúncios** Google/Meta continua independente das mensalidades/adições da Imagine. Não importar automaticamente condições comerciais de Sites/CRM.
 
-**Opção C — adição apenas no ciclo seguinte:** não cobrar no meio do ciclo, mas também não liberar capacidade nova antes da vigência. Vantagem: operação financeira simples; risco: atraso no início das campanhas.
+### 11.2 Critérios de cálculo e execução ainda pendentes de aprovação
 
-**Recomendação a deliberar:** **Opção A**, se comprovada compatibilidade com a arquitetura de faturamento, contratos, tributos e custos. Ainda não definir fórmula de dias nem uma data operacional específica. A regra **já aprovada** de cancelamento vale no próximo ciclo, não estabelece automaticamente a regra de cobrança de contratação de adicionais.
+- Definir **unidade de pró-rata** (dias corridos, data/hora de vigência, fuso, divisores de dias reais do ciclo ou mês comercial) e **arredondamento monetário**, inclusive mês de 28, 29, 30 ou 31 dias.
+- Definir momento de **cobrança proporcional**, emissão do documento fiscal quando aplicável, confirmação de pagamento, eventual atraso/falha e **quando a capacidade é efetivamente liberada**.
+- Definir processamento de múltiplas ampliações no mesmo ciclo, pagamentos duplicados, estornos cabíveis, reconciliação, reversão segura e ajustes em upgrades/downgrades.
+- Definir se haverá **taxa de configuração** de novas campanhas/grupos fora de substituição ordinária; não presumir taxa ou gratuidade.
+- Validar cálculo e cobrança com **BL-02/BL-04**, contratos, tributos, custos de agentes de IA, supervisão humana, riscos, LGPD e homologações técnicas, sem afetar P0 existentes.
 
-**Status:** PENDENTE de decisão comercial expressa, validação jurídica/tributária e homologação técnica; sem programação ou cobrança.
+### 11.3 Próxima proposta, NÃO aprovada — fórmula de pró-rata e vigência
+
+**Candidata recomendada:** usar os **dias corridos efetivamente restantes do ciclo contratado**, com início de vigência no marco formal de contratação/habilitação, e apresentar antecipadamente fórmula, subtotal proporcional, total atual, total recorrente futuro e data de renovação. Regras de arredondamento e falha de pagamento devem ser formalizadas para evitar diferença de centavos e liberação sem autorização. **Esta fórmula específica ainda requer deliberação**.
+
+**Situação:** só o **modelo geral de pró-rata com mensalidade consolidada no ciclo seguinte** está aprovado. Não há valor monetário, data, fórmula, gatilho de ativação ou nova taxa aprovada. Não iniciar programação, faturamento, conexão, campanhas, operações reais ou gastos.
