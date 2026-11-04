@@ -158,7 +158,7 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 ### 9.6 Pendências específicas
 
 - **AD01-P10:** aprovação explícita da contagem por **ocupação simultânea sob gestão** e da liberação imediata após saída formal; confirmar impacto de escopos híbridos de monitoramento e administração.
-- **AD01-P11:** contrato e financeira: vigência/cobrança de adicional, cancelamento, redução e pró-rata; não presumir condições do CRM/Sites.
+- **AD01-P11 — APROVADA PARCIALMENTE:** autoatendimento e cancelamento de adicionais sem multa específica, com capacidade até fim do ciclo pago e redução da mensalidade no ciclo seguinte; **pendem** adição/pró-rata, cobranças, validação jurídica, estornos cabíveis e demais condições financeiras. Não presumir condições do CRM/Sites.
 - **AD01-P12:** critérios técnicos para retirada/inclusão formal, estados idempotentes, provas de autorização, período de transição controlada, auditoria e tratamento de falhas.
 - **AD01-P13:** grupos sob campanhas parcialmente geridas, ativos especiais (Performance Max), experimentos, orçamento e permissões por plataforma.
 
@@ -171,13 +171,28 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 
 **Fronteira da decisão:** trata-se da **ocupação/liberação da capacidade**, não de cancelamento contratual ou redução de mensalidade. Capacidade não ocupada continua contratada; adicionais recorrentes não são automaticamente cancelados. Os prazos financeiros, pró-rata, redução/cancelamento de adicionais, valores monetários e regras de transição técnica seguem pendentes. Nenhum plano, preço ou franquia quantitativa foi aprovado.
 
-### 10.1 Próxima proposta, ainda NÃO aprovada — cancelamento de capacidade adicional (AD01-P11)
+### 10.1 AD01-P11 — cancelamento de capacidade adicional APROVADO FUNCIONALMENTE em 04/11/2026
 
 - Cliente pode **solicitar redução/cancelamento** de campanha/grupos adicionais diretamente no Portal, sem precisar abrir chamado para decisão comercial ordinária.
 - Após confirmar que a **ocupação real está dentro da nova capacidade** (ou concluir retirada formal do excedente do escopo), o cliente solicita o cancelamento do pacote, com resumo da capacidade e mensalidade resultantes.
-- **Modelo sugerido:** adicionais cancelados permanecem disponíveis até o encerramento do ciclo já pago; a mensalidade **é reduzida a partir do próximo ciclo**. **Sem redução proporcional retroativa**, a menos que regramento jurídico/contratual aplicável determine de outro modo. Sem multa de cancelamento do adicional como padrão proposto.
+- **Regra aprovada:** adicionais cancelados permanecem disponíveis até o encerramento do ciclo já pago; a mensalidade **é reduzida a partir do próximo ciclo**. **Sem redução proporcional retroativa**, a menos que regramento jurídico/contratual aplicável determine de outro modo. Sem multa de cancelamento do adicional como padrão proposto.
 - **Sem cancelamento silencioso:** se a nova capacidade for insuficiente, o Portal explica quais campanhas/grupos necessitam sair do escopo antes de confirmar a redução; pausa no provedor não libera vaga.
 - O cancelamento do **adicional** não cancela a assinatura-base, os dados ou a conta de anúncio do cliente. Registros, aceites e rastreabilidade ficam sujeitos à política de auditoria e LGPD.
 - **Ainda pendentes:** momentos exatos de cobrança/vencimento, eventual pró-rata de adição no meio do ciclo, impostos, cancelamento de contratos, estorno quando aplicável, formas de pagamento, validação jurídica e homologação.
 
-**Esta seção 10.1 não constitui aprovação: apresentar ao responsável para deliberação antes de qualquer regra financeira definitiva.** Somente planejamento, sem programação ou cobranças.
+**Deliberação:** o responsável respondeu “ok” à proposta apresentada em 04/11/2026; ficam **aprovadas funcionalmente** as regras de cancelamento de adicionais acima, inclusive autoatendimento pelo Portal, cancelamento sem multa específica, capacidade disponível até o término do ciclo pago e redução da mensalidade a partir do ciclo seguinte, sem abatimento retroativo padrão. **Não** aprova preços, impostos, meios de pagamento, cobrança proporcional de contratação, regras de estorno legal ou homologação técnica. Somente planejamento; sem programação ou cobranças.
+
+
+## 11. Próximo estudo — inclusão de adicionais durante o ciclo (NÃO APROVADO)
+
+**Questão em aberto:** quando o cliente contrata uma campanha ou pacote de grupos adicionais no decorrer de um ciclo de mensalidade, como começar a cobrar sem gerar custo desproporcional e sem criar datas de vencimento fragmentadas?
+
+**Opção A — pró-rata até o próximo vencimento:** calcular e apresentar, antes do aceite, valor proporcional pelos dias restantes do ciclo; a partir do próximo ciclo cobrar o adicional integral junto à assinatura-base. Ativação da capacidade somente após pagamento/autorização conforme regras financeiras definitivas e homologação futura. Vantagem: fatura unificada e proporcionalidade; atenção a diferenças de prazos de competência, tributos, estorno e eventos de pagamento.
+
+**Opção B — primeiro mês integral, com ciclo de adicional próprio:** cobrança cheia na contratação; o adicional pode ter vencimento separado. Vantagem: simplicidade de precificação; risco: cliente ter múltiplos vencimentos, reduzir transparência de fatura e pagar período sobreposto.
+
+**Opção C — adição apenas no ciclo seguinte:** não cobrar no meio do ciclo, mas também não liberar capacidade nova antes da vigência. Vantagem: operação financeira simples; risco: atraso no início das campanhas.
+
+**Recomendação a deliberar:** **Opção A**, se comprovada compatibilidade com a arquitetura de faturamento, contratos, tributos e custos. Ainda não definir fórmula de dias nem uma data operacional específica. A regra **já aprovada** de cancelamento vale no próximo ciclo, não estabelece automaticamente a regra de cobrança de contratação de adicionais.
+
+**Status:** PENDENTE de decisão comercial expressa, validação jurídica/tributária e homologação técnica; sem programação ou cobrança.
