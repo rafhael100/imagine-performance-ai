@@ -258,8 +258,25 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 
 **Escopo preservado:** o início da cobrança segue a disponibilidade real de capacidade após confirmação do pagamento; o primeiro dia é proporcional às horas e minutos efetivos; o divisor segue a duração real do ciclo; o valor integral passa a compor a mensalidade no próximo vencimento. A regra aprovada **não** fixa o algoritmo de desempate no meio centavo (por exemplo, meio para cima ou meio para par), precisão do registro temporal/fuso ou tratamento fiscal de arredondamentos, que ainda devem ser harmonizados e homologados.
 
-### 15.1 Próxima proposta: conciliação de valor pré-pago versus disponibilidade efetiva (NÃO aprovada)
+### 15.1 Histórico da proposta de conciliação (APROVADA posteriormente na seção 16)
 
-Se houver pagamento confirmado para uma data estimada de liberação, mas a capacidade for disponibilizada mais tarde, **não cobrar pelo tempo anterior**. Recomenda-se calcular o valor devido desde o instante real, comparar com o valor efetivamente liquidado e **devolver a diferença ou disponibilizar crédito conforme escolha informada e direitos legais**, mantendo evidências e evitando cobrança duplicada. Se a capacidade não chegar a ser liberada, prever cancelamento seguro da contratação e restituição cabível. A escolha entre reembolso e crédito, prazos, forma de pagamento, encargos e exceções aguardam deliberação jurídica/comercial; nenhum crédito compulsório é aprovado por esta proposta.
+Se houver pagamento confirmado para uma data estimada de liberação, mas a capacidade for disponibilizada mais tarde, **não cobrar pelo tempo anterior**. Recomenda-se calcular o valor devido desde o instante real, comparar com o valor efetivamente liquidado e **devolver a diferença ou disponibilizar crédito conforme escolha informada e direitos legais**, mantendo evidências e evitando cobrança duplicada. Se a capacidade não chegar a ser liberada, prever cancelamento seguro da contratação e restituição cabível. A escolha informada do cliente entre reembolso da diferença e crédito foi aprovada posteriormente na seção 16, respeitados direitos legais; prazos, forma de pagamento, encargos e exceções permanecem sujeitos a deliberação financeira/jurídica.
 
 **Permanecem pendentes:** política exata de empate monetário/arredondamento, fuso e precisão técnica, pagamento e sua falha, ajuste de valor autorizado, estorno/reembolso/crédito, notas fiscais e homologação financeira/jurídica/técnica. Nenhum preço final, franquia quantitativa ou taxa de configuração foi aprovado. Somente planejamento.
+
+
+## 16. Conciliação de pagamentos e atrasos de habilitação — APROVADA FUNCIONALMENTE (04/11/2026)
+
+**Decisão:** o responsável respondeu “ok” à recomendação comercial de tratar divergências entre o valor antecipadamente pago e a data/hora real de habilitação da capacidade adicional no Imagine Performance AI. Ficam aprovados, funcionalmente, os seguintes princípios:
+
+1. **Diferença por atraso:** o valor devido é recalculado desde a data/hora efetiva de liberação da capacidade, conforme pró-rata por tempo efetivo, ciclo real e arredondamento final já aprovados. Nenhuma cobrança por período anterior à disponibilidade.
+2. **Pagamento superior ao devido:** antes da resolução, o Portal informa de modo transparente o valor originalmente pago, a competência efetiva, o valor recalculado e a diferença. **Oferecer ao cliente a opção de reembolso da diferença ou crédito**, respeitando o meio de pagamento e os direitos legais. **Crédito não é imposto unilateralmente** para afastar direito de restituição.
+3. **Falha definitiva de disponibilização:** se a capacidade adicional não puder ser liberada, permitir cancelamento seguro desse adicional e **restituição cabível**; não contratar/publicar campanhas, não suspender o plano-base nem criar obrigação de pagamento por período sem uso.
+4. **Conciliação e auditoria:** registrar solicitação, aceite, pagamento oficialmente confirmado, datas/horas de tentativa e disponibilidade, cálculo original/recalculado, opção do cliente, estorno/crédito efetivo, falha/retentativa e identidade dos responsáveis, com controles de idempotência, segurança e privacidade.
+5. **Sem dupla cobrança e sem inferência de êxito:** tentativas de pagamento e de disponibilização não equivalem a confirmações oficiais; reprocessamentos não duplicam estorno, crédito, fatura ou habilitação.
+
+**Fronteira da aprovação:** não aprova prazo de reembolso, modo de concessão de crédito, validade dos créditos, política de encargos ou juros, sequência de retentativas, fluxo de pagamento rejeitado, critério tributário/fiscal, alteração de contrato, taxas de implantação ou preço de tabela. Esses itens requerem desenho financeiro/jurídico e homologação. Respeitar condições legais obrigatórias e decisões previamente aprovadas; não ativar contas, publicar anúncios, executar gastos ou faturar de fato por este documento.
+
+### 16.1 Próxima discussão (NÃO APROVADA) — pagamento recusado ou inconclusivo
+
+**Recomendação:** quando o pagamento do adicional estiver recusado, expirado ou inconclusivo, manter o plano atual e **não disponibilizar nova capacidade** antes da confirmação oficial do recebimento. O Portal deverá informar o estado e permitir nova tentativa segura, sem cobrança duplicada e sem afetar capacidades já legitimamente pagas. O prazo de manutenção de reserva de capacidade, cancelamento do pedido pendente, notificações e eventual janela de recuperação financeira ainda precisam ser definidos.
