@@ -132,3 +132,21 @@ Itens que permanecem **não definidos**: quantidade/volume de leads, política d
 **Próximo bloco de planejamento:** BL-02 — Cobrança, Descontos, Investimento de Mídia e Alçadas Financeiras. Para definir preços e franquias numéricas, correlacionar BL-01/02 com custos reais e cenários do BL-04, sem programação.
 
 > BL-01 aprovada funcionalmente, **não** homologada tecnicamente. Nada aqui autoriza execução, contratação, integração, gasto, publicação, cobrança ou alteração de código.
+
+
+## 10. Ajuste de nomenclatura na interface comercial (04/11/2026)
+
+**Manifestação:** o responsável aceitou a apresentação simulada de pacotes e adicionais de campanhas e grupos/conjuntos, solicitando expressamente **substituir o rótulo genérico “Ambos”** por **“Google Ads + Meta (Instagram e/ou Facebook)”**.
+
+**Rótulos oficiais propostos para exibição no Portal Imagine:**
+- `Google Ads`
+- `Meta (Instagram e/ou Facebook)`
+- `Google Ads + Meta (Instagram e/ou Facebook)`
+
+**Interpretação:** Instagram e Facebook são plataformas/posicionamentos sob o mesmo **canal comercial Meta**; contratar Meta não equivale a dois canais independentes. A seleção conjunta representa **Google Ads e Meta**, conforme a estrutura de Multicanal já aprovada, e nunca um produto novo chamado “Ambos”.
+
+**Interface de adicionais aceita como base de experiência:** o cliente visualiza campanhas e grupos/conjuntos incluídos por canal, capacidade contratada, saldos, expansão de campanha com franquia de grupos e pacotes adicionais de grupos para campanhas existentes; contratação de adicional exige aprovação expressa e respeito aos limites do contrato e aos controles de custos.
+
+**Somente apresentação/comportamento de interface em planejamento:** os preços mostrados em simulação (incluindo R$ 179/mês por campanha, R$ 79/mês por 3 grupos, R$ 479/mês por pacote de 3 campanhas; taxas de ativação R$ 797/R$ 1.497), os nomes de planos da maquete e os quantitativos de franquia **não estão aprovados como tabela comercial definitiva**. Preservar a estrutura aprovada Canal Único / Multicanal / Operação Ampliada no BL-01 até nova deliberação expressa. Não permitir cobrar sem aceite, nem converter maquete em funcionalidade habilitada.
+
+**Pendências:** definir regras equivalentes de cobrança/medição para grupo de anúncios Google, conjunto de anúncios Meta, grupos de recursos Performance Max e outros tipos especiais, evitando cobrança artificial, contagem dupla ou incentivo a criar campanhas desnecessárias; limites por canal, trocas e substituições durante ciclo, preço, implantação de expansão, impostos/custos, autorização de adicionais, contratos e homologação.
