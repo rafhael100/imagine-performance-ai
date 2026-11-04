@@ -1,7 +1,7 @@
 # PERF-P0-AD01 — Contagem de campanhas, grupos/conjuntos e adicionais (v0.1)
 
 **Data:** 04/11/2026.  
-**Estado:** **MINUTA PARA DELIBERAÇÃO — NÃO HOMOLOGADA, SEM VALORES OU FRANQUIAS DEFINITIVOS.**  
+**Estado atualizado:** **DIRETRIZ DE SUBSTITUIÇÕES SEM FRANQUIA/CUSTO POR TROCA APROVADA**, conforme manifestação posterior do responsável; **demais critérios de contagem, limites, contratos e preços seguem em minuta não homologada.**  
 **Autorização de avanço:** “ok” após padronização da apresentação comercial de canais e aceitação da maquete de adicionais como base. **Não significa aceite das regras de contagem e preços sugeridas neste documento.**  
 **Base de precedência:** [BL-01](PERF-P0-BL01-OFERTA-PLANOS-FRANQUIAS.md), [RES-01 D01–D16](PERF-P0-RES01-OFERTA-FRANQUIAS-CUSTOS-DC01-DC03-DC10.md), especialmente **RES01-D05 — campanhas sob gestão, ativas OU pausadas**, **D11 — adicionais mediante autorização expressa** e **D12 — mídia paga diretamente às plataformas**.
 
@@ -34,17 +34,20 @@
 - **Marca e conta publicitária:** uma marca com vários bairros/estados não multiplica automaticamente faturamento. Contas publicitárias independentes, múltiplas marcas e estratégia regional podem aumentar trabalho, mas precisam de escopo e cota transparente, sem cobrança implícita por estado ou região.
 - **Sem incentivo estrutural:** o agente deve recomendar quantidade de campanhas/grupos necessária à estratégia e à performance, não subdividir para elevar faturamento.
 
-## 4. Contagem no ciclo e substituições — decisão em aberto
+## 4. Substituições orientadas pela Imagine — diretriz comercial revista (04/11/2026)
 
-A regra RES01-D05 **não decidiu** se o cliente consome pelo **pico simultâneo sob gestão** ou pelo **número de estruturas distintas geridas no mês**. Comparar:
+**Manifestação do responsável:** a regra de franquia de substituições **não é necessária**, pois será **a Imagine Performance AI quem analisará e recomendará a substituição de campanhas**. Portanto, **não estabelecer limite de quantidade de substituições por mês nem cobrança por substituição ordinária** como variável comercial. Essa diretriz substitui a recomendação anterior de "saldo simultâneo + franquia de substituições".
 
-| Alternativa | Como seria medida | Benefício | Risco |
-|---|---|---|---|
-| **A — Saldo simultâneo + substituições incluídas limitadas** | Quantidade de campanhas/grupos ao mesmo tempo sob gestão; substituições genuínas podem ocorrer até uma franquia por ciclo | Fácil de entender; protege ajustes normais | Sem política antiabuso, pode haver troca ilimitada sem receita proporcional |
-| **B — Distintos geridos no ciclo** | Qualquer nova campanha/grupo distinto gerido no mês ocupa uma unidade do ciclo, mesmo que substitua outro | Previsibilidade de trabalho | Pode punir otimizações e trocas pequenas legítimas |
-| **C — Capacidade simultânea + orçamento de reestruturações** | Capacidade paralela contratada; reestruturação extraordinária, aferida por esforço, exige orçamento prévio | Mais justo para operações complexas | Mais julgamento manual e administração |
+**Regra funcional comercial:**
+- **Recomendação e iniciativa:** agentes de IA e supervisão Imagine avaliam necessidades de otimização e apresentam recomendações de substituir, reorganizar ou encerrar uma campanha/conjunto dentro do escopo autorizado. O cliente poderá solicitar análise, mas isso não cria direito à execução indiscriminada de novas estruturas.
+- **Sem taxa de troca:** uma substituição ordinária **recomendada/validada pela Imagine**, dentro da capacidade e do escopo contratado, **não é adicional, nova campanha faturável nem operação cobrada separadamente**. Não gerar aviso de contratação só por trocar IDs de estruturas.
+- **Estado e direitos:** recomendação não equivale a autorização para publicar, pausar, excluir ou alterar verba na plataforma. Aplicar alçadas, aprovações e controles de autonomia já previstos para cada efeito real; preservar evidências do antes/depois.
+- **Franquia de capacidade permanece:** campanhas sob gestão, **ativas ou pausadas**, continuam consumindo franquia conforme RES01-D05. Para liberar espaço, retirar formalmente a campanha antiga do escopo de gestão, não apenas pausá-la. A nova passa a consumir capacidade quando ingressar formalmente no escopo.
+- **Transição controlada:** quando a substituição tecnicamente exigir um período de coexistência, especificar um fluxo de transição limitado e auditável que **não gere cobrança surpresa**. Sobreposição permanente além do limite contratado exige proposta de ampliação e aceite expresso, não simples troca.
+- **Sem contador de substituições:** não faturar com base em quantidade distinta de IDs que passaram pelo plano no mês ou em número de trocas. A assinatura remunera a gestão e as otimizações ordinárias nas capacidades contratadas.
+- **Proteção de custos sem franquia de trocas:** capacidade de criação de criativos, créditos IA, revisões, suporte, integrações especiais e trabalhos extraordinários permanecem sujeitos às **franquias e escopos próprios** (a definir); não há autorização para serviços ilimitados ou gastos não aprovados.
 
-**Recomendação para futura decisão:** **A**, com substituições controladas e transparentes, **sem política numérica inventada**; ou **C** se os custos humanos de reestruturação forem relevantes. Não implementar contador de substituições como regra aprovada neste documento.
+**O que continua pendente:** o método técnico de registrar entrada/saída do escopo, transições simultâneas temporárias, tratamento de histórico e auditoria, políticas de cancelamento, reconhecimento de trabalho excepcional e medição operacional para custos. **Não reabrir a franquia de substituições como cobrança padrão.**
 
 ## 5. Catálogo de adicionais simulado (preços NÃO aprovados)
 
@@ -85,12 +88,12 @@ A regra RES01-D05 **não decidiu** se o cliente consome pelo **pico simultâneo 
 ## 8. Pendências AD01-P01..P09
 
 - **P01:** aprovar ou ajustar a contagem **de grupos/conjuntos formalmente sob gestão**, inclusive pausados, sem cobrar estruturas fora de escopo.
-- **P02:** escolher método de ciclo A/B/C e política de substituição de campanhas e grupos, evitando troca ilimitada e dupla cobrança.
+- **P02 — DIRETRIZ COMERCIAL DEFINIDA:** sem franquia nem cobrança por substituições ordinárias recomendadas pela Imagine dentro da capacidade contratada; **pendente** desenho técnico de troca de escopo, sobreposição temporária, auditoria e medição de custo. Não contabilizar IDs distintos geridos no mês como cobrança por troca.
 - **P03:** definir unidades especiais (Performance Max e outros tipos), direitos e política de equivalência.
 - **P04:** franquias quantitativas por produto/canal/marca/conta e método de combinação de canais.
 - **P05:** aprovar preços de adicionais e ativação somente após estudo de custos, impostos, margens e escala; maquetes não são oferta pública.
 - **P06:** decidir se novas campanhas ou grupos extras exigem taxa de configuração, e em quais situações.
-- **P07:** formatos do Portal: saldo sob gestão/disponível, aceite específico, alteração de escopo e reconciliação da fatura.
+- **P07:** formatos do Portal: saldo sob gestão/disponível, recomendações de otimização da Imagine, confirmação de alterações quando exigida, entrada/saída de escopo e reconciliação da fatura sem faturar trocas ordinárias.
 - **P08:** custos e testes futuros de uso/abuso, contas grandes, experimentos, duplicações, multi-tenant, rollback sem faturamento e segurança de IA.
 - **P09:** reconciliar com BL01/BL02/BL04, RES01-D01..D16, CT-PERF-17/18/20, P0 existentes e política LGPD.
 
