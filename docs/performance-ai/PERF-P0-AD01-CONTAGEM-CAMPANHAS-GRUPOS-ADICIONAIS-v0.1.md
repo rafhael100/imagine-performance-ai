@@ -211,10 +211,33 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 **Situação:** o **modelo geral e a fórmula de dias corridos do ciclo real** estão aprovados funcionalmente. Não há valor de tabela, marco exato de início da contagem, regra de arredondamento, gatilho de ativação ou nova taxa aprovados. Não iniciar programação, faturamento, conexão, campanhas, operações reais ou gastos.
 
 
-## 12. Próximo detalhamento para decisão (NÃO APROVADO): início da cobrança, arredondamento e habilitação
+## 12. Estudo que precedeu a aprovação da seção 13 — início da cobrança, arredondamento e habilitação
 
 **Proposta de experiência comercial:** calcular e exibir o pró-rata na confirmação do pedido, com competência e próximo vencimento visíveis. A capacidade extra só ficará disponível depois de aceitação expressa e confirmação financeira, respeitando autorizações do contrato e do canal. Para evitar cobrança por um período em que a capacidade ainda não poderia ser utilizada, a vigência proporcional deverá ser sincronizada com a liberação efetiva da capacidade, mediante regra de contabilização exata.
 
-**Pendências para deliberação:** (1) considerar o dia da habilitação como dia inteiro, contar horas proporcionais ou começar no dia seguinte; (2) arredondar apenas o valor final em centavos segundo regra monetária única; (3) definir expiração/cancelamento seguro quando o pagamento falhar; (4) se o adicional precisar de trabalho de configuração, distinguir disponibilidade de capacidade do início efetivo dos anúncios; (5) reconciliação e tratamento de ajustes retroativos legalmente devidos. Nenhuma dessas opções é adotada automaticamente por esta minuta.
+**Pendências para deliberação:** (1) considerar o dia da habilitação como dia inteiro, contar horas proporcionais ou começar no dia seguinte; (2) arredondar apenas o valor final em centavos segundo regra monetária única; (3) definir expiração/cancelamento seguro quando o pagamento falhar; (4) se o adicional precisar de trabalho de configuração, distinguir disponibilidade de capacidade do início efetivo dos anúncios; (5) reconciliação e tratamento de ajustes retroativos legalmente devidos. O fluxo geral de aceite → confirmação de pagamento → habilitação de capacidade → cobrança desde a disponibilidade foi posteriormente aprovado na seção 13; detalhes de dia inicial, corte, centavos e compensações continuam não aprovados.
 
 **Fronteira:** preço de ativação inicial, taxa de implantação de expansões, precificação definitiva, meios de pagamento, descontos e quaisquer P0 restantes continuam em aberto. Sem programação ou cobrança real.
+
+
+## 13. Aprovação de fluxo para ativação e início da cobrança de adicionais (04/11/2026)
+
+**Aprovação funcional restrita:** o responsável respondeu “ok” à proposta da seção 12 apresentada em conversa. Fica aprovado o fluxo sequencial:
+
+1. **Simulação e aceite:** Portal exibe valor proporcional estimado, capacidade contratada atual e futura, nova mensalidade integral e data do próximo vencimento; o cliente manifesta aceite informado e expresso. Não aprovar alteração nem gerar pagamento automático por recomendação da IA.
+2. **Confirmação financeira:** o pagamento do adicional deve ser confirmado oficialmente antes da disponibilização da capacidade extra, ressalvados fluxos futuros expressamente homologados.
+3. **Habilitação real da capacidade:** o Portal comprova que a capacidade adicional contratada ficou efetivamente disponível ao cliente e registra o instante oficial de liberação; aprovação de compra ou comprovante de tentativa de pagamento não equivale a capacidade disponível.
+4. **Início da competência proporcional:** cobrar **somente desde a disponibilização efetiva** da capacidade, pelo restante do ciclo real de faturamento, mantendo a fórmula por dias corridos aprovada na seção 11.3. O resultado final da cobrança é apresentado/arredondado **em centavos**, sem somar arredondamentos intermediários, segundo política monetária a homologar.
+5. **Renovação única:** a partir do ciclo seguinte, o adicional entra integralmente na mensalidade principal, com mesma data de vencimento. Nenhuma nova campanha é publicada por este aceite isolado.
+
+**Conciliar pré-pagamento e data efetiva:** o valor apresentado e autorizado antes da confirmação é uma **estimativa**, não autorização para cobrar dias em que a capacidade não estava disponível. Se houver atraso de liberação após confirmação do pagamento e o valor liquidado exceder a competência efetiva, é obrigatório **conciliar e ajustar** por mecanismo transparente de estorno/crédito/reembolso compatível com o meio de pagamento e com os direitos legais; não cobrar diferença positiva sem novo aceite. A modalidade exata de ajuste permanece pendente de escolha e homologação.
+
+**Não decididos por este “ok”:** considerar fração do dia inicial como dia inteiro ou hora proporcional; horário de corte/fuso; método matemático de contagem dos dias efetivos; arredondamento exato em centavos; meios de pagamento, vencimento/confirmacão, reconciliação da fatura, retentativas, falha de cobrança, impostos, estornos, taxa de setup de campanhas extras, preço real, contas do provedor, autorização de mudanças em Google/Meta e liberação de publicidade. Não confundir liberação da **franquia/capacidade** com criação ou ativação de anúncios no provedor.
+
+**Integrações relevantes:** BL-01, BL-02, BL-04, RES01-D05/D11/D12/D13, CT-PERF-17/18, estados auditáveis e controle de aprovações. Esta aprovação **não** resolve os P0 ou homologa a execução.
+
+### 13.1 Próxima decisão proposta (NÃO aprovada)
+
+**Recomendação de simplicidade de faturamento:** contar **dias corridos**, incluindo como **primeiro dia de uso o dia local em que a capacidade fica efetivamente disponível**, e calcular o divisor pelos dias do ciclo de cobrança, arredondando **somente o valor final** a duas casas decimais, com critério monetário único documentado. Exibir o intervalo contabilizado, esclarecer que a fração de dia inicial entra como um dia completo e validar compatibilidade com cobrança antecipada/atrasos e direitos do consumidor. Como alternativa mais exata, pode-se usar frações de dia desde o timestamp de liberação, mas isso aumenta a complexidade e exige regra de corte precisa.
+
+**Estado:** toda a seção 13.1 segue **proposta**, aguardando deliberação. Sem programação, faturamento, contas ou despesas.
