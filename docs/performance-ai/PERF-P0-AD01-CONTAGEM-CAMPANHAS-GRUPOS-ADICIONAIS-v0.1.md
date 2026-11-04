@@ -346,11 +346,11 @@ Se houver pagamento confirmado para uma data estimada de liberação, mas a capa
 
 **Fronteiras:** a aprovação **não** estabelece preços finais (mensalidade, taxa de ativação inicial ou orçamento extraordinário), lista definitiva de serviços incluídos, limites de criativos/IA, custos humanos, direitos de integração, taxas de terceiros ou critérios de homologação. Não baixar P0 ou iniciar programação por esta decisão.
 
-### 19.1 Próximo estudo — fronteira entre configuração padrão e extraordinária (NÃO APROVADO)
+### 19.1 Fronteira entre configuração padrão e extraordinária (APROVADA FUNCIONALMENTE EM 04/11/2026)
 
-Proposta de classificação para análise:
+**Deliberação:** o responsável respondeu expressamente **“aprovado”** à divisão apresentada entre configuração padrão incluída e trabalhos extraordinários sujeitos a orçamento. A matriz abaixo é referência funcional aprovada de classificação, sem fixar preços, franquias quantitativas nem direitos técnicos não homologados.
 
-| Atividade | Classificação candidata | Observação |
+| Atividade | Classificação funcional | Observação |
 |---|---|---|
 | Pesquisa ordinária de palavras-chave, públicos, objetivos e regiões dentro de canal/conta autorizados | **Incluída** | Vinculada à campanha adicional contratada |
 | Criar campanha, organizar grupos/conjuntos, segmentar regiões e preparar anúncios conforme cotas e direitos já contratados | **Incluída** | Sem cobrar por estado, cidade ou loja |
@@ -360,6 +360,19 @@ Proposta de classificação para análise:
 | Produção criativa de grande volume ou vídeo além da franquia do plano | **Franquia/recurso próprio** | Não etiquetar automaticamente como serviço extraordinário sem contrato e preço definidos |
 | Substituir ou reestruturar campanhas/grupos por recomendação Imagine dentro do escopo | **Incluída** | Não aplicar taxa por troca nem contador de substituições |
 
-**Recomendação para futura decisão:** usar **recurso/capacidade comercial contratado** e **entregáveis adicionais que realmente escapem ao serviço padrão** para classificar exceções. Não estabelecer complexidade baseada exclusivamente em número de regiões ou campanhas; estas já são dimensões da franquia. Custos reais do BL-04 deverão informar o refinamento do que é padrão, sem introduzir cobrança surpresa.
+**Critério aprovado:** usar **recurso/capacidade comercial contratado** e **entregáveis adicionais que realmente escapem ao serviço padrão** para classificar exceções. Não estabelecer complexidade baseada exclusivamente em número de regiões ou campanhas; estas já são dimensões da franquia. Custos reais do BL-04 deverão informar o refinamento do que é padrão, sem introduzir cobrança surpresa.
 
-**Status:** seção 19 aprovada funcionalmente; **tabela 19.1 é somente proposta**, pendente de deliberação. Somente documentação, sem programação, campanhas reais, gastos, contratos ou faturamento.
+**Status:** seções 19 e **19.1 aprovadas funcionalmente** em seus princípios de escopo; **a classificação de criativos/vídeos permanece vinculada às franquias próprias ainda a dimensionar**, e contas novas, integrações e mensuração avançada exigem avaliação de escopo e orçamento prévio quando extrapolarem o contratado, não cobrança automática. Somente documentação, sem programação, campanhas reais, gastos, contratos ou faturamento.
+
+
+## 20. Delimitação de escopo aprovada e próximos gates (04/11/2026)
+
+Aprovação expressa do quadro de classificação de serviços apresentado ao responsável: **incluídos** pesquisa de palavras-chave/públicos, segmentação por regiões, criação/organização de campanhas e grupos dentro das capacidades e canais autorizados, rastreamento básico suportado e otimizações/substituições ordinárias recomendadas pela Imagine; **orçamento extraordinário prévio** somente para integrações personalizadas, implantação de estrutura técnica independente, mensuração avançada fora do escopo contratado e desenvolvimento específico solicitado pelo cliente.
+
+**Sem cobranças implícitas:** não cobrar por cidade, estado, loja, ou diferença regional em si; aumentar campanhas/grupos **acima da capacidade** tem o tratamento dos adicionais contratados, e não orçamento excepcional genérico; recursos criativos e vídeo seguem franquias próprias, a definir. Qualquer serviço extraordinário exige escopo claro, valor, condições e aceite específico do cliente antes de execução, mesmo quando recomendado pela IA. A não contratação do extraordinário não cancela nem suspende o serviço-base elegível; a implementação do trabalho que dele dependa fica condicionada à autorização/viabilidade e a requisitos de segurança.
+
+### 20.1 Próxima proposta, NÃO APROVADA — fluxo de orçamento extraordinário
+
+**Proposta para o Portal:** após diagnosticar necessidade realmente fora do escopo, o agente cria **recomendação e justificativa**, sem despesa; a Imagine valida escopo, entregáveis, valor único, prazo e dependências; o Portal apresenta um orçamento separado, com validade, eventuais fornecedores e impacto esperado; o cliente **aceita ou recusa expressamente**; apenas depois de contrato/pagamento/autorização aplicáveis inicia a preparação controlada. Recusa não gera taxa e não altera a assinatura-base, podendo limitar apenas o trabalho que exige o serviço extraordinário.
+
+**Pendentes:** papéis/alçadas de elaboração e homologação de orçamento, validade de proposta, pagamentos, entregáveis, garantia/retrabalho, revisões, recuperação/estorno, LGPD, integração Portal/Performance, custos reais de equipe/IA e homologação. Nenhum valor definido. Somente documentação; sem programação, campanhas ou gastos reais.
