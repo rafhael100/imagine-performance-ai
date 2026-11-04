@@ -9,6 +9,7 @@ Repositório dedicado ao **planejamento funcional, arquitetura, governança, dec
 - [Visão geral do planejamento](docs/PERFORMANCE-AI-PLANEJAMENTO.md)
 - [Módulos PERF-01 a PERF-12, blocos PERF-P0, revisões PERF-R01/R02 e anexos](docs/performance-ai/)
 - [Dossiê RES-01 — D01 a D16 aprovadas funcionalmente, P0 e quantidades ainda em análise](docs/performance-ai/PERF-P0-RES01-OFERTA-FRANQUIAS-CUSTOS-DC01-DC03-DC10.md)
+- [AD01 — Regras propostas de contagem de campanhas, grupos/conjuntos e adicionais](docs/performance-ai/PERF-P0-AD01-CONTAGEM-CAMPANHAS-GRUPOS-ADICIONAIS-v0.1.md) — minuta para deliberação; preserva campanhas sob gestão ativas ou pausadas e preços ilustrativos sem aprovação.
 - [Roadmap de canais — Google/Meta no lançamento; TikTok/LinkedIn na segunda fase](docs/performance-ai/PERF-ROADMAP-CANAIS-LANCAMENTO-EXPANSAO.md)
 - [Estudo preliminar de custos e viabilidade — IA, operação e escala 0–700](docs/performance-ai/PERF-P0-ESTUDO-VIABILIDADE-PACOTES-IA-CUSTOS-2026-11-04.md)
 - [Estudo preliminar de infraestrutura, rateio e escala 0–700 clientes](docs/performance-ai/PERF-P0-ESTUDO-INFRAESTRUTURA-RATEIO-ESCALA-2026-11-04.md)
