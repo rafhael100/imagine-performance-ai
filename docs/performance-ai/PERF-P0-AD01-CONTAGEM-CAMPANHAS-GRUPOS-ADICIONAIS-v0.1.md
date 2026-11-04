@@ -396,8 +396,15 @@ Aprovação expressa do quadro de classificação de serviços apresentado ao re
 Somente planejamento; sem programação, contratações, faturamento ou gastos reais.
 
 
-### 20.4 Próxima proposta — notificações e histórico dos orçamentos (NÃO APROVADA)
+### 20.4 Notificações e histórico de orçamentos — APROVADOS FUNCIONALMENTE (04/11/2026)
 
-**Recomendação:** apresentar ao cliente no Portal o status do orçamento, valor, validade e histórico das versões; emitir comunicação quando **uma nova versão estiver disponível** e lembrete antes do vencimento, por canais aprovados e com preferências de comunicação. Para orçamentos que vençam em 15 dias, sugerir **um único lembrete 3 dias corridos antes** da expiração, evitando mensagens excessivas; se o prazo for reduzido administrativamente, ajustar/dispensar o lembrete conforme a validade efetiva. Notificações não aprovam orçamento por silêncio, não iniciam gastos e não substituem o aceite expresso.
+**Deliberação expressa ("ok aprovado"):** ficam **aprovados funcionalmente** a exibição no Portal Imagine de **status, valor, data/hora de validade e histórico de versões** do orçamento extraordinário, a **notificação de disponibilidade de novo orçamento/nova versão** e **um lembrete 3 dias corridos antes do vencimento**, quando o prazo real da proposta permitir. Se a Imagine configurar validade menor ou houver emissão/revisão tardia, ajustar ou dispensar o lembrete, em vez de enviá-lo fora da janela útil. O lembrete se aplica a orçamentos ainda pendentes de decisão, não a propostas já aceitas, recusadas, substituídas ou vencidas. As notificações são **estritamente informativas**: não geram aceite tácito, cobrança, publicação de anúncio, contratação, execução de serviço ou alteração de verba. Preservar preferências de comunicação, LGPD, controle de versões e registros auditáveis; os meios concretos de envio ainda precisam ser escolhidos.
 
-**Pendentes:** canal efetivo de envio, horários/fuso, consentimentos e regras LGPD, reenvios idempotentes, templates, obrigações legais e política de notificações. **O lembrete de 3 dias é apenas candidato**, não aprovado. Tudo segue na fase de planejamento.
+**Pendentes:** canais efetivos (Portal, e-mail, WhatsApp etc.), horário/fuso de disparo, preferências/consentimentos e controles LGPD, reenvios idempotentes, templates, entregabilidade, obrigações legais e homologação técnica. **A antecedência de 3 dias e o aviso de nova versão estão aprovados**; não presumir ainda o canal nem o horário exatos. Tudo segue na fase de planejamento.
+
+
+### 20.5 Próxima proposta — canais das notificações de orçamentos (NÃO APROVADA)
+
+**Recomendação para deliberação:** adotar **notificações internas no Portal Imagine** e **e-mail transacional** para nova proposta/versão e lembrete de vencimento, respeitando as regras de comunicação aplicáveis, acesso do usuário e preferências legais. **WhatsApp** e outros canais externos poderão ser considerados futuramente como opções específicas, sem habilitação automática nem custos presumidos. Mensagens externas devem conter aviso resumido e link seguro para autenticar no Portal, sem expor preços, informações estratégicas ou dados sensíveis de campanhas em conteúdo público, e sem nunca substituir a aprovação expressa. Canal, opt-outs cabíveis, permissões, preferências e horários permanecem sujeitos à decisão e homologação.
+
+**Status:** somente esta escolha de canais é **proposta**. Os alertas e a antecedência de 3 dias da seção 20.4 estão aprovados funcionalmente. Sem desenvolvimento ou disparos reais.
