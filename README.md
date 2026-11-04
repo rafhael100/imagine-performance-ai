@@ -15,6 +15,7 @@ Repositório dedicado ao **planejamento funcional, arquitetura, governança, dec
 - [Validação de servidores, licenciamento n8n e capacidade humana — 04/11/2026](docs/performance-ai/PERF-P0-VALIDACAO-SERVIDORES-N8N-EQUIPE-2026-11-04.md)
 - [Central de Recargas de Mídia — boletos programados Google/Meta](docs/performance-ai/PERF-P0-RECARGAS-MIDIA-BOLETOS-PROGRAMADOS-2026-11-04.md)
 - [Pesquisa aprofundada — emissão de boletos por API Google/Meta e restrições no Brasil](docs/performance-ai/PERF-P0-PESQUISA-API-BOLETOS-GOOGLE-META-2026-11-04.md)
+- [Pesquisa aprofundada — geração de recargas Pix por API Google/Meta](docs/performance-ai/PERF-P0-PESQUISA-API-PIX-GOOGLE-META-2026-11-04.md)
 
 ## Repositórios do ecossistema
 
