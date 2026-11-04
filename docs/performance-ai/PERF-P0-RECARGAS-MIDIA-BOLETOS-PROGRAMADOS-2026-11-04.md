@@ -5,6 +5,8 @@
 **Situação:** **REQUISITO FUNCIONAL APROVADO PARA O PLANEJAMENTO** pelo usuário: oferecer opção para programar solicitações de recarga e recebimento de boletos das plataformas Google Ads e Meta Ads. **Sem homologação de APIs, garantias de emissão automática, preço, contratação, programação ou operação real.**  
 **Rastreabilidade:** PERF-P0 BL-02 (cobrança, verba de mídia e alçadas), PERF-02/03/04 (contas e provedores), PERF-08 (agentes/autorizações), PERF-11 (monitoramento), PERF-12 (catálogo/custos), RES01-D11/D12 (adicionais, verba paga diretamente ao provedor).
 
+> **Nota de pesquisa complementar (04/11/2026):** [Investigação aprofundada sobre emissão de boletos por API Google/Meta](PERF-P0-PESQUISA-API-BOLETOS-GOOGLE-META-2026-11-04.md). **O Google informa que o boleto está temporariamente indisponível para novas contas brasileiras e para contas que usam cartão, Pix ou Mercado Pago; isso não afeta da mesma forma contas com faturamento mensal.** Os recursos públicos de API encontrados em Google/Meta permitem, conforme modalidade/permissão, consulta de faturamento e download de faturas previamente emitidas, **mas não comprovam geração de boleto de recarga pré-paga por API**. Qualquer fluxo no painel exige elegibilidade real da conta. Não anunciar emissão automática para todos os clientes. Fontes oficiais e ressalvas no estudo complementar.
+
 ## 1. Objetivo da funcionalidade
 
 O cliente poderá habilitar **opcionalmente** a Central de Recargas de Mídia no Portal Imagine Performance AI, para configurar **por plataforma e por conta publicitária**:
