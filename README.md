@@ -9,6 +9,7 @@ Repositório dedicado ao **planejamento funcional, arquitetura, governança, dec
 - [Visão geral do planejamento](docs/PERFORMANCE-AI-PLANEJAMENTO.md)
 - [Módulos PERF-01 a PERF-12, blocos PERF-P0, revisões PERF-R01/R02 e anexos](docs/performance-ai/)
 - [Dossiê RES-01 — D01 a D16 aprovadas funcionalmente, P0 e quantidades ainda em análise](docs/performance-ai/PERF-P0-RES01-OFERTA-FRANQUIAS-CUSTOS-DC01-DC03-DC10.md)
+- [Roadmap de canais — Google/Meta no lançamento; TikTok/LinkedIn na segunda fase](docs/performance-ai/PERF-ROADMAP-CANAIS-LANCAMENTO-EXPANSAO.md)
 
 ## Repositórios do ecossistema
 
