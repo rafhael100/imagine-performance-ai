@@ -280,3 +280,26 @@ Se houver pagamento confirmado para uma data estimada de liberação, mas a capa
 ### 16.1 Próxima discussão (NÃO APROVADA) — pagamento recusado ou inconclusivo
 
 **Recomendação:** quando o pagamento do adicional estiver recusado, expirado ou inconclusivo, manter o plano atual e **não disponibilizar nova capacidade** antes da confirmação oficial do recebimento. O Portal deverá informar o estado e permitir nova tentativa segura, sem cobrança duplicada e sem afetar capacidades já legitimamente pagas. O prazo de manutenção de reserva de capacidade, cancelamento do pedido pendente, notificações e eventual janela de recuperação financeira ainda precisam ser definidos.
+
+
+## 17. Pagamento recusado, pendente e duplicado de adicionais — APROVADO FUNCIONALMENTE (04/11/2026)
+
+**Deliberação:** o responsável respondeu “ok” à proposta apresentada de tratamento de pagamentos de adicionais de campanhas e grupos/conjuntos. Aprovação funcional restrita aos estados e proteções abaixo, sem homologação técnica, fiscal ou financeira.
+
+| Estado de pagamento | Tratamento aprovado |
+|---|---|
+| **Confirmado oficialmente** | Autorizar a etapa de disponibilização da capacidade adicional contratada, desde que o aceite e demais validações estejam presentes; não equivale a criar/publicar anúncios no Google/Meta |
+| **Recusado** | Não liberar nova capacidade; Portal informa o status e oferece nova tentativa segura de pagamento |
+| **Em processamento / inconclusivo** | Não liberar a nova capacidade antes de confirmação oficial; manter pedido pendente e apresentar estado correto, sem declarar falha ou sucesso prematuramente |
+| **Pagamento duplicado** | Conciliar os recebimentos e providenciar correção financeira cabível, com auditoria e proteção contra dupla cobrança, duplicação de pedido e disponibilização repetida |
+| **Falha de pagamento somente do adicional** | Preservar assinatura-base, campanhas e capacidade anteriormente contratadas e pagas; não suspender serviços elegíveis por problema isolado do novo adicional |
+
+**Invariantes:** nenhuma sugestão da IA cria cobrança; pagamento confirmado sem capacidade habilitada aciona as regras já aprovadas de reconciliação e reparação; respeitar estados oficiais do provedor financeiro, idempotência, correlação de tentativas, controle de concorrência, reconciliação e histórico auditável. O novo adicional só entra em pró-rata desde sua **disponibilidade efetiva** após pagamento confirmado, conforme seções 11, 13, 14, 15 e 16.
+
+**Limites de decisão:** ainda não foram aprovados prazos de expiração do pedido de adicional pendente, número e periodicidade de retentativas, prazos de notificação, reserva de capacidade, meios de pagamento específicos, detalhes de estorno ou crédito, cobrança de taxas extras, nem condições contratuais ou tributárias. A confirmação financeira depende de integração/homologação futura. Não iniciar programação, campanhas, gastos ou cobranças reais.
+
+### 17.1 Próxima proposta para deliberação — validade de pedido pendente (NÃO APROVADA)
+
+**Recomendação:** pedidos de adicionais não pagos **não ocupam nem reservam vagas contratadas**, pois a capacidade é comercial e vinculada somente à contratação confirmada. A validade do **pedido/pagamento pendente** deverá respeitar o vencimento e as regras do meio escolhido, informados na contratação, sem fixar um prazo igual para Pix, cartão e boleto antes da definição dos meios aceitos no Performance AI. Ao expirar, o Portal encerraria o pedido ainda não pago, **sem cancelar o plano-base nem interferir em adicionais anteriores**. Pagamento confirmado tardiamente após encerramento precisaria de reconciliação financeira e aceite/novo orçamento quando necessário, sem ativação automática indevida.
+
+**Em aberto:** prazos por meio de pagamento, política de reabertura, vínculo com valores promocionais, avisos, eventual pagamento em atraso já liquidado, formas disponíveis, direito do cliente e homologação.
