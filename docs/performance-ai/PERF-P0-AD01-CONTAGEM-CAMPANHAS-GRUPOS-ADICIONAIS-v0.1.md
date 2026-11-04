@@ -163,3 +163,21 @@ Por **empresa / marca elegível / canal / conta autorizada / pacote**, quando pr
 - **AD01-P13:** grupos sob campanhas parcialmente geridas, ativos especiais (Performance Max), experimentos, orçamento e permissões por plataforma.
 
 **Não há programação, ativação de contas/campanhas, gasto ou precificação final autorizados por esta proposta.**
+
+
+## 10. Deliberação sobre liberação de capacidade (04/11/2026)
+
+**Aprovação funcional restrita — anuência “ok” à regra de contagem/liberação apresentada após AD01-P10.** A capacidade comercial é apurada pelas **campanhas e grupos/conjuntos formalmente sob gestão**, ativos ou pausados. A saída **formal e confirmada do escopo de gestão** libera a vaga correspondente; a simples pausa no Google/Meta **não** libera. Ao substituir uma campanha/grupo por recomendação Imagine, o fluxo confirma saída da estrutura anterior e inclusão da nova na vaga liberada, sem taxa por troca ordinária, sem contador de substituições e sem cobrança duplicada.
+
+**Fronteira da decisão:** trata-se da **ocupação/liberação da capacidade**, não de cancelamento contratual ou redução de mensalidade. Capacidade não ocupada continua contratada; adicionais recorrentes não são automaticamente cancelados. Os prazos financeiros, pró-rata, redução/cancelamento de adicionais, valores monetários e regras de transição técnica seguem pendentes. Nenhum plano, preço ou franquia quantitativa foi aprovado.
+
+### 10.1 Próxima proposta, ainda NÃO aprovada — cancelamento de capacidade adicional (AD01-P11)
+
+- Cliente pode **solicitar redução/cancelamento** de campanha/grupos adicionais diretamente no Portal, sem precisar abrir chamado para decisão comercial ordinária.
+- Após confirmar que a **ocupação real está dentro da nova capacidade** (ou concluir retirada formal do excedente do escopo), o cliente solicita o cancelamento do pacote, com resumo da capacidade e mensalidade resultantes.
+- **Modelo sugerido:** adicionais cancelados permanecem disponíveis até o encerramento do ciclo já pago; a mensalidade **é reduzida a partir do próximo ciclo**. **Sem redução proporcional retroativa**, a menos que regramento jurídico/contratual aplicável determine de outro modo. Sem multa de cancelamento do adicional como padrão proposto.
+- **Sem cancelamento silencioso:** se a nova capacidade for insuficiente, o Portal explica quais campanhas/grupos necessitam sair do escopo antes de confirmar a redução; pausa no provedor não libera vaga.
+- O cancelamento do **adicional** não cancela a assinatura-base, os dados ou a conta de anúncio do cliente. Registros, aceites e rastreabilidade ficam sujeitos à política de auditoria e LGPD.
+- **Ainda pendentes:** momentos exatos de cobrança/vencimento, eventual pró-rata de adição no meio do ciclo, impostos, cancelamento de contratos, estorno quando aplicável, formas de pagamento, validação jurídica e homologação.
+
+**Esta seção 10.1 não constitui aprovação: apresentar ao responsável para deliberação antes de qualquer regra financeira definitiva.** Somente planejamento, sem programação ou cobranças.
