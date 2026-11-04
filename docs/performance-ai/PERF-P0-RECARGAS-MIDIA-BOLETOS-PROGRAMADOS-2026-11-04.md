@@ -7,6 +7,8 @@
 
 > **Nota de pesquisa complementar (04/11/2026):** [Investigação aprofundada sobre emissão de boletos por API Google/Meta](PERF-P0-PESQUISA-API-BOLETOS-GOOGLE-META-2026-11-04.md). **O Google informa que o boleto está temporariamente indisponível para novas contas brasileiras e para contas que usam cartão, Pix ou Mercado Pago; isso não afeta da mesma forma contas com faturamento mensal.** Os recursos públicos de API encontrados em Google/Meta permitem, conforme modalidade/permissão, consulta de faturamento e download de faturas previamente emitidas, **mas não comprovam geração de boleto de recarga pré-paga por API**. Qualquer fluxo no painel exige elegibilidade real da conta. Não anunciar emissão automática para todos os clientes. Fontes oficiais e ressalvas no estudo complementar.
 
+> **Investigação Pix por API (04/11/2026):** [ver dossiê técnico Pix Google/Meta](PERF-P0-PESQUISA-API-PIX-GOOGLE-META-2026-11-04.md). A própria equipe da Google Ads API informou publicamente (15/09/2025) que não é possível adicionar fundos pela API, e a documentação de faturamento atual não oferece criação de recarga Pix. Na Meta, os SDKs consultados mostram informações financeiras da conta, mas **não um endpoint público documentado para gerar QR Code/código Pix de recarga**. O fluxo de Pix programado **não pode ser oferecido como geração automática via API sem homologação oficial**. Permanecem viáveis agendamento, notificações e interface oficial do provedor, sujeitos à elegibilidade da conta.
+
 ## 1. Objetivo da funcionalidade
 
 O cliente poderá habilitar **opcionalmente** a Central de Recargas de Mídia no Portal Imagine Performance AI, para configurar **por plataforma e por conta publicitária**:
