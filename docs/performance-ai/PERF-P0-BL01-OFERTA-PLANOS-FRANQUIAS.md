@@ -179,3 +179,12 @@ O responsável aprovou o **modelo proporcional** para campanhas ou grupos/conjun
 ## 15. Fórmula do pró-rata em dias corridos reais — aprovada funcionalmente (04/11/2026)
 
 O responsável aprovou expressamente por “ok” a fórmula **mensalidade do adicional ÷ número de dias corridos do ciclo real contratado × dias corridos restantes do mesmo ciclo**, sem divisor fixo de 30 dias. O Portal exibirá o valor proporcional e o valor integral recorrente da renovação seguinte, preservando data de vencimento única e autorização expressa para contratar. **Ainda pendentes:** dia/marco inicial da cobrança (inclusivo/exclusivo), confirmação de pagamento e habilitação, fuso, arredondamento monetário, inadimplência/estorno, valores e validações jurídica, financeira e técnica. [Referência AD01, seção 11.3](PERF-P0-AD01-CONTAGEM-CAMPANHAS-GRUPOS-ADICIONAIS-v0.1.md). Somente planejamento, sem programação ou cobranças.
+
+
+## 16. Pagamento confirmado e capacidade habilitada — início do pró-rata (04/11/2026)
+
+**Aprovação funcional:** a contratação de adicional de campanha/grupo exige **simulação do valor proporcional e aceite informado no Portal**, seguida de **confirmação oficial do pagamento** e **liberação efetiva da capacidade contratada**. A competência proporcional inicia **somente na efetiva disponibilidade da capacidade ao cliente** (não na recomendação do agente, mera solicitação, tentativa de pagamento ou disponibilidade futura). Registrar o marco verificável e conciliar qualquer diferença entre estimativa pré-paga e disponibilização real, sem cobrar pelo período indisponível. Arredondar **o valor final** a centavos, preservando a fórmula aprovada por dias corridos do ciclo real e o valor integral do adicional na próxima mensalidade com vencimento único.
+
+**Não aprovados ainda:** critério de inclusão do dia inicial/fração de dia, fuso, arredondamento exato, modalidades de estorno/crédito em atraso, falhas de pagamento, regras fiscais, setup de expansão, valores e homologação técnica. Habilitar a capacidade comercial **não** equivale a publicar anúncios, mudar orçamento, autorizar gasto ou executar automaticamente na plataforma. [Referência AD01, seção 13](PERF-P0-AD01-CONTAGEM-CAMPANHAS-GRUPOS-ADICIONAIS-v0.1.md).
+
+Somente planejamento; não iniciar programação ou cobranças.
