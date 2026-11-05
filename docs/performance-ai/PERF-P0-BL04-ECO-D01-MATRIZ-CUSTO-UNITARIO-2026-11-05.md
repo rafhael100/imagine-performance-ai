@@ -66,8 +66,13 @@ A unidade de medição e o centro de custos são **separados da unidade de fatur
 
 **Aprovado (BL04-ECO-D01):** granularidade de medição de custo por empresa/canal, campanha, grupo/conjunto, execução IA, criativo, tempo humano, suporte e adicional. Inclui segregação de custos efetivos/estimados e prevenção de dupla contagem como critérios de qualidade documental.
 
-**Não aprovado:** preços comerciais, valor por unidade, margens mínimas, cobrança por operação, número de campanhas/grupos/peças por pacote, horas-padrão, promessa de capacidade, fornecedores/licenças, arquitetura técnica e parâmetros financeiros. A **metodologia de três camadas do BL04-ECO-D02** segue **proposta para ratificação separada**; a simulação documental anterior não a converteu em política contábil definitiva.
+**Não aprovado:** preços comerciais, valor por unidade, margens mínimas, cobrança por operação, número de campanhas/grupos/peças por pacote, horas-padrão, promessa de capacidade, fornecedores/licenças, arquitetura técnica e parâmetros financeiros. A **metodologia de três camadas BL04-ECO-D02 foi aprovada funcionalmente em 05/11/2026**, conforme [BL04-ECO-D02 — metodologia aprovada](PERF-P0-BL04-ECO-D02-METODOLOGIA-TRES-CAMADAS-2026-11-05.md); ratificação não equivale a homologação contábil/financeira ou aprovação monetária.
 
 **Próxima decisão proposta — BL04-ECO-D02:** ratificar como método de cálculo de rentabilidade as **três camadas** (variáveis diretas por unidade, fixos compartilhados rateados por driver auditável, e degraus de equipe/infra por escala), com reconciliação mensal e cenários econômico/base/estresse. A decisão não aprova valor monetário algum.
 
 **Demais pendências:** BL04-D01–D18, quatro P0, DC-09/DC-10, regras finais de rateio, custo humano real, n8n, fornecedores, tributação, margem, testes futuros e homologações. **Somente planejamento; sem programação, deploy, compra ou cobrança.**
+
+
+## 7. Ratificação posterior da metodologia BL04-ECO-D02 (05/11/2026)
+
+O responsável aprovou expressamente (“ok”) o custeio em **três camadas**: (1) custos variáveis por empresa/unidade; (2) fixos compartilhados rateados por driver verificável, com reconciliação e prevenção de duplicidades; (3) degraus de capacidade e equipe por escala. O detalhamento de unidades de BL04-ECO-D01 permanece aprovado. **Preços, margens, franquias e custos reais seguem pendentes**. A proposta histórica de ratificação desta metodologia foi atendida, sem fechar P0 nem autorizar código, testes, contratos ou cobranças.
