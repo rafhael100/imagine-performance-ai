@@ -44,3 +44,8 @@
 - `docs/performance-ai/PERF-P0-BL05-IDENTIDADE-ACESSO-GOOGLE-META-SEGURANCA-LGPD.md`
 - `docs/performance-ai/PERF-P0-BL08-FECHAMENTO-TRANSVERSAL-PENDENCIAS-DECISOES-READINESS.md`
 - `docs/performance-ai/PERF-P0-FAST-TRACK-MVP-2-CLIENTES-2026-11-05.md`
+
+
+## Regra adicional — paralelismo aprovado na FAST-PERF-01 (05/11/2026)
+
+Três tarefas podem acontecer **simultaneamente**, sem escrever nos mesmos arquivos: **F1-01** somente `docs/execucao/F1-01-DECISAO-STACK-PENDENTE.md`; **PAR-02** somente `docs/execucao/PAR-02-MATRIZ-SEGURANCA.md`; **PAR-03** somente `docs/execucao/PAR-03-CASOS-TESTE-SINTETICOS.md`. Ver `docs/execucao/PARALLEL-01-COORDENACAO.md`. Cada tarefa deve derivar uma branch própria de `dev/fast-track-performance-2026-11-05`, abrir PR draft com base nessa branch, **sem merge**. Os arquivos `AGENTS.md`, `STATUS-ATUAL.md` e instruções dos demais agentes são **somente leitura**. PAR-02 e PAR-03 são documentais até confirmação da stack. Nenhuma tarefa altera `main`, VPS, credenciais, conta real, orçamento de mídia ou cobrança.
