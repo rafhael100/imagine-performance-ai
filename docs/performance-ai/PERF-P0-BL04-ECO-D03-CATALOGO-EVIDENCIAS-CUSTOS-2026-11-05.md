@@ -66,11 +66,15 @@ O catálogo distinguirá três níveis de evidência:
 
 **Condição:** o levantamento documental pode ocorrer desde já, mas não autoriza novas compras, contratação, ativação de APIs, testes reais, solicitação de dados sigilosos a terceiros ou gasto sem deliberação apropriada.
 
-## 5. Próxima decisão proposta — BL04-ECO-D04 (NÃO APROVADA)
+## 5. BL04-ECO-D04 — Validação técnica e financeira cruzada de custos (APROVADA FUNCIONALMENTE em 05/11/2026)
 
 Recomendo formalizar uma **verificação cruzada técnica e financeira antes de converter qualquer hipótese em custo homologado**: quem controla contratos/faturas valida a despesa, e quem conhece a execução técnica valida o volume, a necessidade e o rateio. Quando um dos lados não tiver evidência, o campo permanece **N/D ou cotação/hipótese**, sem declarar custo definitivo. Registrar responsáveis, data-base e mudanças relevantes, com revisão periódica das fontes.
 
-Esta validação dupla **não foi aprovada** por BL04-ECO-D03 e não deverá atrasar o uso de cenários expressamente hipotéticos para estudos de sensibilidade. Política de revisão e responsáveis nominais seguem abertos.
+Esta validação dupla foi **posteriormente APROVADA FUNCIONALMENTE** em 05/11/2026 e não deverá impedir estudos de sensibilidade expressamente hipotéticos. Política de revisão e responsáveis nominais seguem abertos.
+
+
+
+**Deliberação expressa “Aprovado.” (05/11/2026):** aprovada **funcionalmente** a validação cruzada **técnica + financeira**, antes de classificar valores como custos reais homologados para a precificação do Performance AI. A revisão financeira deve conferir faturas, contratos, valores, moeda, vigência, encargos e condições comerciais; a revisão técnica deve verificar recursos, consumo, necessidade operacional, unidade de medida, rateios e ausência de dupla contagem. A decisão final sobre homologação exige evidência de ambos os lados, com identidades, data, versão e parecer registrados. Caso falte comprovação, permanecer como **N/D, cotação ou hipótese**, sem conversão automática em custo homologado. A regra não obriga contratação nem bloqueia estudos claramente rotulados como hipotéticos. **Permissões e responsáveis nominais ainda exigem definição operacional.**
 
 ## 6. Limites e gates preservados
 
