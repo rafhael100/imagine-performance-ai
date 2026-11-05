@@ -335,3 +335,8 @@ Somente planejamento; não iniciar programação ou cobranças.
 Após a aprovação da validação humana de correções editoriais, o responsável autorizou (“ok”) o **avanço para consolidação econômica e análise de rentabilidade do BL-04**, sem nova aprovação de tabelas de preço. A análise de custos, camadas de custo, matrizes de premissas, estudos anteriores e gates de fechamento constam em [PERF-P0-BL04 — Revisão econômica preliminar (05/11/2026)](PERF-P0-BL04-REVISAO-ECONOMICA-PRELIMINAR-2026-11-05.md), vinculada ao [BL-04 original](PERF-P0-BL04-ATENDIMENTO-CUSTOS-CAPACIDADE-CONTINUIDADE-COMERCIAL.md).
 
 **Preservar:** uma assinatura-base por empresa/plano; Canal Único/Multicanal/Operação Ampliada; campanhas e grupos geridos simultaneamente; adicionais somente mediante aceite; verba de mídia paga pelo cliente aos provedores; separação Sites/CRM. **Números simulados históricos não são aprovados como preços nem como franquias oficiais.** Continuam abertos P0, BL04-D01–D18, DC-09/DC-10, margens, fornecedores e homologações. Não iniciar código, despesas, campanhas, cobrança ou publicação comercial.
+
+
+## 38. Medição interna de custos por serviço — APROVADA FUNCIONALMENTE (05/11/2026)
+
+Aprovação “ok”: apurar internamente custos por cliente/canal, campanha, grupo/conjunto, IA, peça criativa, trabalho humano e adicional. A decisão está detalhada em [BL04-ECO-D01](PERF-P0-BL04-ECO-D01-MATRIZ-CUSTO-UNITARIO-2026-11-05.md). **Não gera cobrança por microatividade**, substituição normal de campanha, região ou loja; preços, franquias, margem e metodologia final seguem pendentes. P0 abertos; sem programação ou cobrança.
