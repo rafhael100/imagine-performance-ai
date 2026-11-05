@@ -489,3 +489,16 @@ Somente planejamento; sem programação, contratações, faturamento ou gastos r
 **Recomendação:** admitir sugestões e pré-análises por IA, mas exigir que **responsável humano autorizado pela Imagine** confirme e registre se uma revisão é efetivamente editorial antes da publicação. Uma mudança material deve seguir nova versão/aceites; a equipe comercial não pode tratar termos financeiros como editoriais para contornar alçadas. Exigir registro de responsável, justificativa, diferença textual e referência à versão revisada; em caso de dúvida, bloquear edição simplificada e encaminhar ao fluxo de aprovação integral.
 
 **Pontos ainda pendentes:** perfis autorizados, eventual revisão independente em mudanças sensíveis, integração com governança do Portal, alçadas e trilha imutável. Proposta apenas; sem programação ou alterações reais.
+
+
+### 20.14 Validação humana obrigatória de correções editoriais — APROVADA (05/11/2026)
+
+**Aprovação funcional expressa:** a IA pode sugerir e preparar correções de digitação e formatação de orçamentos extraordinários, mas somente um **responsável humano autorizado da Imagine** poderá validar que não existe efeito comercial, financeiro, jurídico ou operacional e autorizar a publicação da revisão editorial. Essa decisão aprova a proposta da seção 20.13 e prevalece sobre seu estado histórico de pendência.
+
+Registrar a identidade do validador, data/hora, justificativa, versão, diferenças antes/depois e decisão, preservando intactas as evidências anteriores. A equipe comercial e os agentes não podem usar a classificação editorial para evitar alçadas ou novos aceites. **Se houver dúvida, bloquear a correção simplificada**, emitir nova versão e colher todas as aprovações exigidas. Não alterar contratos efetivados, dados de pagamento ou orçamento materialmente diferente usando esta exceção.
+
+**Pendentes:** perfis validadores definitivos, exigência de revisor independente do autor, tratamento de documentos já assinados, integridade de evidências e homologações. Somente documentação; sem programação ou atos financeiros.
+
+### 20.15 Próximo gate recomendado — revisão consolidada de preços e custos (NÃO APROVADO)
+
+Consolidar BL-01 e BL-04 para precificar marcas, canais, campanhas, grupos/conjuntos, adicionais, IA, suporte, criativos, implantação e serviços extraordinários, identificando custos, margens e condições de oferta. Preços ilustrativos anteriores continuam **não aprovados**; nenhum valor deve ser divulgado como definitivo. Sem programação.
