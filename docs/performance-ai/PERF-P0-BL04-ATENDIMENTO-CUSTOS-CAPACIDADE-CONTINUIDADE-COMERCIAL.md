@@ -351,4 +351,11 @@ Foi preparada como **estudo, não aprovação de preços** a [primeira simulaç�
 
 Em resposta à recomendação de detalhar custos por serviço, o responsável aprovou (“ok”) **BL04-ECO-D01**: cálculo interno por empresa, canal, campanha gerida, grupo/conjunto, IA, criativo, tempo humano, suporte e adicional. O detalhamento e os controles de prevenção de dupla contagem constam na [matriz de custo unitário BL04-ECO-D01](PERF-P0-BL04-ECO-D01-MATRIZ-CUSTO-UNITARIO-2026-11-05.md).
 
-**Essa medição não cria cobrança unitária por operação** nem autoriza valores, franquias, fornecedores, licenças, código ou homologação. Substituição ordinária de campanha/grupo dentro da franquia não gera tarifa por troca, e investimento de mídia do anunciante segue pago diretamente a Google/Meta. **A metodologia definitiva de três camadas BL04-ECO-D02 permanece aguardando aprovação separada**, assim como os quatro P0, BL04-D01–D18 e DC-09/DC-10.
+**Essa medição não cria cobrança unitária por operação** nem autoriza valores, franquias, fornecedores, licenças, código ou homologação. Substituição ordinária de campanha/grupo dentro da franquia não gera tarifa por troca, e investimento de mídia do anunciante segue pago diretamente a Google/Meta. **A metodologia de três camadas BL04-ECO-D02 foi posteriormente aprovada funcionalmente em 05/11/2026 ([BL04-ECO-D02 — metodologia aprovada](PERF-P0-BL04-ECO-D02-METODOLOGIA-TRES-CAMADAS-2026-11-05.md))**, assim como os quatro P0, BL04-D01–D18 e DC-09/DC-10.
+
+
+## 14. Aprovação funcional da metodologia financeira — BL04-ECO-D02 (05/11/2026)
+
+Por deliberação expressa (“ok”), foi aprovada a metodologia econômica de **três camadas**: (1) custo variável por empresa, canal, campanha, grupo, IA, criativo e atendimento; (2) custo fixo da operação, próprio ou compartilhado, com rateio documentado e sem duplicações; (3) degraus incrementais de infraestrutura/equipe conforme a escala. Os cenários econômico, base e estresse de 0 e 100–700 clientes continuam parâmetros de análise, não comprovação de capacidade. Ver **[BL04-ECO-D02 — metodologia aprovada](PERF-P0-BL04-ECO-D02-METODOLOGIA-TRES-CAMADAS-2026-11-05.md)**.
+
+**Limites:** aprovação funcional do método, não de valores, margem, preço, franquia, licenciamento, tributos ou capacidade operacional. BL04-D01–D18, quatro P0, DC-09/DC-10 e homologações permanecem abertos. Próxima decisão separada proposta: BL04-ECO-D03 — catálogo e validação das evidências de custo por fornecedor e unidade. Sem programação.
