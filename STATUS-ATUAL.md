@@ -1,0 +1,43 @@
+# STATUS ATUAL — Imagine Performance AI
+
+**Data:** 05/11/2026  
+**FAST-PERF-01:** **APROVADA** — desenvolvimento controlado e isolado para MVP com dados fictícios.  
+**Branch de integração autorizada:** `dev/fast-track-performance-2026-11-05`.  
+**`main`: INALTERADA. VPS/produção: INALTERADAS.**  
+**Cenário comercial:** 2 clientes potenciais interessados; nenhum contrato, valor negociado ou início efetivo de serviço comprovado no repositório.
+
+## Estado verificável neste marco
+
+- Repositório separado `rafhael100/imagine-performance-ai` foi criado anteriormente para documentação do produto.
+- A aprovação FAST-PERF-01 autoriza preparar e programar **somente componentes isolados** com mocks e dados sintéticos, via PRs direcionados à branch `dev/fast-track-performance-2026-11-05`.
+- O acervo funcional PERF-01–PERF-12, PERF-R01/R02 e BL-01–BL-08 foi aprovado **como documentação**, não como implementação homologada. **91 P0**, demais P1/P2, decisões e contratos técnicos ainda precisam de análise de acordo com cada etapa.
+- **Framework/stack definitivo ainda não homologado.** Primeira tarefa: recomendação técnica clara e preparação de critérios de aceite; não inventar decisão de linguagem.
+- Integrações reais Google/Meta, CRM, Portal e cobrança continuam bloqueadas até autorização e homologação específicas.
+- Nada está liberado para deploy, acesso de clientes reais ou tráfego pago automatizado. Documentar toda mudança de status com evidência.
+
+## Trilhas de execução
+
+### Produto — MVP isolado
+
+**F1-01 — Preparação e stack:** confirmar limites, propor linguagem/backend/DB, estrutura de testes e critérios de governança. Executar tarefas que não imponham stack final sem aprovação.  
+**F1-02 — Multiempresa:** entidades e controles de isolamento, com testes negativos de acesso cruzado.  
+**F1-03 — Cadastro e oferta simulados:** empresas, estados, plano ilustrativo sem preço real, canal e capacidades.  
+**F1-04 — Gestão de campanhas/grupos sob gestão:** status, pausas, substituições e histórico; mocks para APIs.  
+**F1-05 — Aprovações e relatórios:** decisões humanas auditáveis e painel com dados de demonstração.
+
+Critérios mínimos: testes de tenant/segurança, ausência de segredos, sem integrações externas, PRs para branch autorizada, código revisável, documentação atualizada.
+
+### Comercial — dois interessados
+
+Registrar separadamente o briefing de cada cliente; se contratados antes do SaaS, operar somente por **prestação manual/assistida com proposta específica e contrato válido**, equipe capaz, autorizações formais nas contas Google/Meta e verbas custeadas diretamente pelo cliente. Não declarar acesso ao SaaS, IA autônoma ou painel implementado.
+
+## Gates que exigem autorização específica
+
+1. Escolha final de stack e contratos técnicos associados.
+2. Credenciais reais, OAuth, API Google/Meta, dados pessoais de clientes e operações em contas reais.
+3. Staging/VPS, infraestrutura paga, deploy, `main`, novas licenças ou contratação de fornecedores.
+4. Precificação final, gateway, cobrança automática e go-live comercial da plataforma.
+
+**Regra:** um gate aberto permanece aberto; a aprovação FAST-PERF-01 não equivale à sua dispensa.
+
+Referência: `docs/performance-ai/PERF-P0-FAST-TRACK-MVP-2-CLIENTES-2026-11-05.md`.
