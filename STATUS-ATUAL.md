@@ -41,3 +41,8 @@ Registrar separadamente o briefing de cada cliente; se contratados antes do SaaS
 **Regra:** um gate aberto permanece aberto; a aprovação FAST-PERF-01 não equivale à sua dispensa.
 
 Referência: `docs/performance-ai/PERF-P0-FAST-TRACK-MVP-2-CLIENTES-2026-11-05.md`.
+
+
+## Autorização complementar: três tarefas paralelas no Codex (05/11/2026)
+
+O responsável aprovou explicitamente a execução de **três tarefas preparatórias em paralelo** dentro da FAST-PERF-01, com branches e PRs draft separados, todos direcionados a `dev/fast-track-performance-2026-11-05`: **Issue #1/F1-01** — proposta de arquitetura/stack; **Issue #2/PAR-02** — matriz de segurança e isolamento multiempresa; **Issue #3/PAR-03** — especificação de testes e dados sintéticos. A coordenação e propriedade de arquivos estão em `docs/execucao/PARALLEL-01-COORDENACAO.md`. As tarefas 2 e 3 **não implementam código** antes da homologação de stack. A aprovação do paralelismo **não comprova que as execuções Codex já começaram**. Ficam preservados todos os limites: `main` e VPS intactas, APIs e contas reais bloqueadas, sem pagamento, contratação ou publicação de campanhas.
