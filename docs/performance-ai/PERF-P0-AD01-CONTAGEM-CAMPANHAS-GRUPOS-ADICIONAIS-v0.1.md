@@ -403,8 +403,15 @@ Somente planejamento; sem programação, contratações, faturamento ou gastos r
 **Pendentes:** canais efetivos (Portal, e-mail, WhatsApp etc.), horário/fuso de disparo, preferências/consentimentos e controles LGPD, reenvios idempotentes, templates, entregabilidade, obrigações legais e homologação técnica. **A antecedência de 3 dias e o aviso de nova versão estão aprovados**; não presumir ainda o canal nem o horário exatos. Tudo segue na fase de planejamento.
 
 
-### 20.5 Próxima proposta — canais das notificações de orçamentos (NÃO APROVADA)
+### 20.5 Canais das notificações de orçamentos — APROVADOS FUNCIONALMENTE (04/11/2026)
 
-**Recomendação para deliberação:** adotar **notificações internas no Portal Imagine** e **e-mail transacional** para nova proposta/versão e lembrete de vencimento, respeitando as regras de comunicação aplicáveis, acesso do usuário e preferências legais. **WhatsApp** e outros canais externos poderão ser considerados futuramente como opções específicas, sem habilitação automática nem custos presumidos. Mensagens externas devem conter aviso resumido e link seguro para autenticar no Portal, sem expor preços, informações estratégicas ou dados sensíveis de campanhas em conteúdo público, e sem nunca substituir a aprovação expressa. Canal, opt-outs cabíveis, permissões, preferências e horários permanecem sujeitos à decisão e homologação.
+**Deliberação expressa (“ok aprovado”):** ficam **aprovados funcionalmente** como canais iniciais as **notificações internas no Portal Imagine** e o **e-mail transacional** para aviso de novo orçamento/nova versão e lembrete de vencimento, respeitando destinatários autorizados, preferências e regras legais aplicáveis. **WhatsApp e outros canais não integram a implantação inicial**, podendo ser avaliados mais adiante, sem ativação, custo ou integração presumidos. O e-mail deverá conter aviso resumido e **link seguro que exija autenticação no Portal**, sem apresentar informação estratégica, dados sensíveis ou orçamento integral desnecessariamente. **Somente o Portal autenticado poderá registrar aceite ou recusa expressa**; nem a leitura, clique ou resposta ao e-mail equivale a aprovação do orçamento.
 
-**Status:** somente esta escolha de canais é **proposta**. Os alertas e a antecedência de 3 dias da seção 20.4 estão aprovados funcionalmente. Sem desenvolvimento ou disparos reais.
+**Status:** escolha inicial Portal + e-mail **APROVADA FUNCIONALMENTE**, juntamente aos alertas e à antecedência de 3 dias da seção 20.4. **Ainda pendentes:** provedor de envio, modelos de e-mail, políticas de destinatário e preferências/consentimentos, horários/fuso, proteção contra envio duplicado, entregabilidade, auditoria e homologação. A aprovação não constitui programação nem autoriza disparos reais.
+
+
+### 20.6 Próxima decisão proposta — destinatários e permissões de notificação (NÃO APROVADA)
+
+**Recomendação:** notificar apenas **usuários ativos e expressamente autorizados na empresa cliente** a consultar os orçamentos extraordinários, com permissão de ação separada para **aprovar/recusar**. O responsável financeiro e o administrador da empresa receberiam os avisos por padrão, desde que habilitados e autorizados; outros usuários só receberiam se designados. O acesso ao orçamento, ao valor e ao aceite deve ser conferido novamente no Portal (não pelo token do link nem pela leitura do e-mail). Desativação/perda de permissão impede novos avisos; preservar rastreabilidade, LGPD e regras de preferências de notificações aplicáveis.
+
+**Status:** proposta sujeita a aprovação, sem presumir que todo administrador recebe avisos por obrigação legal ou que todos os usuários podem aprovar. Pendente matriz de permissões, alçadas e homologação. Somente planejamento, sem programação.
