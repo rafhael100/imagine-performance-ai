@@ -345,3 +345,8 @@ Aprovação “ok”: apurar internamente custos por cliente/canal, campanha, gr
 ## 39. Método financeiro BL04-ECO-D02 aprovado funcionalmente (05/11/2026)
 
 O responsável aprovou (“ok”) a **metodologia de apuração de custos e rentabilidade em três camadas**, constituída por (1) custos variáveis de campanhas/grupos, IA, criativos, suporte e adicionais; (2) custos fixos atribuídos ao Performance e rateio de compartilhados mediante driver verificável; (3) degraus de infraestrutura e equipe por volume/capacidade. Registrar fonte, responsável, período e evidência da apropriação, conciliando custos sem somar a mesma rubrica duas vezes. Ver [BL04-ECO-D02](PERF-P0-BL04-ECO-D02-METODOLOGIA-TRES-CAMADAS-2026-11-05.md). **Não foi aprovado** qualquer preço, adicional, franquia, valor unitário, margem, fornecedor, capacidade ou alteração da política comercial. A próxima etapa BL04-ECO-D03 (validação documental das fontes) depende de decisão específica; não iniciar programação, despesas ou anúncios.
+
+
+## 40. Fontes reais de custo — BL04-ECO-D03 APROVADO (05/11/2026)
+
+O responsável aprovou (“ok aprovado”) organizar o catálogo de evidências econômicas BL04-ECO-D03, com classificação de custo medido/contratado, cotado, hipotético ou N/D, além de fornecedor, fonte, data e responsável. Ver [BL04-ECO-D03](PERF-P0-BL04-ECO-D03-CATALOGO-EVIDENCIAS-CUSTOS-2026-11-05.md). A decisão **não altera preços, cobrança, franquias, ofertas, descontos, margem ou política de adicionais**; despesas operacionais continuam sob critérios documentais de BL04-ECO-D01/D02. BL04-ECO-D04, validação cruzada antes de reconhecer custo definitivo, é apenas proposta; P0 e homologações permanecem abertas.
