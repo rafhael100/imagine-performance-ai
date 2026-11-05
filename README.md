@@ -33,3 +33,8 @@ Em 03/11/2026, o acervo Performance AI foi identificado no repositório `rafhael
 Os documentos de origem serão reproduzidos **sem alterações de conteúdo e preservando seus caminhos**, para conservar links relativos, IDs, decisões e pendências. O histórico original de commits permanece acessível no `imagine-portal`; esta migração cria um novo histórico independente no repositório dedicado.
 
 **IMPORTANTE:** manter aprovação funcional e documentação técnica separadas. Não declarar P0, P1, P2, decisões ainda pendentes, contratos técnicos candidatos ou homologações como concluídos apenas em razão da migração.
+
+
+## Plano de resposta comercial e fast-track — 05/11/2026
+
+Diante de dois potenciais clientes interessados, foi documentada a [proposta de fast-track MVP e atendimento comercial inicial](docs/performance-ai/PERF-P0-FAST-TRACK-MVP-2-CLIENTES-2026-11-05.md). **FAST-PERF-01 ainda não está autorizado**: nenhuma branch de código, programação, integração real, mídia, nova despesa ou lançamento foi iniciado por essa proposta. A revisão econômica **BL04-ECO-D04 foi aprovada funcionalmente** como regra de conferência técnica/financeira dos custos; preços, contratos comerciais e pendências técnicas seguem abertos.
