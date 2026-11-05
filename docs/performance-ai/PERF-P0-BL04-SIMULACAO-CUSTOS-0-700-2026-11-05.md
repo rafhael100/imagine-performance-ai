@@ -96,3 +96,8 @@ O estudo específico de infraestrutura trazia hipótese de **R$ 450 adicionais p
 **BL04-ECO-D03 — Próximo insumo:** revisar quantitativamente horas por plano/campanha, cotação de servidores, n8n, modelos IA e gateways, custos de suporte, criativos/vídeo e franquias; então modelar receita/margens para opções de preço sem misturar esquemas antigos.
 
 **Gates inalterados:** P0, BL04-D01–D18, DC-09/DC-10, custos reais, SLAs, capacidade e homologações continuam abertos. **Sem programação, contratação, compras, anúncios, teste em produção ou faturamento.**
+
+
+## 8. Evolução da metodologia — unidade de custo BL04-ECO-D01 aprovada (05/11/2026)
+
+Foi aprovada funcionalmente a coleta/análise de custos por **empresa, canal, campanha, grupo/conjunto, execução de IA, criativo, tempo humano, suporte e adicional**, conforme [BL04-ECO-D01](PERF-P0-BL04-ECO-D01-MATRIZ-CUSTO-UNITARIO-2026-11-05.md). Este documento conserva a simulação histórica agregada, que **não mede** esses custos por unidade, não prova margem e não permite cobrar individualmente. **BL04-ECO-D02 (metodologia definitiva de três camadas)** e valores econômicos permanecem pendentes.
