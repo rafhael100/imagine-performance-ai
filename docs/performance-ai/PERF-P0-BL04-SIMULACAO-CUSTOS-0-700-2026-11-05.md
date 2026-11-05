@@ -91,7 +91,7 @@ O estudo específico de infraestrutura trazia hipótese de **R$ 450 adicionais p
 
 **BL04-ECO-D01 — Unidade de custo:** rastrear **por empresa, canal, campanha gerida, grupo/conjunto, peça criativa e execução de IA**, separando itens incluídos e adicionais, mas sem transformar automaticamente cada unidade em cobrança ao cliente. Manter custo de atendimento, incidentes e tempo humano mensurado.
 
-**BL04-ECO-D02 — Metodologia:** aplicar as três camadas de custo como base do estudo, com rateio comprovado por consumo e degraus de escala verificados, antes de qualquer meta de margem. Metodologia ainda candidata à aprovação formal.
+**BL04-ECO-D02 — Metodologia:** aplicar as três camadas de custo como base do estudo, com rateio comprovado por consumo e degraus de escala verificados, antes de qualquer meta de margem. **Metodologia posteriormente aprovada funcionalmente em 05/11/2026, com preços e premissas econômicas ainda abertos.**
 
 **BL04-ECO-D03 — Próximo insumo:** revisar quantitativamente horas por plano/campanha, cotação de servidores, n8n, modelos IA e gateways, custos de suporte, criativos/vídeo e franquias; então modelar receita/margens para opções de preço sem misturar esquemas antigos.
 
@@ -100,4 +100,9 @@ O estudo específico de infraestrutura trazia hipótese de **R$ 450 adicionais p
 
 ## 8. Evolução da metodologia — unidade de custo BL04-ECO-D01 aprovada (05/11/2026)
 
-Foi aprovada funcionalmente a coleta/análise de custos por **empresa, canal, campanha, grupo/conjunto, execução de IA, criativo, tempo humano, suporte e adicional**, conforme [BL04-ECO-D01](PERF-P0-BL04-ECO-D01-MATRIZ-CUSTO-UNITARIO-2026-11-05.md). Este documento conserva a simulação histórica agregada, que **não mede** esses custos por unidade, não prova margem e não permite cobrar individualmente. **BL04-ECO-D02 (metodologia definitiva de três camadas)** e valores econômicos permanecem pendentes.
+Foi aprovada funcionalmente a coleta/análise de custos por **empresa, canal, campanha, grupo/conjunto, execução de IA, criativo, tempo humano, suporte e adicional**, conforme [BL04-ECO-D01](PERF-P0-BL04-ECO-D01-MATRIZ-CUSTO-UNITARIO-2026-11-05.md). Este documento conserva a simulação histórica agregada, que **não mede** esses custos por unidade, não prova margem e não permite cobrar individualmente. **BL04-ECO-D02 foi posteriormente aprovada funcionalmente como metodologia de três camadas**, permanecendo não aprovados os valores econômicos e a capacidade técnica.
+
+
+## 9. Metodologia financeira BL04-ECO-D02 aprovada
+
+A aprovação do responsável (“ok”) estabeleceu como método de apuração as **três camadas**: custos variáveis, fixos rateados mediante driver e degraus de escala, com rastreabilidade e prevenção de dupla contagem, conforme [BL04-ECO-D02](PERF-P0-BL04-ECO-D02-METODOLOGIA-TRES-CAMADAS-2026-11-05.md). Esta simulação mantém os antigos custos **hipotéticos e incompletos** sem converter cenários em preços ou custos reais. O cálculo histórico permanece documentado para comparação; próximas análises devem atualizar as fontes e separar as parcelas efetivas. BL04-ECO-D03 sobre coleta de evidências permanece proposta.
