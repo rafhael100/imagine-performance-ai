@@ -105,3 +105,8 @@ O responsável aprovou (“ok”) o detalhamento de custos por campanha, grupo/c
 ## 10. Aprovação posterior — BL04-ECO-D02
 
 **Deliberação “ok” (05/11/2026):** aprovada funcionalmente a metodologia em três camadas: variáveis por consumo/unidade; fixos próprios e compartilhados com rateio verificável; e degraus de equipe/infraestrutura por escala. Consultar [BL04-ECO-D02](PERF-P0-BL04-ECO-D02-METODOLOGIA-TRES-CAMADAS-2026-11-05.md). O escopo de aprovação é o método, com reconciliação e prevenção de dupla contagem, **sem aprovar valores, preços, margens, quotas ou capacidade real**. A próxima proposta é BL04-ECO-D03 (coleta de evidências de custos e fontes). Quatro P0, BL04-D01–D18 e DC-09/DC-10 continuam abertos.
+
+
+## 11. Catálogo de evidências BL04-ECO-D03 aprovado (05/11/2026)
+
+Após BL04-ECO-D01 e D02, o responsável aprovou expressamente (“ok aprovado”) o **levantamento de fontes de custos verificáveis** em [BL04-ECO-D03](PERF-P0-BL04-ECO-D03-CATALOGO-EVIDENCIAS-CUSTOS-2026-11-05.md). O registro distingue dados **medidos, cotados, hipotéticos e N/D**, identifica fornecedores e fontes, data, unidade, responsável e lacunas. A revisão econômica preliminar não adquire por essa aprovação nenhuma fatura real ou dado contratual; as simulações antigas continuam hipóteses. Próxima decisão sugerida: BL04-ECO-D04, conferência técnica e financeira das evidências, não aprovada. Custos definitivos, preços e P0 seguem abertos.
