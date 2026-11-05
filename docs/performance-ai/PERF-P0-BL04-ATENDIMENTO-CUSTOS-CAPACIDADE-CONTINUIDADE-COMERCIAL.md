@@ -364,3 +364,10 @@ Por deliberação expressa (“ok”), foi aprovada a metodologia econômica de 
 ## 15. Catálogo de evidências econômicas — BL04-ECO-D03 APROVADO (05/11/2026)
 
 O responsável aprovou (“ok aprovado”) **BL04-ECO-D03**, para levantamento e classificação de fontes comprováveis de custos por fornecedor, empresa, canal, campanha/grupo, IA, criativos, equipe, infraestrutura e pagamentos. Consultar [catálogo de evidências BL04-ECO-D03](PERF-P0-BL04-ECO-D03-CATALOGO-EVIDENCIAS-CUSTOS-2026-11-05.md). Cada insumo deverá preservar origem, data-base, unidade, moeda, responsável e status: medido/contratado, cotado, hipotético ou N/D. **Isso não significa que faturas, contratos ou consumos reais tenham sido obtidos**, nem encerra P0 e homologações. BL04-ECO-D04 (validação cruzada financeira/técnica) é somente proposta. Nenhum preço, fornecedor, margem, franquia ou programação foi aprovado.
+
+
+## 16. Validação cruzada de custos BL04-ECO-D04 — APROVADA (05/11/2026)
+
+**Deliberação expressa “Aprovado.”:** a área financeira deve validar faturas, contratos, valores, moeda e vigência; a área técnica valida uso real, necessidade, volume e rateio; ambas deixam evidências para converter hipóteses em custos efetivamente validados. Na ausência de um dos conjuntos de provas, manter o insumo classificado como N/D, cotado ou hipotético. Detalhes: [BL04-ECO-D03, seção 5](PERF-P0-BL04-ECO-D03-CATALOGO-EVIDENCIAS-CUSTOS-2026-11-05.md). **Nenhum custo real foi confirmado por esta decisão.**
+
+Diante de **dois interessados comerciais**, foi preparado [dossiê Fast-track MVP e retenção comercial](PERF-P0-FAST-TRACK-MVP-2-CLIENTES-2026-11-05.md). Trata-se de **proposta**, que não altera readiness global nem autoriza programação, contas reais, APIs, licenças, despesas, faturamento ou VPS; FAST-PERF-01 requer aprovação separada. Os P0 permanecem abertos.
