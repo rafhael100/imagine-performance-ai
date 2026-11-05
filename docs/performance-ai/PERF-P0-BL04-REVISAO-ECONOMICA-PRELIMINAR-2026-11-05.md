@@ -84,3 +84,12 @@ Construir matriz de **0, 100, 200, 300, 400, 500, 600 e 700 clientes Performance
 ## 7. Gate formal
 
 Esta revisão é um **início de consolidação econômica documental** no âmbito de BL-04 e BL-01, não uma decisão de investimento, implantação, lançamento, precificação, contratação de equipe, utilização de API, ativação de n8n ou publicação de campanhas. Quatro P0 originais, BL04-D01–D18, DC-09/DC-10 e homologações seguem abertos. **Sem código, deploy, testes reais, novas despesas ou cobranças.**
+
+
+## 8. Primeira simulação de custos 0–700 — PRELIMINAR (05/11/2026)
+
+O responsável determinou **continuar** a revisão financeira. Como etapa **documental exploratória**, sem aprovação formal dos parâmetros e sem custos medidos, foi elaborada a [simulação parcial de custos de 0 a 700 clientes em cenários econômico, base e estresse](PERF-P0-BL04-SIMULACAO-CUSTOS-0-700-2026-11-05.md).
+
+A matriz reproduz os insumos hipotéticos históricos de IA, infraestrutura variável, minutos humanos e fixos agregados, sem duplicar a estimativa independente de rateio fixo de R$ 962,31/mês e sem somar automaticamente degraus de escala. A simulação **não inclui receita, tributos reais, gateways, CAC, licenças, precificação de criativos/vídeos nem franquias comerciais homologadas**. Portanto, **não calcula margem/lucro real** e não prova capacidade técnica para 700 clientes.
+
+**Próximas decisões ainda em aberto:** validar a metodologia de três camadas (variável/fixo/degraus), definir unidades de medição por campanha/grupo e plano, completar custos ausentes e somente depois apresentar opções de preço para deliberação separada. P0 e demais gates permanecem abertos; sem programação, despesas ou contratações.
