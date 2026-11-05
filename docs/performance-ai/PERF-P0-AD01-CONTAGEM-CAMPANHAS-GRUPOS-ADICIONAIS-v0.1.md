@@ -467,8 +467,25 @@ Somente planejamento; sem programação, contratações, faturamento ou gastos r
 **Pendentes:** matriz detalhada de materialidade, cargos autorizados a revisar, proteção/retificação de evidências assinadas, referência a assinaturas digitais, forma de comunicação de revisões editoriais, concorrência e homologação técnica/jurídica/financeira. **A exceção para digitação e formatação sem impacto já está aprovada funcionalmente**; não existe autorização para alterar contratos executados ou faturar por este documento.
 
 
-### 20.12 Próxima proposta — matriz mínima de materialidade das alterações (NÃO APROVADA)
+### 20.12 Matriz mínima de materialidade das alterações — APROVADA FUNCIONALMENTE (05/11/2026)
 
-**Recomendação para deliberação:** classificar como **material**, exigindo nova versão e novos aceites, qualquer mudança de preço, descontos, tributos cobrados do cliente, prazo de validade, cronograma/entrega, itens e quantidades contratadas, escopo/entregáveis, termos de pagamento, dados de recebedor ou endereço de pagamento, responsabilidade contratual, permissões de aprovação, informações que mudem significado ou risco, e obrigações/garantias. Classificar como **editorial** apenas ajuste de tipografia, espaçamento, acento/ortografia ou layout sem qualquer alteração semântica, financeira, jurídica ou operacional. Em dúvida, tratar como material.
+**Deliberação do responsável (“ok”, 05/11/2026): APROVADA FUNCIONALMENTE** a matriz de classificação de mudanças nos orçamentos extraordinários. **Material:** qualquer alteração em preço, desconto, tributos repassados ao cliente, prazo de validade, cronograma e entrega, itens/quantidades, escopo e entregáveis, meios/termos de pagamento, dados bancários/recebedor/link ou destino do pagamento, responsável contratual, identidade e permissões do aprovador, direitos, deveres, garantias, riscos, sentido negocial ou condições jurídicas. **Editorial:** exclusivamente ortografia, acentuação, digitação, espaçamento, layout e apresentação sem qualquer alteração de significado, preço, obrigação, risco, autorização ou condição contratual. **Dúvida sobre materialidade:** classificar como **material**, emitir **nova versão** e obter novamente todas as aprovações aplicáveis, incluindo dupla aprovação onde configurada. A IA pode sugerir diagnóstico, mas não decidir unilateralmente que uma mudança é isenta de novos aceites. Preservar comparação antes/depois, versões originais, decisões e auditoria, sem alterar retrospectivamente o conteúdo formalmente aceito.
 
-**Critérios ainda pendentes:** autoridades de classificação e revisão, notificações de ajuste editorial, prova de equivalência semântica, versão jurídica assinada, limites do escopo de alterações pós-contratação e procedimentos de correção de erros que afetem boleto/pagamento. A classificação detalhada é proposta, não aprovada.
+| Categoria | Tratamento funcional aprovado |
+|---|---|
+| Ortografia, acento, espaço e formatação sem alteração semântica | Revisão editorial auditável, sem novos aceites |
+| Preços, descontos, tributos, pagamento ou recebedor | Nova versão comercial e novas aprovações |
+| Prazo, cronograma, escopo, entregáveis, quantidades, direitos ou obrigações | Nova versão comercial e novas aprovações |
+| Responsáveis, permissões, alçadas ou condições de autorização | Nova versão comercial e novas aprovações |
+| Efeito duvidoso ou risco de alteração de significado | Tratar como material, exigindo nova versão e novos aceites |
+
+**Limite da decisão:** a regra rege a **revisão de propostas/orçamentos**; não autoriza alterar unilateralmente contratos já concluídos, cobranças já efetivadas ou dados de pagamento existentes. Nesses casos exigem-se procedimento contratual, segurança e homologação próprios.
+
+**Pendentes:** autoridades de classificação/revisão e segregação de funções, notificações em revisões editoriais, verificação de equivalência semântica, documento jurídico já assinado, limites após contratação, procedimento seguro para erros de cobrança e homologação. **A classificação detalhada foi aprovada funcionalmente**, sem programação nem execução financeira.
+
+
+### 20.13 Próxima proposta — quem pode classificar uma revisão como editorial (NÃO APROVADA)
+
+**Recomendação:** admitir sugestões e pré-análises por IA, mas exigir que **responsável humano autorizado pela Imagine** confirme e registre se uma revisão é efetivamente editorial antes da publicação. Uma mudança material deve seguir nova versão/aceites; a equipe comercial não pode tratar termos financeiros como editoriais para contornar alçadas. Exigir registro de responsável, justificativa, diferença textual e referência à versão revisada; em caso de dúvida, bloquear edição simplificada e encaminhar ao fluxo de aprovação integral.
+
+**Pontos ainda pendentes:** perfis autorizados, eventual revisão independente em mudanças sensíveis, integração com governança do Portal, alçadas e trilha imutável. Proposta apenas; sem programação ou alterações reais.
