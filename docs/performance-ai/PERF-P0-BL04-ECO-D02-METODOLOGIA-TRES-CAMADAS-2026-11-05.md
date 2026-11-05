@@ -52,8 +52,13 @@ Usar cenários **econômico/conservador, base e estresse** para **0, 100, 200, 3
 
 **P0 e decisões preservados:** quatro P0 do BL-04, BL04-D01–D18, DC-09/DC-10 e todos os demais gates em aberto **não foram encerrados** por esta aprovação.
 
-## 5. Próxima decisão documental recomendada — BL04-ECO-D03 (NÃO APROVADA)
+## 5. Proposta histórica — BL04-ECO-D03 (POSTERIORMENTE APROVADA EM 05/11/2026)
 
 **Proposta:** adotar um **catálogo inicial de evidências econômicas** com prioridade de levantamento: (1) faturas/regras de rateio da infraestrutura; (2) custo e permissões de n8n/agentes; (3) preços vigentes de IA/criativos e frequência de uso; (4) minutos e custo-hora humano; (5) taxas efetivas de gateway/tributos, CAC e inadimplência. Cada insumo deve trazer **origem, data, estado da evidência, responsável por validação e nível de confiança**, permitindo marcar N/D para itens ausentes em vez de inventar custos.
 
 **Somente planejamento documental.** Não iniciar programação, testes, orçamento de mídia, contratação, licenças ou cobranças reais.
+
+
+## 6. Aprovação posterior da BL04-ECO-D03 — evidências de custos (05/11/2026)
+
+O responsável aprovou expressamente (“ok aprovado”) o **catálogo de evidências e validação documental de fontes de custos**, registrado em [BL04-ECO-D03](PERF-P0-BL04-ECO-D03-CATALOGO-EVIDENCIAS-CUSTOS-2026-11-05.md). O catálogo separa valores medidos/contratados, cotados e hipotéticos; exige referência, data, responsável e estado de validação; e marca N/D quando não existe evidência. **A metodologia BL04-ECO-D02 continua aprovada funcionalmente e não teve seus valores monetários homologados**. O texto da seção 5 permanece registro histórico da proposta, agora aprovada no documento BL04-ECO-D03. Próxima deliberação proposta: **BL04-ECO-D04**, revisão cruzada técnica/financeira antes de declarar custo homologado; esta nova regra não está aprovada. P0 abertos; sem programação.
