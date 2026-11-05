@@ -410,8 +410,24 @@ Somente planejamento; sem programação, contratações, faturamento ou gastos r
 **Status:** escolha inicial Portal + e-mail **APROVADA FUNCIONALMENTE**, juntamente aos alertas e à antecedência de 3 dias da seção 20.4. **Ainda pendentes:** provedor de envio, modelos de e-mail, políticas de destinatário e preferências/consentimentos, horários/fuso, proteção contra envio duplicado, entregabilidade, auditoria e homologação. A aprovação não constitui programação nem autoriza disparos reais.
 
 
-### 20.6 Próxima decisão proposta — destinatários e permissões de notificação (NÃO APROVADA)
+### 20.6 Destinatários e permissões de notificação e aceite (APROVADO FUNCIONALMENTE — 04/11/2026)
 
-**Recomendação:** notificar apenas **usuários ativos e expressamente autorizados na empresa cliente** a consultar os orçamentos extraordinários, com permissão de ação separada para **aprovar/recusar**. O responsável financeiro e o administrador da empresa receberiam os avisos por padrão, desde que habilitados e autorizados; outros usuários só receberiam se designados. O acesso ao orçamento, ao valor e ao aceite deve ser conferido novamente no Portal (não pelo token do link nem pela leitura do e-mail). Desativação/perda de permissão impede novos avisos; preservar rastreabilidade, LGPD e regras de preferências de notificações aplicáveis.
+**Deliberação expressa (“ok aprovado”):** fica **aprovada funcionalmente** a matriz proposta que separa o direito de **ser notificado/visualizar orçamento** do direito de **aprovar ou recusar orçamento**. O acesso vale somente para usuários ativos da **empresa cliente correta**, dentro do escopo autorizado. Nenhuma mensagem de e-mail, link ou visualização equivale a autorização. Matriz de referência:
 
-**Status:** proposta sujeita a aprovação, sem presumir que todo administrador recebe avisos por obrigação legal ou que todos os usuários podem aprovar. Pendente matriz de permissões, alçadas e homologação. Somente planejamento, sem programação.
+| Perfil do cliente | Avisos e consulta | Aprovar/recusar orçamento |
+|---|---|---|
+| Administrador da empresa | **Sim**, se ativo e autorizado | **Sim**, respeitando políticas, negações expressas, alçadas e controles de segurança aplicáveis |
+| Responsável financeiro autorizado | **Sim**, se ativo e autorizado | **Somente** se possuir permissão específica de aprovação |
+| Funcionário designado | **Sim**, quando expressamente autorizado | **Somente** mediante delegação/permissão específica e escopo válido |
+| Outros usuários sem designação | **Não**, por padrão | **Não** |
+
+**Regras de segurança e auditoria:** controlar permissões separadas de visualizar, receber notificações e aprovar/recusar, respeitando precedência de restrições/negar, validade de delegações e alçadas que venham a ser homologadas. Antes de visualizar detalhes ou executar o aceite, conferir identidade autenticada, empresa/escopo, autorização atual, versão e validade do orçamento; alterações de vínculo, revogações ou desativação impedem novos acessos e avisos. Registrar usuário, data/hora, decisão, orçamento e versão, preservando privacidade e integridade. Somente o Portal autenticado pode captar aceite/recusa expressos, jamais por e-mail.
+
+**Status:** a segregação de perfis, destinatários e direitos de decisão está **aprovada funcionalmente**. **Pendentes:** valores de alçada, eventual aprovação conjunta, delegações, política de preferência de avisos, provedor de e-mail, precedência definitiva de permissões/negações, revisões LGPD, homologações técnica/jurídica/financeira. Não autoriza envio real, cobrança, contrato ou código.
+
+
+### 20.7 Próxima decisão proposta — alçadas de aprovação por valor (NÃO APROVADA)
+
+**Recomendação:** permitir que cada empresa estabeleça **limites monetários e alçadas de aprovação** dos orçamentos extraordinários. O administrador da empresa configura, dentro das regras de segurança do ecossistema, quem pode aprovar até determinado valor, quem exige aprovação de autoridade superior e quem só consulta. Alterações nas alçadas devem ser auditáveis; aprovação sempre valida versão vigente e poderes do usuário no momento do aceite. **Sem valor-limite padrão arbitrário** antes da aprovação comercial e de segurança; não presumir aprovação de valores altos por mera designação como destinatário dos avisos. Negativas expressas e controles superiores prevalecem sobre permissões amplas.
+
+**Em aberto:** limites padrão, necessidade de múltiplas aprovações, conflito de interesses, administração do controle, assinaturas eletrônicas, reversões e precedência técnica com o Portal. Somente proposta; não implementar ainda.
