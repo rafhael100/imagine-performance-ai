@@ -340,3 +340,8 @@ Após a aprovação da validação humana de correções editoriais, o responsá
 ## 38. Medição interna de custos por serviço — APROVADA FUNCIONALMENTE (05/11/2026)
 
 Aprovação “ok”: apurar internamente custos por cliente/canal, campanha, grupo/conjunto, IA, peça criativa, trabalho humano e adicional. A decisão está detalhada em [BL04-ECO-D01](PERF-P0-BL04-ECO-D01-MATRIZ-CUSTO-UNITARIO-2026-11-05.md). **Não gera cobrança por microatividade**, substituição normal de campanha, região ou loja; preços, franquias, margem e metodologia final seguem pendentes. P0 abertos; sem programação ou cobrança.
+
+
+## 39. Método financeiro BL04-ECO-D02 aprovado funcionalmente (05/11/2026)
+
+O responsável aprovou (“ok”) a **metodologia de apuração de custos e rentabilidade em três camadas**, constituída por (1) custos variáveis de campanhas/grupos, IA, criativos, suporte e adicionais; (2) custos fixos atribuídos ao Performance e rateio de compartilhados mediante driver verificável; (3) degraus de infraestrutura e equipe por volume/capacidade. Registrar fonte, responsável, período e evidência da apropriação, conciliando custos sem somar a mesma rubrica duas vezes. Ver [BL04-ECO-D02](PERF-P0-BL04-ECO-D02-METODOLOGIA-TRES-CAMADAS-2026-11-05.md). **Não foi aprovado** qualquer preço, adicional, franquia, valor unitário, margem, fornecedor, capacidade ou alteração da política comercial. A próxima etapa BL04-ECO-D03 (validação documental das fontes) depende de decisão específica; não iniciar programação, despesas ou anúncios.
