@@ -435,8 +435,17 @@ Somente planejamento; sem programação, contratações, faturamento ou gastos r
 **Em aberto:** regras de acesso inicial quando a empresa ainda não configurar alçadas, eventual exigência de múltiplas aprovações, conflito de interesses, administração do controle, assinaturas eletrônicas, reversões e precedência técnica final com Portal/controles de segurança. **Não** homologar limites numéricos ou aprovação conjunta por este “ok”. Somente planejamento documental; não implementar ainda.
 
 
-### 20.8 Próxima decisão proposta — empresa sem alçadas personalizadas (NÃO APROVADA)
+### 20.8 Empresa sem alçadas personalizadas — APROVADA FUNCIONALMENTE (05/11/2026)
 
-**Recomendação de segurança:** quando uma empresa ainda **não configurar limites próprios**, permitir aprovação de orçamento extraordinário **somente ao administrador da empresa que esteja ativo e autorizado a contratar**, respeitando controles e negativas aplicáveis. Responsáveis financeiros ou outros usuários precisariam de permissão/alçada configurada para poder aprovar. A configuração futura poderá atribuir alçadas monetárias a perfis e usuários autorizados; não conceder aprovação ilimitada por simples recebimento de notificação ou cargo textual. Este padrão evita bloquear o primeiro orçamento sem abrir aprovação indiscriminada.
+**Deliberação expressa (“ok aprovado”):** enquanto a empresa **não tiver configurado alçadas financeiras próprias**, apenas **administrador da empresa ativo e com autorização efetiva para contratar** poderá aprovar orçamento extraordinário no Portal autenticado. A posição nominal de administrador não prevalece sobre negações explícitas, restrições, bloqueios contratuais, alçadas superiores ou controles de segurança aplicáveis. **Responsável financeiro, gerente e funcionário não aprovam** antes de receberem permissões/alçadas específicas e válidas, mesmo que recebam notificações ou tenham acesso de leitura. Após a empresa configurar suas alçadas, prevalece a política vigente da empresa, sujeita às restrições e controles superiores. Não há limite numérico padrão aprovado; não interpretar esta regra como autorização para gastos acima das obrigações contratuais ou para publicar/anunciar automaticamente.
 
-**Pendências:** resolução de administrador sem poder de contratação, empresas com vários administradores, necessidade de aprovação dupla, recuperação de acesso, conflitos de interesse e homologação. Sem implantação ou alteração de permissões reais.
+**Controles:** revalidar identidade, empresa, escopo, permissão atual, vigência e versão do orçamento na ação de aceite, registrar decisão e evidências, bloquear escalada de privilégios e decisões após revogação. Aviso e link de e-mail não autorizam aceite.
+
+**Pendências:** fluxo quando não houver nenhum administrador com permissão de contratar; múltiplos administradores e possíveis conflitos, exigência facultativa de dupla aprovação, recuperação de acesso, mecanismos definitivos de permissões/negações no Portal e homologação técnica/jurídica/financeira. **Esta aprovação não exige dupla aprovação nem libera gastos reais.** Sem implantação ou alterações de permissões efetivas.
+
+
+### 20.9 Próxima proposta — dupla aprovação opcional (NÃO APROVADA)
+
+**Recomendação:** permitir que cada empresa **opte por exigir duas aprovações de pessoas diferentes** para orçamentos extraordinários acima de um valor que a própria empresa configurar, sem tornar a dupla aprovação obrigatória para todas. O aceite só se concluiria com as aprovações válidas de ambos, no Portal autenticado, considerando alçada, validade e versão do orçamento; revogações, recusas ou expiração impedem execução. **Um mesmo usuário não pode valer como dois aprovadores**. Quando a empresa não habilitar essa regra, mantém-se uma aprovação por um usuário com poderes suficientes. Não criar limite monetário arbitrário. Aplicar somente após revisão de conflitos, segurança e homologação.
+
+**Em aberto:** gatilhos e limiares, política de autoaprovação, ordem ou simultaneidade, desistência, substituição de aprovadores e UX da fila de pendências. Esta seção é proposta, sem decisão ou implementação.
