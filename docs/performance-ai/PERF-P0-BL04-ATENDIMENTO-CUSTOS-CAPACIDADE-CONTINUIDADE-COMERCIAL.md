@@ -329,3 +329,12 @@ As descrições originais integrais permanecem no [PERF-R02 — Anexo A](PERF-R0
 - [ANPD — proteção de dados e materiais educativos](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes)
 
 > **BL-04 v0.1 APROVADO FUNCIONALMENTE em 03/11/2026.** Os 48 requisitos e 48 critérios estão documentados, sem testes executados; os quatro P0, 18 deliberações, DC-09/DC-10, parâmetros financeiros, cobertura de suporte, SLA, RTO/RPO e contratos técnicos permanecem abertos. Nenhuma contratação, programação ou operação real é autorizada.
+
+
+## 11. Avanço documental de revisão econômica — INICIADO EM 05/11/2026
+
+Por autorização expressa do responsável (“ok”), foi **iniciada a revisão consolidada de custos e rentabilidade**, como continuação do BL-04 **já aprovado funcionalmente em 03/11/2026**. O levantamento documental, a matriz de drivers, as fórmulas, as hipóteses existentes e os próximos gates estão registrados em [PERF-P0-BL04 — Revisão econômica preliminar (05/11/2026)](PERF-P0-BL04-REVISAO-ECONOMICA-PRELIMINAR-2026-11-05.md).
+
+**Escopo autorizado:** estudar custos fixos, variáveis, equipe, IA, criativos, APIs, gateways, infraestrutura compartilhada, unit economics, cenários de zero a 700 clientes e riscos de dupla contagem. **Ficam fora da aprovação:** preços finais, valores de franquias, margem mínima, licenças, fornecedores, homologação, lançamento, pilotos e programação. As hipóteses monetárias dos estudos de 04/11/2026 permanecem **não aprovadas**, e os **4 P0/18 deliberações BL04-D01–D18 e DC-09/DC-10 continuam abertos**.
+
+**Próxima decisão recomendada, ainda não aprovada:** metodologia de custeio em três camadas — custo variável por cliente/canal, custo fixo compartilhado rateado com driver verificável e degraus de capacidade por escala — com cenários conservador/base/estresse. Não executar testes, integração, campanhas ou cobrança.
