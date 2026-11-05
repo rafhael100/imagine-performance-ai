@@ -484,11 +484,11 @@ Somente planejamento; sem programação, contratações, faturamento ou gastos r
 **Pendentes:** autoridades de classificação/revisão e segregação de funções, notificações em revisões editoriais, verificação de equivalência semântica, documento jurídico já assinado, limites após contratação, procedimento seguro para erros de cobrança e homologação. **A classificação detalhada foi aprovada funcionalmente**, sem programação nem execução financeira.
 
 
-### 20.13 Próxima proposta — quem pode classificar uma revisão como editorial (NÃO APROVADA)
+### 20.13 Histórico da proposta de validação humana — APROVADA na seção 20.14
 
 **Recomendação:** admitir sugestões e pré-análises por IA, mas exigir que **responsável humano autorizado pela Imagine** confirme e registre se uma revisão é efetivamente editorial antes da publicação. Uma mudança material deve seguir nova versão/aceites; a equipe comercial não pode tratar termos financeiros como editoriais para contornar alçadas. Exigir registro de responsável, justificativa, diferença textual e referência à versão revisada; em caso de dúvida, bloquear edição simplificada e encaminhar ao fluxo de aprovação integral.
 
-**Pontos ainda pendentes:** perfis autorizados, eventual revisão independente em mudanças sensíveis, integração com governança do Portal, alçadas e trilha imutável. Proposta apenas; sem programação ou alterações reais.
+**Pontos ainda pendentes:** perfis autorizados, eventual revisão independente em mudanças sensíveis, integração com governança do Portal, alçadas e trilha imutável. **Aprovação funcional registrada na seção 20.14; detalhes dos perfis e da segregação seguem pendentes.** Sem programação ou alterações reais.
 
 
 ### 20.14 Validação humana obrigatória de correções editoriais — APROVADA (05/11/2026)
