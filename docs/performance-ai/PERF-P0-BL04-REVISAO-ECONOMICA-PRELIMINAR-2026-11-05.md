@@ -79,7 +79,7 @@ Construir matriz de **0, 100, 200, 300, 400, 500, 600 e 700 clientes Performance
 | P0 | Recalcular margem/ponto de equilíbrio em cenários 0–700 e validar reserva | Financeiro/produto | ABERTO |
 | P0 | Submeter tabela comercial, preço da implantação, mensalidades e adicionais para **aprovação expressa separada** | Direção Imagine | ABERTO |
 
-**Primeira deliberação recomendada a seguir (NÃO APROVADA):** adotar como **metodologia de custeio** uma estrutura em três camadas — (1) custo variável por cliente/canal/capacidade, (2) custo fixo compartilhado rateado por uso, e (3) degraus de equipe/infraestrutura por escala — mantendo os cenários conservador/base/estresse. Isso não aprova nenhum valor nem fecha P0.
+**Proposta histórica posteriormente aprovada na BL04-ECO-D02:** adotar como **metodologia de custeio** uma estrutura em três camadas — (1) custo variável por cliente/canal/capacidade, (2) custo fixo compartilhado rateado por uso, e (3) degraus de equipe/infraestrutura por escala — mantendo os cenários conservador/base/estresse. Isso não aprova nenhum valor nem fecha P0.
 
 ## 7. Gate formal
 
@@ -99,4 +99,9 @@ A matriz reproduz os insumos hipotéticos históricos de IA, infraestrutura vari
 
 O responsável aprovou (“ok”) o detalhamento de custos por campanha, grupo/conjunto, execução de IA, peça criativa, supervisão, atendimento e adicional, sem permitir cobrança por microatividade. A taxonomia, fontes de evidência e fórmulas de custeio constam na [matriz BL04-ECO-D01](PERF-P0-BL04-ECO-D01-MATRIZ-CUSTO-UNITARIO-2026-11-05.md).
 
-**Não é preço aprovado:** custos históricos permanecem cenários hipotéticos e o custo medido ainda depende de instrumentação, faturas, condições contratuais e dados reais. A matriz de 0 a 700 clientes é estimativa parcial; não se pode decompô-la retroativamente em custos reais por campanha. Próxima ratificação sugerida: **BL04-ECO-D02 — metodologia de três camadas**. P0 permanecem abertos; sem programação.
+**Não é preço aprovado:** custos históricos permanecem cenários hipotéticos e o custo medido ainda depende de instrumentação, faturas, condições contratuais e dados reais. A matriz de 0 a 700 clientes é estimativa parcial; não se pode decompô-la retroativamente em custos reais por campanha. **Ratificação posteriormente aprovada** em BL04-ECO-D02: metodologia de três camadas; não foram aprovados números ou custos observados. P0 permanecem abertos; sem programação.
+
+
+## 10. Aprovação posterior — BL04-ECO-D02
+
+**Deliberação “ok” (05/11/2026):** aprovada funcionalmente a metodologia em três camadas: variáveis por consumo/unidade; fixos próprios e compartilhados com rateio verificável; e degraus de equipe/infraestrutura por escala. Consultar [BL04-ECO-D02](PERF-P0-BL04-ECO-D02-METODOLOGIA-TRES-CAMADAS-2026-11-05.md). O escopo de aprovação é o método, com reconciliação e prevenção de dupla contagem, **sem aprovar valores, preços, margens, quotas ou capacidade real**. A próxima proposta é BL04-ECO-D03 (coleta de evidências de custos e fontes). Quatro P0, BL04-D01–D18 e DC-09/DC-10 continuam abertos.
