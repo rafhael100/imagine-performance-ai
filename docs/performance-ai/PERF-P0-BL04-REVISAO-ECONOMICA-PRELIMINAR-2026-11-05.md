@@ -93,3 +93,10 @@ O responsável determinou **continuar** a revisão financeira. Como etapa **docu
 A matriz reproduz os insumos hipotéticos históricos de IA, infraestrutura variável, minutos humanos e fixos agregados, sem duplicar a estimativa independente de rateio fixo de R$ 962,31/mês e sem somar automaticamente degraus de escala. A simulação **não inclui receita, tributos reais, gateways, CAC, licenças, precificação de criativos/vídeos nem franquias comerciais homologadas**. Portanto, **não calcula margem/lucro real** e não prova capacidade técnica para 700 clientes.
 
 **Próximas decisões ainda em aberto:** validar a metodologia de três camadas (variável/fixo/degraus), definir unidades de medição por campanha/grupo e plano, completar custos ausentes e somente depois apresentar opções de preço para deliberação separada. P0 e demais gates permanecem abertos; sem programação, despesas ou contratações.
+
+
+## 9. Medição unitária por serviço aprovada — BL04-ECO-D01 (05/11/2026)
+
+O responsável aprovou (“ok”) o detalhamento de custos por campanha, grupo/conjunto, execução de IA, peça criativa, supervisão, atendimento e adicional, sem permitir cobrança por microatividade. A taxonomia, fontes de evidência e fórmulas de custeio constam na [matriz BL04-ECO-D01](PERF-P0-BL04-ECO-D01-MATRIZ-CUSTO-UNITARIO-2026-11-05.md).
+
+**Não é preço aprovado:** custos históricos permanecem cenários hipotéticos e o custo medido ainda depende de instrumentação, faturas, condições contratuais e dados reais. A matriz de 0 a 700 clientes é estimativa parcial; não se pode decompô-la retroativamente em custos reais por campanha. Próxima ratificação sugerida: **BL04-ECO-D02 — metodologia de três camadas**. P0 permanecem abertos; sem programação.
