@@ -1,7 +1,7 @@
 # PERF-P0 — Proposta de Fast-track: MVP e retenção de dois clientes interessados
 
 **Data:** 05/11/2026  
-**Situação:** **PROPOSTA DE EXECUÇÃO CONTROLADA, AINDA NÃO AUTORIZADA.** A pergunta do responsável sobre quando iniciar o desenvolvimento não constitui, por si, homologação dos bloqueios remanescentes ou autorização de produção.  
+**Situação na branch fast-track:** **FAST-PERF-01 APROVADA EXPRESSAMENTE EM 05/11/2026 (“ok aprovado”)** para iniciar desenvolvimento isolado com dados sintéticos, arquitetura/stack ainda não homologada, sem integração real ou produção. Esta atualização vale para a branch de desenvolvimento e **não modifica a `main`**.  
 **Urgência comercial:** há **dois potenciais clientes interessados em contratar** o Imagine Performance AI; não há contrato, preço, canal publicitário, número de campanhas, credenciais ou data de início informados nesta conversa.  
 **Repositório observado:** `rafhael100/imagine-performance-ai`, privado, com apenas branch `main` e arquivos `README.md` e `docs/`; **não há aplicação implementada**. **Não misturar com a branch de fast-track do CRM Imagine**, produto tecnicamente independente.
 
@@ -59,10 +59,10 @@
 - **Meta Marketing API:** em 04/05/2026, a Meta renomeou **Ads Management Standard Access** para **Marketing API Access Tier**; permissões `ads_read`/`ads_management` são analisadas conforme modalidade de acesso. Fonte oficial: https://developers.meta.com/blog/updates-to-ads-management-standard-access-feature/ . Verificar escopos de cada caso antes de uso real; nomes de recursos antigos nos documentos precisam de atualização controlada.
 - Os atrasos possíveis de elegibilidade de acesso externo **não** impedem preparar arquitetura com mocks ou prestar serviço manual legítimo, com autorização de agência pelos meios oficiais.
 
-## 6. Decisão para o responsável (PENDENTE)
+## 6. Deliberação FAST-PERF-01 — APROVADA PARA DESENVOLVIMENTO CONTROLADO (05/11/2026)
 
 **FAST-PERF-01 — autorizar fast-track de desenvolvimento isolado** com dados fictícios, branch própria e PRs, **sem** liberar integrações reais, infraestrutura paga, credenciais, anúncios, cobranças, acesso dos dois clientes ao sistema, alteração de `main` ou deploy na VPS. Escopo inicial de cinco frentes: base/segurança, clientes internos/tenancy, campanhas sob gestão, aprovações humanas e painéis com dados de demonstração.
 
-A aprovação de BL04-ECO-D04 e o relato de dois interessados **não autorizam automaticamente** FAST-PERF-01. Se aprovado especificamente, criar branch e preparar as primeiras tarefas para Codex. Qualquer ampliação para staging/produção/serviço real exige gates próprios.
+**FAST-PERF-01 foi expressamente aprovada depois da proposta**, por resposta “ok aprovado” em 05/11/2026. A branch `dev/fast-track-performance-2026-11-05` foi criada e foram preparados `AGENTS.md`, `STATUS-ATUAL.md` e `docs/execucao/FAST-PERF-F1-01-CODEX.md` para execução pelo Codex, **sem presumir que o Codex já tenha executado tarefas**. A implementação do MVP fica autorizada **somente** no perímetro isolado aprovado, com testes e dados simulados. Qualquer ampliação para staging/produção/serviço real exige gates próprios.
 
 **Meta comercial independente:** contato imediato e proposta honesta de operação manual para os dois potenciais clientes, com preço e contrato expressamente aceitos; não afirmar implantação do software ou assinatura SaaS antes da entrega/homologação.
