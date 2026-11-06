@@ -350,3 +350,8 @@ O responsável aprovou (“ok”) a **metodologia de apuração de custos e rent
 ## 40. Fontes reais de custo — BL04-ECO-D03 APROVADO (05/11/2026)
 
 O responsável aprovou (“ok aprovado”) organizar o catálogo de evidências econômicas BL04-ECO-D03, com classificação de custo medido/contratado, cotado, hipotético ou N/D, além de fornecedor, fonte, data e responsável. Ver [BL04-ECO-D03](PERF-P0-BL04-ECO-D03-CATALOGO-EVIDENCIAS-CUSTOS-2026-11-05.md). A decisão **não altera preços, cobrança, franquias, ofertas, descontos, margem ou política de adicionais**; despesas operacionais continuam sob critérios documentais de BL04-ECO-D01/D02. BL04-ECO-D04, validação cruzada antes de reconhecer custo definitivo, é apenas proposta; P0 e homologações permanecem abertas.
+
+
+## 41. PERF-COM-D01 — Lançamento comercial assistido para dois interessados (05/11/2026)
+
+O responsável autorizou (“ok, podemos iniciar”) **a preparação de duas propostas de gestão assistida de anúncios**, independentemente da conclusão do SaaS, conforme [PERF-COM-D01](PERF-COM-D01-LANCAMENTO-ASSISTIDO-2-CLIENTES-2026-11-05.md). O modelo é prestação humana supervisionada, com Google Ads e/ou Meta Ads, mídias pagas diretamente pelo anunciante e escopo negociado individualmente. A aprovação **não fixa mensalidade, implantação, franquia, desconto, início do serviço, contrato ou cobrança**, nem altera a estrutura futura Canal Único/Multicanal/Operação Ampliada. As duas negociações e o aceite permanecem pendentes; software FAST-PERF-01 segue em branch isolada e sem deploy.
