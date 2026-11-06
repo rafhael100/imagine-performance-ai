@@ -203,3 +203,8 @@ A descrição completa de cada P0 continua na [PERF-R02 — Anexo A](PERF-R02-AN
 - [Meta — Marketing API](https://developers.facebook.com/docs/marketing-api/)
 
 > **BL-02 v0.1 APROVADO FUNCIONALMENTE em 03/11/2026**, exclusivamente quanto aos 27 requisitos e aos 27 critérios de validação futura. Todos os preços, meios de pagamento executáveis, 15 deliberações BL02-D01–D15, descontos, alçadas, procedimentos legais e financeiros e os 9 P0 permanecem sujeitos à decisão e homologação futura. **Sem iniciar programação ou operações reais.**
+
+
+## 11. PERF-COM-D01 — Preparação de duas propostas assistidas (05/11/2026)
+
+Aprovada **funcionalmente a preparação de ofertas individuais de gestão humana assistida** para dois potenciais clientes, em [PERF-COM-D01](PERF-COM-D01-LANCAMENTO-ASSISTIDO-2-CLIENTES-2026-11-05.md). A verba publicitária permanece **paga diretamente pelos anunciantes a Google/Meta**, separada dos honorários Imagine. Preço, condições de pagamento, descontos, impostos, alçadas de mídia e datas não foram aprovados. Qualquer contratação real requer proposta e aceite expressos, validação humana comercial/técnica/financeira, termos adequados, autorização de acesso às contas e gestão de despesas. A fase documental não ativa gateway, assinatura SaaS, API ou campanha.
