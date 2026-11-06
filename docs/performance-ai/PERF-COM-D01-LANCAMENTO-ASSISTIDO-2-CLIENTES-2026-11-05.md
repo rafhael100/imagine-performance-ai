@@ -1,7 +1,9 @@
-# PERF-COM-D01 — Lançamento comercial assistido para os dois primeiros interessados
+# PERF-COM-D01 — Lançamento comercial assistido para os dois primeiros interessados (HISTÓRICO SUPERADO)
+
+> **DECISÃO POSTERIOR QUE SUBSTITUI A ROTA DE LANÇAMENTO (05/11/2026):** por manifestação expressa do responsável ("preciso que seja tudo ja no portal, esse formato manual nao dar certo vamos focar no desenvolvimento do que ja falamos"), este modelo **de atendimento/contratação manual fora do Portal está SUPERADO e NÃO DEVE SER EXECUTADO**. O documento abaixo fica preservado **somente para rastreabilidade histórica**, sem utilização como roteiro atual nem autorização de novos contatos ou propostas manuais. A diretriz vigente é [PERF-PROD-D01 — Jornada Portal-first](PERF-PROD-D01-PORTAL-FIRST-MVP-2026-11-05.md). Preços, contratos, pagamento real, acesso a clientes, Google/Meta e produção seguem pendentes.
 
 **Data:** 05/11/2026  
-**Status:** **APROVADO FUNCIONALMENTE para preparar a oferta comercial e conduzir a qualificação** pelo responsável (“ok, podemos iniciar”). A aprovação autoriza a **preparação documental, briefing, proposta comercial individual e negociação supervisionada**; não aprova valores, descontos, ofertas públicas, contrato assinado, meios de cobrança, verba publicitária, acesso real a contas ou ativação da plataforma.  
+**Status histórico, posteriormente superado:** **APROVADO FUNCIONALMENTE para preparar a oferta comercial e conduzir a qualificação** pelo responsável (“ok, podemos iniciar”). A aprovação autoriza a **preparação documental, briefing, proposta comercial individual e negociação supervisionada**; não aprova valores, descontos, ofertas públicas, contrato assinado, meios de cobrança, verba publicitária, acesso real a contas ou ativação da plataforma.  
 **Escopo:** Imagine Performance AI / fase comercial assistida, não lançamento geral do SaaS.  
 **Referências:** [BL-01](PERF-P0-BL01-OFERTA-PLANOS-FRANQUIAS.md); [BL-02](PERF-P0-BL02-COBRANCA-DESCONTOS-MIDIA-ALCADAS.md); [FAST-PERF MVP e dois interessados](PERF-P0-FAST-TRACK-MVP-2-CLIENTES-2026-11-05.md); [BL04-ECO-D03/D04](PERF-P0-BL04-ECO-D03-CATALOGO-EVIDENCIAS-CUSTOS-2026-11-05.md).
 
