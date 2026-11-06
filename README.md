@@ -38,3 +38,8 @@ Os documentos de origem serão reproduzidos **sem alterações de conteúdo e pr
 ## Plano de resposta comercial e fast-track — 05/11/2026
 
 Diante de dois potenciais clientes interessados, foi documentada a [proposta de fast-track MVP e atendimento comercial inicial](docs/performance-ai/PERF-P0-FAST-TRACK-MVP-2-CLIENTES-2026-11-05.md). **FAST-PERF-01 ainda não está autorizado**: nenhuma branch de código, programação, integração real, mídia, nova despesa ou lançamento foi iniciado por essa proposta. A revisão econômica **BL04-ECO-D04 foi aprovada funcionalmente** como regra de conferência técnica/financeira dos custos; preços, contratos comerciais e pendências técnicas seguem abertos.
+
+
+## Prioridade comercial — dois primeiros interessados (05/11/2026)
+
+O responsável aprovou o avanço **PERF-COM-D01** para qualificar e preparar propostas individuais de gestão humana assistida antes do lançamento do SaaS. Consultar [Plano comercial para dois interessados](docs/performance-ai/PERF-COM-D01-LANCAMENTO-ASSISTIDO-2-CLIENTES-2026-11-05.md) e [Issue #4](https://github.com/rafhael100/imagine-performance-ai/issues/4). Preços, contratos, início de operação, dados e permissões reais **ainda não foram autorizados**. A branch FAST-PERF-01 e as tarefas Codex seguem independentes.
