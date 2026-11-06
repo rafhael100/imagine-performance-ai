@@ -49,3 +49,8 @@
 ## Regra adicional — paralelismo aprovado na FAST-PERF-01 (05/11/2026)
 
 Três tarefas podem acontecer **simultaneamente**, sem escrever nos mesmos arquivos: **F1-01** somente `docs/execucao/F1-01-DECISAO-STACK-PENDENTE.md`; **PAR-02** somente `docs/execucao/PAR-02-MATRIZ-SEGURANCA.md`; **PAR-03** somente `docs/execucao/PAR-03-CASOS-TESTE-SINTETICOS.md`. Ver `docs/execucao/PARALLEL-01-COORDENACAO.md`. Cada tarefa deve derivar uma branch própria de `dev/fast-track-performance-2026-11-05`, abrir PR draft com base nessa branch, **sem merge**. Os arquivos `AGENTS.md`, `STATUS-ATUAL.md` e instruções dos demais agentes são **somente leitura**. PAR-02 e PAR-03 são documentais até confirmação da stack. Nenhuma tarefa altera `main`, VPS, credenciais, conta real, orçamento de mídia ou cobrança.
+
+
+## Precedência comercial: toda jornada no Portal (05/11/2026)
+
+Diretriz posterior de prioridade: **não preparar prestação/contratação manual substituta fora do Portal**. O Portal Imagine será autoridade de **conta/empresa, catálogo, preço, pedidos, contrato, cobrança e experiência do usuário**; Performance AI será autoridade de **contas de anúncios, campanhas, tarefas e relatórios operacionais**, exibidos no Portal por API autenticada futuramente homologada. O login CRM permanece separado; **nenhum SSO Portal/Performance foi aprovado**. Sem compartilhar banco, senha ou cookie. A diretriz está em `docs/performance-ai/PERF-PROD-D01-PORTAL-FIRST-MVP-2026-11-05.md` na `main` documental; priorizar mocks e contratos. As F1-01/PAR-02/PAR-03 permanecem nos arquivos atribuídos, com PRs draft para branch fast-track. Não declarar integrações reais prontas.
