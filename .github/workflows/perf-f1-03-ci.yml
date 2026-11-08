@@ -1,0 +1,70 @@
+name: Imagine Performance AI - isolated fast-track checks
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-03-synthetic-portal-contract-2026-11-08
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: imagine-performance-f103-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-isolated:
+    # No hosted runner time when repository becomes private.
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      DB_CONNECTION: unconfigured
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      RUN_PGSQL_ISOLATION_TESTS: '0'
+    steps:
+      - name: Checkout source without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Inspect PHP and Composer
+        shell: bash
+        run: |
+          php -v
+          composer --version
+          php -m | grep -E '^(openssl|PDO|mbstring|json)$'
+
+      - name: Domain and Portal mock checks without dependencies
+        shell: bash
+        run: |
+          bash tools/validate-fast-track.sh
+
+      - name: Generate ephemeral test-only application key
+        shell: bash
+        run: |
+          echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+
+      - name: Validate and resolve Composer dependencies without deployment
+        shell: bash
+        run: |
+          composer validate --no-check-publish --no-check-lock
+          composer update --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: Laravel unit and feature tests - PG tests skipped
+        shell: bash
+        run: |
+          php artisan package:discover --ansi
+          php artisan test --testsuite=Unit
+          php artisan test --testsuite=Feature
+
+      - name: Composer dependency audit
+        shell: bash
+        run: |
+          composer audit --no-interaction
