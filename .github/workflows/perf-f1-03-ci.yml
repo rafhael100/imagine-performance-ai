@@ -1,0 +1,183 @@
+name: Imagine Performance AI - isolated fast-track checks
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-03-synthetic-portal-contract-2026-11-08
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: imagine-performance-f103-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-isolated:
+    # No hosted runner time when repository becomes private.
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      DB_CONNECTION: unconfigured
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      RUN_PGSQL_ISOLATION_TESTS: '0'
+    steps:
+      - name: Checkout source without persisted credentials
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Inspect PHP and Composer
+        shell: bash
+        run: |
+          php -v
+          composer --version
+          php -m | grep -E '^(openssl|PDO|mbstring|json)$'
+
+      - name: Domain and Portal mock checks without dependencies
+        shell: bash
+        run: |
+          bash tools/validate-fast-track.sh
+
+      - name: Generate ephemeral test-only application key
+        shell: bash
+        run: |
+          KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+          echo "::add-mask::$KEY"
+          echo "APP_KEY=$KEY" >> "$GITHUB_ENV"
+
+      - name: Validate and resolve Composer dependencies without deployment
+        shell: bash
+        run: |
+          composer validate --no-check-publish --no-check-lock
+          if [ -f composer.lock ]; then
+            composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          else
+            composer update --no-interaction --prefer-dist --no-progress --no-scripts
+          fi
+
+      - name: Laravel unit and feature tests - PG tests skipped
+        shell: bash
+        run: |
+          php artisan package:discover --ansi
+          php artisan route:list --json
+          ./vendor/bin/phpunit --testsuite=Unit
+          ./vendor/bin/phpunit --testsuite=Feature
+
+      - name: Composer dependency audit
+        shell: bash
+        run: |
+          composer audit --no-interaction
+
+  postgres-isolation:
+    # Disposable Postgres only; no remote/staging database or credentials.
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: perf_test_ci
+          POSTGRES_PASSWORD: local-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_test_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: perf_test_ci
+      DB_USERNAME: postgres
+      DB_PASSWORD: local-ci-only
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      MAIL_MAILER: array
+      QUEUE_CONNECTION: sync
+      PGPASSWORD: local-ci-only
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Ensure PgSQL PHP driver, resolve dependencies
+        shell: bash
+        run: |
+          if ! php -m | grep -iq '^pdo_pgsql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php8.3-pgsql
+          fi
+          php -m | grep -i '^pdo_pgsql$'
+          if [ -f composer.lock ]; then
+            composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          else
+            composer update --no-interaction --prefer-dist --no-progress --no-scripts
+          fi
+          php artisan package:discover --ansi
+
+      - name: Apply migrations to disposable database
+        shell: bash
+        run: |
+          php artisan migrate --database=pgsql --force --no-interaction
+
+      - name: Create unprivileged test role
+        shell: bash
+        run: |
+          psql -h 127.0.0.1 -U postgres -d perf_test_ci -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE perf_test_role LOGIN PASSWORD 'role-ci-only';
+          GRANT CONNECT ON DATABASE perf_test_ci TO perf_test_role;
+          GRANT USAGE ON SCHEMA public TO perf_test_role;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO perf_test_role;
+          SQL
+
+      - name: Test RLS with non-owner SQL role in disposable DB
+        shell: bash
+        env:
+          DB_USERNAME: perf_test_role
+          DB_PASSWORD: role-ci-only
+          RUN_PGSQL_ISOLATION_TESTS: '1'
+        run: |
+          ./vendor/bin/phpunit --filter TenantIsolationPgsqlTest
+
+  dependency-lockfile:
+    # Only a green CI on an existing PUBLIC feature branch may commit a lockfile.
+    if: ${{ github.event.repository.private == false }}
+    needs: [php-isolated, postgres-isolation]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout branch without persisted git credentials
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Resolve dependencies and commit real lock to this feature branch only
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f composer.lock ]; then
+            echo 'composer.lock already versioned; no change'
+            exit 0
+          fi
+          composer validate --no-check-publish --no-check-lock
+          composer update --no-interaction --prefer-dist --no-progress --no-scripts
+          composer audit --no-interaction
+          php -r '$payload = json_encode(["message" => "build(perf): registrar Composer lock apos CI verde", "branch" => getenv("GITHUB_REF_NAME"), "content" => base64_encode(file_get_contents("composer.lock"))], JSON_THROW_ON_ERROR); file_put_contents("/tmp/perf-lock-request.json", $payload);'
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/composer.lock" --input /tmp/perf-lock-request.json

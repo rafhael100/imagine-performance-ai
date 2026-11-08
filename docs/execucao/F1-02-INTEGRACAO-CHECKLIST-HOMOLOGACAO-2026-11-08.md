@@ -30,3 +30,19 @@
 - PRs antigos: #6 #7 #8 #10 #12 #14.
 - Issue da integração: #15.
 - Sem merge automático e sem infraestrutura contratada nesta execução.
+
+
+## Atualização de evidências verificadas em GitHub Actions — 08/11/2026
+
+Esta seção é posterior ao registro inicial de impedimentos de validação local. Os bloqueios de Composer e PostgreSQL **foram superados em runners públicos descartáveis**, sem usar VPS.
+
+- **CI F1-03:** [Run #42532703509](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42532703509): ambos os jobs concluídos com sucesso.
+- **PHPUnit Unit:** **9 testes, 14 asserções**, PASS.
+- **PHPUnit Feature (sem DB):** **3 testes executados**, 7 testes PostgreSQL pulados propositalmente nessa suíte; zero falhas.
+- **PostgreSQL 16 descartável:** `php artisan migrate --database=pgsql --force` PASS; RLS testado com usuário SQL `perf_test_role` sem acesso administrativo, **7 testes e 45 asserções PASS**.
+- **Testes de domínio PHP puro:** 22 + 26 casos sintéticos PASS, incluindo deduplicação, auditoria por tenant e indisponibilidade de serviço.
+- **Rotas de filesystem Laravel 13:** GET/PUT `/storage/{path}` desabilitadas em `config/filesystems.php`, testes correspondentes PASS.
+- **Composer:** validação do manifesto, resolução e auditoria sem alertas de vulnerabilidade conhecidos; após [Run #42532859480](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42532859480), lockfile real `composer.lock` gerado e versionado no commit `b936fbb84eae14daac97e143f1d46b1193719302`, sem cache de artefatos pagos.
+- **Etapa atual:** retestar com `composer install` a partir do lockfile versionado; registrar resultado no próximo CI.
+
+**Limites de alcance dos testes:** testes comprovam apenas o comportamento das fixtures e do esquema no ambiente descartável. Não houve autenticação serviço-a-serviço real, integração com Portal/CRM real, Google/Meta, PSP, dados pessoais de clientes, tráfego, implantação, monitoração ou teste de carga. Revisão de RBAC completo, grants SQL finos, recuperação de desastres e gates jurídicos/comerciais seguem abertos.

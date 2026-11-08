@@ -85,4 +85,125 @@ final class TenantIsolationPgsqlTest extends TestCase
             DB::rollBack();
         }
     }
+
+    public function test_rls_separates_portal_links_by_tenant(): void
+    {
+        $this->assertDisposablePostgres();
+        DB::beginTransaction();
+
+        try {
+            $this->setTenant(self::A);
+            DB::table('performance_tenants')->insert(['id' => self::A, 'status' => 'active']);
+            DB::table('portal_service_links')->insert([
+                'id' => '33333333-3333-4333-8333-333333333333',
+                'tenant_id' => self::A,
+                'portal_organization_ref' => 'org-demo-a',
+                'portal_service_ref' => 'svc-demo-a',
+                'link_status' => 'active_demo',
+                'source_revision' => 'demo-r1',
+            ]);
+
+            $this->setTenant(self::B);
+            DB::table('performance_tenants')->insert(['id' => self::B, 'status' => 'active']);
+            self::assertSame(0, DB::table('portal_service_links')->where('portal_service_ref', 'svc-demo-a')->count());
+            $this->setTenant(self::A);
+            self::assertSame(1, DB::table('portal_service_links')->where('portal_service_ref', 'svc-demo-a')->count());
+        } finally {
+            DB::rollBack();
+        }
+    }
+
+    public function test_composite_foreign_key_rejects_service_of_another_tenant(): void
+    {
+        $this->assertDisposablePostgres();
+        DB::beginTransaction();
+
+        try {
+            $this->setTenant(self::A);
+            DB::table('performance_tenants')->insert(['id' => self::A, 'status' => 'active']);
+            DB::table('portal_service_links')->insert([
+                'id' => '33333333-3333-4333-8333-333333333333',
+                'tenant_id' => self::A,
+                'portal_organization_ref' => 'org-demo-a',
+                'portal_service_ref' => 'svc-demo-a',
+                'link_status' => 'active_demo',
+                'source_revision' => 'demo-r1',
+            ]);
+            $this->setTenant(self::B);
+            DB::table('performance_tenants')->insert(['id' => self::B, 'status' => 'active']);
+
+            $this->expectException(QueryException::class);
+            DB::table('service_eligibility_snapshots')->insert([
+                'id' => '44444444-4444-4444-8444-444444444444',
+                'tenant_id' => self::B,
+                'portal_service_ref' => 'svc-demo-a',
+                'state' => 'eligible_mock',
+                'source' => 'portal_demo_fixture',
+                'source_revision' => 'demo-r2',
+                'observed_at' => now(),
+            ]);
+        } finally {
+            DB::rollBack();
+        }
+    }
+
+    public function test_replay_id_is_unique_across_tenants_for_one_producer(): void
+    {
+        $this->assertDisposablePostgres();
+        DB::beginTransaction();
+
+        try {
+            $this->setTenant(self::A);
+            DB::table('performance_tenants')->insert(['id' => self::A, 'status' => 'active']);
+            DB::table('idempotency_receipts')->insert([
+                'id' => '55555555-5555-4555-8555-555555555555',
+                'tenant_id' => self::A,
+                'producer_ref' => 'portal-imagine-mock',
+                'event_ref' => 'evt-demo-replay-1',
+                'payload_sha256' => str_repeat('a', 64),
+                'processing_state' => 'accepted_demo',
+                'received_at' => now(),
+            ]);
+
+            $this->setTenant(self::B);
+            DB::table('performance_tenants')->insert(['id' => self::B, 'status' => 'active']);
+            $this->expectException(QueryException::class);
+            DB::table('idempotency_receipts')->insert([
+                'id' => '66666666-6666-4666-8666-666666666666',
+                'tenant_id' => self::B,
+                'producer_ref' => 'portal-imagine-mock',
+                'event_ref' => 'evt-demo-replay-1',
+                'payload_sha256' => str_repeat('b', 64),
+                'processing_state' => 'accepted_demo',
+                'received_at' => now(),
+            ]);
+        } finally {
+            DB::rollBack();
+        }
+    }
+
+    public function test_rls_prevents_reading_other_tenants_audit(): void
+    {
+        $this->assertDisposablePostgres();
+        DB::beginTransaction();
+
+        try {
+            $this->setTenant(self::A);
+            DB::table('performance_tenants')->insert(['id' => self::A, 'status' => 'active']);
+            DB::table('audit_events')->insert([
+                'id' => '77777777-7777-4777-8777-777777777777',
+                'tenant_id' => self::A,
+                'actor_ref' => 'actor-demo-a',
+                'action' => 'mock.read',
+                'decision' => 'allowed_demo',
+                'occurred_at' => now(),
+            ]);
+            self::assertSame(1, DB::table('audit_events')->count());
+            $this->setTenant(self::B);
+            self::assertSame(0, DB::table('audit_events')->count());
+        } finally {
+            DB::rollBack();
+        }
+    }
+
 }

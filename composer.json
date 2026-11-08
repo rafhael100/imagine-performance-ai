@@ -29,9 +29,10 @@
             "@php artisan package:discover --ansi"
         ],
         "test": [
-            "@php artisan test --testsuite=Unit",
-            "@php artisan test --testsuite=Feature",
-            "@php tests/Unit/F102AStandalone.php"
+            "@php vendor/bin/phpunit --testsuite=Unit",
+            "@php vendor/bin/phpunit --testsuite=Feature",
+            "@php tests/Unit/F102AStandalone.php",
+            "@php tests/Unit/SyntheticPortalContractStandalone.php"
         ]
     },
     "config": {
