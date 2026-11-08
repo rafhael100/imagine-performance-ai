@@ -69,3 +69,76 @@ jobs:
         shell: bash
         run: |
           composer audit --no-interaction
+
+  postgres-isolation:
+    # Disposable Postgres only; no remote/staging database or credentials.
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: perf_test_ci
+          POSTGRES_PASSWORD: local-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_test_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: perf_test_ci
+      DB_USERNAME: postgres
+      DB_PASSWORD: local-ci-only
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      MAIL_MAILER: array
+      QUEUE_CONNECTION: sync
+      PGPASSWORD: local-ci-only
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Ensure PgSQL PHP driver, resolve dependencies
+        shell: bash
+        run: |
+          if ! php -m | grep -iq '^pdo_pgsql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php8.3-pgsql
+          fi
+          php -m | grep -i '^pdo_pgsql$'
+          composer update --no-interaction --prefer-dist --no-progress --no-scripts
+          php artisan package:discover --ansi
+
+      - name: Apply migrations to disposable database
+        shell: bash
+        run: |
+          php artisan migrate --database=pgsql --force --no-interaction
+
+      - name: Create unprivileged test role
+        shell: bash
+        run: |
+          psql -h 127.0.0.1 -U postgres -d perf_test_ci -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE perf_test_role LOGIN PASSWORD 'role-ci-only';
+          GRANT CONNECT ON DATABASE perf_test_ci TO perf_test_role;
+          GRANT USAGE ON SCHEMA public TO perf_test_role;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO perf_test_role;
+          SQL
+
+      - name: Test RLS with non-owner SQL role in disposable DB
+        shell: bash
+        env:
+          DB_USERNAME: perf_test_role
+          DB_PASSWORD: role-ci-only
+          RUN_PGSQL_ISOLATION_TESTS: '1'
+        run: |
+          ./vendor/bin/phpunit --filter TenantIsolationPgsqlTest
