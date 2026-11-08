@@ -49,7 +49,9 @@ jobs:
       - name: Generate ephemeral test-only application key
         shell: bash
         run: |
-          echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+          KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+          echo "::add-mask::$KEY"
+          echo "APP_KEY=$KEY" >> "$GITHUB_ENV"
 
       - name: Validate and resolve Composer dependencies without deployment
         shell: bash
