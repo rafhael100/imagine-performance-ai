@@ -31,7 +31,8 @@
         "test": [
             "@php artisan test --testsuite=Unit",
             "@php artisan test --testsuite=Feature",
-            "@php tests/Unit/F102AStandalone.php"
+            "@php tests/Unit/F102AStandalone.php",
+            "@php tests/Unit/SyntheticPortalContractStandalone.php"
         ]
     },
     "config": {
