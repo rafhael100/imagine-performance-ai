@@ -61,6 +61,7 @@ jobs:
         shell: bash
         run: |
           php artisan package:discover --ansi
+          php artisan route:list --json
           ./vendor/bin/phpunit --testsuite=Unit
           ./vendor/bin/phpunit --testsuite=Feature
 
