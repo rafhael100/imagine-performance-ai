@@ -10,6 +10,7 @@ find src app bootstrap routes public tests database -type f -name '*.php' -print
 done
 printf '%s\n' 'Standalone synthetic domain checks:'
 php tests/Unit/F102AStandalone.php
+php tests/Unit/SyntheticPortalContractStandalone.php
 if command -v composer >/dev/null 2>&1; then
     echo 'Composer available: validating manifest only; NOT installing dependencies'
     composer validate --no-check-publish
