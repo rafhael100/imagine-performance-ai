@@ -30,7 +30,7 @@ jobs:
       RUN_PGSQL_ISOLATION_TESTS: '0'
     steps:
       - name: Checkout source without persisted credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           persist-credentials: false
 
@@ -61,8 +61,8 @@ jobs:
         shell: bash
         run: |
           php artisan package:discover --ansi
-          php artisan test --testsuite=Unit
-          php artisan test --testsuite=Feature
+          ./vendor/bin/phpunit --testsuite=Unit
+          ./vendor/bin/phpunit --testsuite=Feature
 
       - name: Composer dependency audit
         shell: bash
