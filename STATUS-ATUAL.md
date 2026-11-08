@@ -1,5 +1,29 @@
 # STATUS ATUAL — Imagine Performance AI
 
+## Atualização técnica prioritária — 08/11/2026 (substitui status técnicos antigos abaixo)
+
+**Decisão humana:** Laravel 13 + PostgreSQL independentes adotados para o motor Performance; Portal Imagine continua autoridade comercial/identidade e front-end do cliente; CRM opcional.
+
+**Código em revisão, NÃO implantado:**
+- [PR #16 — F1-02 A/B/C integrados](https://github.com/rafhael100/imagine-performance-ai/pull/16): domínio PHP com controles sintéticos; esqueleto Laravel; migrations PostgreSQL de seis tabelas com tenant RLS fail-closed.
+- [PR #18 — F1-03, contrato mock Portal](https://github.com/rafhael100/imagine-performance-ai/pull/18): eventos idempotentes, estados de serviço `*_demo`, revisão e conflitos; **sem API, credenciais ou provisionamento real**.
+- [Issue #15](https://github.com/rafhael100/imagine-performance-ai/issues/15) e [Issue #17](https://github.com/rafhael100/imagine-performance-ai/issues/17) organizam os recortes.
+
+**Evidência automatizada efetivamente obtida:**
+- [GitHub Actions run #42532992463](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42532992463) **SUCCESS**, runner Ubuntu 24.04 público padrão, sem recursos pagos/especiais.
+- PHP Unit: 9 testes, 14 asserções, PASS.
+- Feature da aplicação isolada: 3 testes executados PASS, 7 testes PostgreSQL intencionalmente pulados no job sem DB.
+- PostgreSQL 16 descartável (`perf_test_ci`): migrations aplicadas, RLS exercitada com papel sem privilégios administrativos, 7 testes, 45 asserções, PASS.
+- Testes CLI puramente sintéticos: 22 + 26 = **48 PASS**, sem banco.
+- Rotas automáticas locais de armazenamento GET/PUT desativadas; Composer audit sem alertas conhecidos.
+- `composer.lock` verdadeiro versionado em branch F1-03, commit `b936fbb84eae14daac97e143f1d46b1193719302`; a execução verde mais recente usou `composer install`, não atualização livre de dependências.
+
+**Branches e restrições:** `main` e VPS/produção permanecem intocadas; os PRs documentais #6/#7/#8/#10 e trabalhos anteriores #12/#14 não foram mesclados ou encerrados. PR #18 depende do conteúdo do PR #16; revisar integração na ordem.
+
+**PENDENTE / não inferir homologação:** API autenticada Portal–Performance, vínculo de identidade, MFA/S2S/OAuth, dados reais, autorização e execução Google/Meta, PSP/fiscal, notificações, operação do cliente, segurança operacional, filas/retentativas persistidas, testes de carga, privacidade/retenção LGPD, escolha de configuração VPS e deploy, 91 P0 e 15 HT-R01. Uma suite verde não libera serviços reais.
+
+---
+
 **Data:** 05/11/2026  
 **FAST-PERF-01:** **APROVADA** — desenvolvimento controlado e isolado para MVP com dados fictícios.  
 **Branch de integração autorizada:** `dev/fast-track-performance-2026-11-05`.  
