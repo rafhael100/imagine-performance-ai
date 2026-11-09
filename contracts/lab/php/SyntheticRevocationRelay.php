@@ -124,7 +124,7 @@ final class SyntheticRevocationRelay
                        AND tenant_ref = ? AND grant_revision < ?'
                 );
                 $update->execute([
-                    $revision, $active, $event['service_ref'],
+                    $revision, $active ? 'true' : 'false', $event['service_ref'],
                     $current['organization_ref'], $current['tenant_ref'], $revision,
                 ]);
                 if ($update->rowCount() !== 1) {
