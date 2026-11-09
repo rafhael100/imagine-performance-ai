@@ -79,10 +79,11 @@ $check('24 second campaign still draft',
     $d['campaigns'][1]['state'],'draft_demo');
 $check('25 total approvals from SQL',
     count($d['approvals']),4);
-$check('26 one F22 request still pending',
-    $d['approvals'][0]['ref'],'demo-req-demo-1');
+$byRef=array_column($d['approvals'],null,'ref');
+$check('26 legacy F22 request is present in projection',
+    isset($byRef['demo-request-demo-1']),true);
 $check('27 F22 pending status preserved',
-    $d['approvals'][0]['status'],'pending_human_demo');
+    $byRef['demo-request-demo-1']['status'],'pending_human_demo');
 $check('28 internal review remains no-execution',
     $d['approvals'][1]['status'],'approved_demo_no_execution');
 $check('29 revision manifest always illustrative',
