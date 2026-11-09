@@ -175,7 +175,7 @@ switch ($phase) {
         $check('30 reactivation explicitly set in source', $isActive($grantAuthority('svc-demo-a')), true);
         $check('31 main remains revision 4 until sync', (int) $grantMain('svc-demo-a')['grant_revision'], 4);
         $check('32 new signed message blocked by stale main',
-            $accept($mint('req-demo-v5-presync', 'nonce-demo-v5-presync', 5), 5), 'mock_grant_revision_stale');
+            $accept($mint('req-demo-v5-presync', 'nonce-demo-v5-presync', 5), 5), 'mock_grant_revoked');
         $check('33 old signed revision denied by external authority',
             $accept($mint('req-demo-v3-stale', 'nonce-demo-v3-stale')), 'external_fence_revision_stale');
         // Old revoke event only wakes reconciler: current authority revision 5
