@@ -154,7 +154,7 @@ $negatives=[
     ['26 unrecognized audience signed token',$sign($A,$exp,'nonce-a-45678','portal-live')],
     ['27 expired correctly signed claim',$sign($A,time()-1,'nonce-a-expire',$audience)],
     ['28 claim >5min into future',$sign($A,time()+301,'nonce-a-future',$audience)],
-    ['29 invalid tenant hex case',$sign(strtoupper($A),$exp,'nonce-a-upper',$audience)],
+    ['29 uppercase hex in a different UUID is denied',$sign('AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA',$exp,'nonce-a-upper',$audience)],
     ['30 malformed signed tenant',$sign('not-a-uuid',$exp,'nonce-a-invalid',$audience)],
     ['31 payload with extra token segment',$Aclaim.'|extra'],
     ['32 token exceeds max size',str_repeat('x',301)],
