@@ -62,7 +62,7 @@ $run = static fn (
 ): string => $bridge->accept($msg, $testKey, $org, $tenant, $service,
     $digest, $revision, $clock);
 $n = 0;
-$check = static function (string $label, mixed $actual, mixed $expected) use (&$n): void {
+$check = static function (string $label, mixed $actual, mixed $expected) use (&$n, $phase): void {
     if ($actual !== $expected) {
         throw new RuntimeException("FAIL [$label], got ".var_export($actual, true)
             .' expected '.var_export($expected, true));
