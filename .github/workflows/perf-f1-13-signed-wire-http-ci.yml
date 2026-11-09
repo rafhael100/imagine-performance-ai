@@ -1,0 +1,129 @@
+name: Performance F1-13 - signed HTTP revocation loopback with PostgreSQL replay
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-13-signed-wire-loopback-2026-11-08
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f113-http-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-wire-http:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: perf_test_relay_main
+          POSTGRES_PASSWORD: local-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_test_relay_main"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_test_relay_main
+      PERF_FENCE_DB: perf_test_relay_authority
+      PGUSER: postgres
+      PGPASSWORD: local-ci-only
+      PERF_SNAPSHOT_FIXTURE: contracts/demo/performance-dashboard-v1.json
+      PERF_F13_WIRE_LAB: '1'
+      PERF_WIRE_LAB_CLOCK: '1800000000'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install PHP 8.4 with required local-only PDO/cURL extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo, pdo_pgsql, curl
+      - name: Validate source syntax and explicit test-only network bounds
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGDATABASE" = perf_test_relay_main
+          test "$PERF_FENCE_DB" = perf_test_relay_authority
+          php -l contracts/lab/wire/SyntheticWireEnvelope.php
+          php -l contracts/lab/wire/receiver.php
+          php -l contracts/lab/wire/test-loopback-http.php
+          php -m | grep -i '^pdo_pgsql$'
+          php -m | grep -i '^curl$'
+          php -r "json_decode(file_get_contents('contracts/lab/demo/perf-revocation-event-example-v1.json'), true, 512, JSON_THROW_ON_ERROR);"
+          pg_isready -h 127.0.0.1 -p 5432 -d "$PGDATABASE" -U postgres
+      - name: Run complete F1-11 synthetic outbox and old-backup restore regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash contracts/lab/sql/run-revocation-relay-pg-lab.sh
+      - name: Create local-only HTTP receiver receipts and synthetic B revoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -d "$PERF_FENCE_DB" -q -c "GRANT SELECT ON perf_external_lab.mock_revocation_outbox TO perf_test_fence_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PERF_FENCE_DB" -q -c "GRANT SELECT ON perf_external_lab.mock_authority_fences TO perf_test_fence_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PERF_FENCE_DB" -q -f contracts/lab/sql/004-signed-wire-receipts.sql
+          psql -X -v ON_ERROR_STOP=1 -d "$PERF_FENCE_DB" -q <<'SQL'
+          BEGIN;
+          UPDATE perf_external_lab.mock_authority_fences
+             SET active=false,min_revision=2,updated_at=clock_timestamp()
+           WHERE service_ref='svc-demo-b' AND active=true AND min_revision=1;
+          INSERT INTO perf_external_lab.mock_revocation_outbox
+            (event_id,service_ref,organization_ref,tenant_ref,source_revision,event_type,status,attempts)
+          VALUES
+            ('evt-demo-contract-b2','svc-demo-b','org-demo-b','perf-demo-b',2,
+             'service.authorization_changed.synthetic','pending',0);
+          COMMIT;
+          SQL
+      - name: Launch ephemeral localhost-only PHP server and test signed HTTP requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PERF_WIRE_LAB_TEST_KEY_HEX="$(php -r 'echo bin2hex(random_bytes(32));')"
+          log="$RUNNER_TEMP/perf-f13-loopback-server.log"
+          php -S 127.0.0.1:18783 contracts/lab/wire/receiver.php > "$log" 2>&1 &
+          pid=$!
+          cleanup() {
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=0
+          for i in $(seq 1 50); do
+            if curl --noproxy '*' -sS --connect-timeout 1 --max-time 2               -o /dev/null http://127.0.0.1:18783/_synthetic/perf/revocation 2>/dev/null; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "FAIL: temporary PHP listener terminated"
+              tail -n 80 "$log"
+              exit 1
+            fi
+            sleep 0.1
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo 'FAIL: local-only PHP listener did not start'
+            tail -n 80 "$log"
+            exit 1
+          fi
+          if ! php contracts/lab/wire/test-loopback-http.php; then
+            tail -n 95 "$log" | sed -E 's/(X-Imagine-Lab-Signature:)[^ ]+/\1[REDACTED]/g'
+            exit 1
+          fi
+      - name: Confirm no Laravel runtime routes, production migrations or deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- routes database/migrations composer.json composer.lock
