@@ -122,7 +122,7 @@ final class SyntheticCampaignPortalProjection
             foreach($rawIntents as $row){
                 if (!isset($known[$row['campaign_id']])
                     || !is_string($row['request_ref'])
-                    || !preg_match('/^req-demo-[a-z0-9-]{1,70}$/D',$row['request_ref'])
+                    || !preg_match('/^(?:req-demo|request-demo)-[a-z0-9-]{1,70}$/D',$row['request_ref'])
                     || $row['manifest_version'] !== 'manifest-demo-v1'
                     || $row['dispatch_state'] !== 'disabled'
                     || !in_array($row['operation'],[
