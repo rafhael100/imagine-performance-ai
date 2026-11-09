@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 22
     services:
       postgres:
-        image: postgres:18
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: local-ci-only
