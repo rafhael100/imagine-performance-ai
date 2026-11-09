@@ -135,10 +135,10 @@ def main():
         os.environ["PERF_F21_SERVER_KEY"],
     )
     ctx.load_verify_locations(cafile=os.environ["PERF_F21_CA"])
-    http = http.server.HTTPServer(("127.0.0.1", 18785), Handler)
-    http.socket = ctx.wrap_socket(http.socket, server_side=True)
+    server = http.server.HTTPServer(("127.0.0.1", 18785), Handler)
+    server.socket = ctx.wrap_socket(server.socket, server_side=True)
     print("F1-21 test-only TLS listener on loopback ready", flush=True)
-    http.serve_forever()
+    server.serve_forever()
 
 
 if __name__ == "__main__":
