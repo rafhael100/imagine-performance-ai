@@ -199,7 +199,7 @@ $check('23 verified raw digest persisted',
 $check('24 authority records source event ACK',
     $sourceAdmin->query(
         "SELECT status FROM perf_external_lab.mock_revocation_outbox
-         WHERE event_id='evt-demo-contract-b2'"
+         WHERE service_ref='svc-demo-b' AND source_revision=2"
     )->fetchColumn(), 'acked');
 $check('25 destination grant is revoked',
     in_array($mainAdmin->query(
