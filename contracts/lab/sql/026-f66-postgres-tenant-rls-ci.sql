@@ -125,12 +125,12 @@ BEGIN
  SELECT campaign_limit INTO lim FROM perf_f66_scope.capacities
   WHERE tenant_role=session_user::text AND channel=p_channel;
  IF NOT FOUND THEN RETURN 'capacity_unapproved_denied'; END IF;
- SELECT count(*) INTO used FROM perf_f66_scope.campaigns
-  WHERE tenant_role=session_user::text AND channel=p_channel AND managed;
- IF used>=lim THEN RETURN 'capacity_review_required'; END IF;
  IF EXISTS(SELECT 1 FROM perf_f66_scope.campaigns WHERE ref=p_ref) THEN
   RETURN 'already_exists_or_out_of_scope';
  END IF;
+ SELECT count(*) INTO used FROM perf_f66_scope.campaigns
+  WHERE tenant_role=session_user::text AND channel=p_channel AND managed;
+ IF used>=lim THEN RETURN 'capacity_review_required'; END IF;
  INSERT INTO perf_f66_scope.campaigns(ref,tenant_role,channel,state,managed)
  VALUES(p_ref,session_user::text,p_channel,'active_demo',true);
  RETURN 'included_synthetic_only';
