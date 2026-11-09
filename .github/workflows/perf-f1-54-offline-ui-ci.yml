@@ -1,0 +1,60 @@
+name: Performance F1-54 - offline responsive Portal preview and interaction checks
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-54-offline-ui-preview-2026-11-09
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f154-offline-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-offline-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+    steps:
+      - name: Checkout preview-only code
+        uses: actions/checkout@v5
+      - name: PHP 8.4 for F52 and F53 regressions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - name: Run scope and Portal projection tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/SyntheticManagedScopeLedger.php
+          php -l src/Domain/Performance/SyntheticScopeDashboardProjector.php
+          php tests/Unit/SyntheticManagedScopeLedgerStandalone.php
+          php tests/Unit/SyntheticScopeDashboardProjectorStandalone.php
+      - name: Run static HTML and responsive interaction smoke tests in isolated Node
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node --check tests/ui/test-offline-preview.mjs
+          node tests/ui/test-offline-preview.mjs
+      - name: Enforce no outbound connectivity, product claims, customer data or routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e routes/api.php
+          test ! -e routes/web.php
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"operational_activation_allowed": false' contracts/lab/ci/performance-release-no-go.json
+          if grep -R -n -E 'performance-scope-preview-v1.html|SyntheticScopeDashboardProjector' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F54 preview must not become an unauthenticated HTTP endpoint'
+            exit 1
+          fi
+          test -z "$(git status --porcelain)"
