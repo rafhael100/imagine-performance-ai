@@ -16,7 +16,7 @@ CREATE TABLE perf_external_lab.mock_revocation_outbox (
 REVOKE ALL ON perf_external_lab.mock_revocation_outbox FROM PUBLIC;
 GRANT SELECT ON perf_external_lab.mock_revocation_outbox TO perf_test_fence_reader;
 GRANT USAGE ON SCHEMA perf_external_lab TO perf_test_outbox_acker;
-GRANT SELECT (event_id, status) ON perf_external_lab.mock_revocation_outbox TO perf_test_outbox_acker;
+GRANT SELECT (event_id, status, attempts) ON perf_external_lab.mock_revocation_outbox TO perf_test_outbox_acker;
 GRANT UPDATE (status, attempts) ON perf_external_lab.mock_revocation_outbox TO perf_test_outbox_acker;
 -- No write or ownership privileges over authority grants for the ack role.
 COMMIT;
