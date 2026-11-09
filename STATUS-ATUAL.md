@@ -1,3 +1,13 @@
+# FAST-PERF F1-50/F1-51 — 09/11/2026
+
+**F1-50 / [PR draft #122](https://github.com/rafhael100/imagine-performance-ai/pull/122):** três instâncias PostgreSQL descartáveis (5432/5433/5434), terceiro ledger de piso de época e nonces excluído dos backups restaurados em CI. Ele detectou rollback de autoridade F41 (época 10 contra piso 11) e replay após restore do ledger de observações F47, **mas o CI também comprovou bypass por chamada F47 SQL direta**. [CI final SUCCESS #42666101565](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42666101565), **43 verificações F1-50** (11+6+8+5+13), mais regressões.
+
+**F1-51 / [PR draft #124](https://github.com/rafhael100/imagine-performance-ai/pull/124):** após todas as regressões, REVOKE EXECUTE em papéis SQL antigos de observação, emissão, reserva de intenções e sentinela. Testa `has_function_privilege`, SQLSTATE 42501 e adaptadores PHP negando chamadas. Preserva registros, `CHECK(dispatch_enabled=false)`, `pending_synthetic` e epoch 12. [CI SUCCESS #42666696869](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42666696869), **26 verificações F1-51**, mais regressões. **NO-GO final de laboratório:** os papéis limitados listados não podem realizar novas operações.
+
+**Bloqueios e ressalvas:** a terceira base também é restaurável; não há detecção automática de restore, autoridade de época não retrocedível, transação distribuída, endpoint real, IAM/mTLS/KMS/PoP, vínculo comercial Portal/CRM/Ads, autorização humana ou idempotência de efeitos. Os administradores SQL e autores do CI podem modificar privilégios; nenhuma garantia operacional fora dos runners efêmeros. P0/HT-R01/SEC-R03/T3, Issues #102/#115/#117/#119/#121/#123 e AppSec/DBA **continuam abertos**. Sem merge, main, VPS, Google/Meta, CRM, n8n, PSP, clientes, custos ou deploy.
+
+---
+
 # FAST-PERF F1-50 — Sentinela externa de restauração (09/11/2026)
 
 [PR #122 (draft)](https://github.com/rafhael100/imagine-performance-ai/pull/122), [CI SUCCESS #42665666689](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42665666689): **43 verificações F1-50** (11+6+8+5+13), regressões F1-30–F1-49. O terceiro PostgreSQL descartável (porta 5434), excluído do restore simulado, conserva piso de época e recibos de nonce: o novo wrapper nega o uso de autorização com época da fonte retrocedida (10 versus piso 11) e nega replay mesmo após restaurar a tabela F47 de observações. Se a sentinela perder permissão, o wrapper falha fechado.
