@@ -1,0 +1,10 @@
+{
+  "event_id": "evt-demo-contract-b2",
+  "service_ref": "svc-demo-b",
+  "organization_ref": "org-demo-b",
+  "tenant_ref": "perf-demo-b",
+  "source_revision": 2,
+  "event_type": "service.authorization_changed.synthetic",
+  "status": "pending",
+  "attempts": 0
+}
