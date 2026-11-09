@@ -33,7 +33,7 @@ $gateway=new SyntheticServerClockPermitGateway($issuer,$consumer);
 $writer=new SyntheticIdempotentIntentGateway(
  $pdo('portal_perf_auth_lab',5432,'perf_f35_writer','ci-f35-writer-only'));
 $owner='worker-f38-a';
-$manifest=hash('sha256','f46-server-clock-only');
+$manifest=hash('sha256','f45-server-clock-only');
 $forgedPast=1000000000;
 $forgedFuture=2100000000;
 $n=0;
@@ -84,13 +84,13 @@ case 'initial':
    abs($timeOf($external)-$timeOf($portal))<=5,true);
  $check('old F45 external issuer role can no longer mint SQL permits',
    $permissionDenied($oldIssuer,
-    "SELECT perf_f45_issuer.mint('claim',0,'worker-f38-a',0,1800000000,'f46-old-role-denied-aaa')"),true);
+    "SELECT perf_f45_issuer.mint('claim',0,'worker-f38-a',0,1800000000,'f45-old-role-denied-aaa')"),true);
  $check('old F45 local consumer role cannot consume directly',
    $permissionDenied($oldConsumer,
     "SELECT perf_f45_admission.consume('nonsense',1800000000)"),true);
  $check('new issuer role cannot call the old F45 mint function',
    $permissionDenied($issuer,
-    "SELECT perf_f45_issuer.mint('claim',0,'worker-f38-a',0,1800000000,'f46-new-role-denied-aaa')"),true);
+    "SELECT perf_f45_issuer.mint('claim',0,'worker-f38-a',0,1800000000,'f45-new-role-denied-aaa')"),true);
  $check('new consumer role cannot call old F45 consume',
    $permissionDenied($consumer,
     "SELECT perf_f45_admission.consume('nonsense',1800000000)"),true);
@@ -102,9 +102,9 @@ case 'initial':
    $permissionDenied($consumer,
     "SELECT perf_f38_fenced.claim('worker-f38-a',1800000000)"),true);
  $check('new safe synthetic read-only intent reserved',
-   $writer->reserve('f46-db-clock-first',$manifest),'reserved_synthetic');
+   $writer->reserve('f45-db-clock-first',$manifest),'reserved_synthetic');
 
- $first=$gateway->mint('claim',0,$owner,0,'f46-server-claim-aaaacc',$forgedPast);
+ $first=$gateway->mint('claim',0,$owner,0,'f45-server-claim-aaaacc',$forgedPast);
  $p=$parts($first);
  $check('forged past time not used as token issue time',(int)$p[6]!==$forgedPast,true);
  $check('permit uses external database clock',
@@ -112,7 +112,7 @@ case 'initial':
  $check('permit TTL still 30 seconds from database time',
    (int)$p[7]-(int)$p[6],30);
  $check('nonce matches explicit demo-only format',
-   $p[8],'f46-server-claim-aaaacc');
+   $p[8],'f45-server-claim-aaaacc');
  [$id,$gen,$ep]=$parse($gateway->consume($first,$forgedFuture));
  $check('forged future time cannot invalidate a fresh permit',$ep,7);
  $check('fresh permit claim provides id and generation',
@@ -120,7 +120,7 @@ case 'initial':
  $check('same signed permit replay denied with false clock',
    $gateway->consume($first,$forgedPast),'signed_nonce_replay_denied');
  $ack=$gateway->mint('ack',$id,$owner,$gen,
-     'f46-server-ack-aaaacc',$forgedFuture);
+     'f45-server-ack-aaaacc',$forgedFuture);
  $check('ACK permit minted despite supplied future clock',
    str_starts_with($ack,'f45|ack|'.$id.'|'),true);
  $check('ACK with forged past accepted only if server time valid',
@@ -135,20 +135,20 @@ case 'initial':
   'SELECT perf_f45_issuer.mint(?,CAST(? AS bigint),?,'
   .'CAST(? AS bigint),CAST(? AS bigint),?)'
  );
- $stmt->execute(['claim',0,$owner,0,$past,'f46-backdated-expired-aa']);
+ $stmt->execute(['claim',0,$owner,0,$past,'f45-backdated-expired-aa']);
  $expired=(string)$stmt->fetchColumn();
  $check('backdated privileged CI fixture has valid token shape',
    str_starts_with($expired,'f45|claim|'),true);
  $check('forged backdated clock cannot revive already expired signed permit',
    $gateway->consume($expired,$past),'invalid_or_expired_permit_denied');
- $stmt->execute(['claim',0,$owner,0,$now+45,'f46-future-premature-aa']);
+ $stmt->execute(['claim',0,$owner,0,$now+45,'f45-future-premature-aa']);
  $future=(string)$stmt->fetchColumn();
  $check('forged future clock cannot admit not-yet-active permit',
    $gateway->consume($future,$now+45),'invalid_or_expired_permit_denied');
  $cache1=$gateway->mint('claim',0,$owner,0,
-     'f46-cache-external-aaaa',$forgedPast);
+     'f45-cache-external-aaaa',$forgedPast);
  $cache2=$gateway->mint('claim',0,$owner,0,
-     'f46-cache-local-bbbbbb',$forgedPast);
+     'f45-cache-local-bbbbbb',$forgedPast);
  $check('two separate issued permits available for quarantine experiments',
    $cache1!==$cache2,true);
  if(file_put_contents($cacheFile,json_encode(
@@ -166,7 +166,7 @@ case 'external_quarantine':
    $state($portal,'perf_f43_sql_guard'),'released_mock:7');
  $check('new issuance during external quarantine denied',
    $gateway->mint('claim',0,$owner,0,
-     'f46-external-locked-aa',$forgedPast),
+     'f45-external-locked-aa',$forgedPast),
    'external_quarantine_denied');
  // Expected remaining problem: local SQL cannot independently detect source
  // quarantine and still accepts previously issued bearer until TTL ends.
@@ -190,7 +190,7 @@ case 'local_quarantine':
    'sql_quarantine_denied');
  $check('no new permit issued during external quarantine',
    $gateway->mint('claim',0,$owner,0,
-      'f46-both-quarantined-aa',$forgedPast),
+      'f45-both-quarantined-aa',$forgedPast),
    'external_quarantine_denied');
  $check('outbox stays dispatch-disabled',$dispatch(),0);
  break;
@@ -200,13 +200,13 @@ case 'both_released':
    [$state($external,'perf_f41_recovery'),$state($portal,'perf_f43_sql_guard')],
    ['released_mock:8','released_mock:8']);
  $check('new read-only synthetic intent reserved in epoch eight',
-   $writer->reserve('f46-after-quarantine',$manifest),'reserved_synthetic');
+   $writer->reserve('f45-after-quarantine',$manifest),'reserved_synthetic');
  $token=$gateway->mint('claim',0,$owner,0,
-   'f46-claim-epoch-eight-aa',$forgedFuture);
+   'f45-claim-epoch-eight-aa',$forgedFuture);
  [$id,$gen,$epoch]=$parse($gateway->consume($token,$forgedPast));
  $check('server-clock signed claim uses recovery epoch eight',$epoch,8);
  $ack=$gateway->mint('ack',$id,$owner,$gen,
-   'f46-ack-epoch-eight-aa',$forgedPast);
+   'f45-ack-epoch-eight-aa',$forgedPast);
  $check('signed ACK accepted under current server time and epoch',
    $gateway->consume($ack,$forgedFuture),'acknowledged_signed_mock');
  $check('old epoch-seven cached permit cannot be consumed after release',
@@ -218,7 +218,7 @@ case 'both_released':
    'REVOKE EXECUTE ON FUNCTION perf_f46_issuer.mint_server(text,bigint,text,bigint,text,bigint) FROM perf_f46_issuer'
  );
  $check('issuer permission loss causes fail-closed',
-   $gateway->mint('claim',0,$owner,0,'f46-no-role-permit-aaaa',$forgedPast),
+   $gateway->mint('claim',0,$owner,0,'f45-no-role-permit-aaaa',$forgedPast),
    'server_issuer_unavailable');
  $external->exec(
    'GRANT EXECUTE ON FUNCTION perf_f46_issuer.mint_server(text,bigint,text,bigint,text,bigint) TO perf_f46_issuer'
@@ -238,7 +238,7 @@ case 'both_released':
    )->fetchColumn(),0);
  putenv('PERF_F46_SERVER_CLOCK_LAB=0');
  $check('disabled feature switch closes mint',
-   $gateway->mint('claim',0,$owner,0,'f46-disabled-feature-aa',$forgedPast),
+   $gateway->mint('claim',0,$owner,0,'f45-disabled-feature-aa',$forgedPast),
    'server_clock_lab_disabled');
  putenv('PERF_F46_SERVER_CLOCK_LAB=1');
  putenv('APP_ENV=production');
