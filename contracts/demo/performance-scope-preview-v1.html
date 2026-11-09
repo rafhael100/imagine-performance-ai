@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Imagine Performance AI — Painel de demonstração offline</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172342;background:#f5f7fc;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}button{font:inherit}button:focus-visible{outline:3px solid #8275fa;outline-offset:2px}
+.app{display:grid;grid-template-columns:237px minmax(0,1fr);min-height:100vh}
+.side{background:#101b3b;color:#d5def9;padding:30px 18px;display:flex;flex-direction:column;gap:25px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 10px}
+.logo{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#6b63e9,#a68efa);color:#fff;font-weight:800;font-size:21px;letter-spacing:-2px}
+.brand b{display:block;color:#fff;font-size:18px;letter-spacing:-.5px}.brand small{color:#9baacc;font-size:10px;letter-spacing:2px}
+.side-caption{margin:12px 12px 5px;color:#8d9bc0;font-size:11px;font-weight:800;letter-spacing:1.3px}
+.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:#c2ccea;text-align:left;border-radius:11px;padding:12px 14px;cursor:pointer;font-weight:650}
+.nav button.active,.nav button:hover{background:#26345f;color:#fff}
+.side-foot{margin-top:auto;padding:16px;border:1px solid #3b4b77;border-radius:14px;color:#c4cfea;font-size:12px;line-height:1.6}
+.side-foot strong{color:#fff;display:block;margin-bottom:5px}
+.main{padding:34px clamp(18px,4vw,55px) 50px;max-width:1580px;width:100%;margin:auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:750;letter-spacing:1.4px;color:#6055c7;text-transform:uppercase}
+h1{margin:7px 0;font-size:clamp(28px,3vw,38px);letter-spacing:-1.4px;color:#111a36}
+h2{margin:0;font-size:19px;letter-spacing:-.4px;color:#162243}
+p{margin:0}.muted{color:#6c7791;font-size:13px;line-height:1.6}
+.status-pill{background:#eae8ff;border:1px solid #d3ceff;color:#5642b8;border-radius:99px;font-size:12px;font-weight:800;padding:9px 14px}
+.warning{display:flex;gap:14px;background:#fff6e6;border:1px solid #f2dbb0;border-radius:15px;padding:18px;margin:24px 0 26px;color:#76521a;font-size:13px;line-height:1.65}
+.warning strong{font-size:14px}.warning .symbol{font-weight:900;font-size:22px}
+.filters{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:22px}
+.seg{display:flex;gap:6px;padding:4px;background:#e9edfa;border-radius:11px}
+.seg button{border:0;background:transparent;border-radius:8px;color:#64718c;font-weight:650;font-size:13px;padding:9px 14px;cursor:pointer}
+.seg button.active{background:#fff;color:#493cc2;box-shadow:0 2px 7px #1d2a561c}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:27px}
+.metric,.panel{background:#fff;border:1px solid #e4e9f4;box-shadow:0 7px 22px #18274608;border-radius:17px}
+.metric{padding:19px}.metric label{display:block;color:#6d7991;font-size:12px;font-weight:650;margin-bottom:13px}
+.metric strong{font-size:30px;letter-spacing:-1px;color:#172344}
+.metric small{display:block;font-size:12px;color:#8b95a9;margin-top:9px}
+.metric.deny strong{font-size:18px;letter-spacing:0;color:#9b5222}
+.grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.85fr);gap:18px}
+.panel{min-width:0;padding:22px}.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}
+.minor{font-size:12px;color:#8d97aa}.stack{display:grid;gap:13px}
+.channel-card{background:#f8f9fd;border:1px solid #e9edf8;border-radius:13px;padding:16px}
+.channel-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:13px;font-weight:800;font-size:14px}
+.channel-head span:last-child{color:#62718f;font-size:11px;font-weight:650}
+.bar-label{display:flex;justify-content:space-between;color:#647189;font-size:12px;margin:10px 0 6px}
+.bar{width:100%;height:8px;background:#e5e8f4;border-radius:6px;overflow:hidden}
+.bar>span{display:block;height:100%;background:linear-gradient(90deg,#6259da,#9186ef);border-radius:6px}
+.bar.group>span{background:linear-gradient(90deg,#2c86a9,#56bcce)}
+.campaign{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #ecf0f8}
+.campaign:last-child{border:0}.avatar{width:39px;height:39px;border-radius:11px;background:#eeeefe;display:grid;place-items:center;color:#655bd1;font-weight:800;flex-shrink:0}
+.campaign-body{flex:1;min-width:0}.campaign-title{font-size:13px;font-weight:750;color:#1d2a4b}
+.campaign-sub{color:#8994a6;font-size:11px;margin-top:5px}
+.tag{font-size:11px;border-radius:99px;padding:6px 9px;white-space:nowrap;background:#e8f5f1;color:#267a5d;font-weight:700}
+.tag.paused{background:#fff0d9;color:#a26d20}.tag.draft{background:#edeaff;color:#5b4dbf}
+.approval{border-bottom:1px solid #ecf0f8;padding:13px 0}.approval:last-child{border:0}
+.approval strong{display:block;font-size:13px;color:#24304d;margin-bottom:6px}
+.approval p{color:#7b87a1;font-size:12px}
+.notice{background:#f4f5fd;border-radius:11px;padding:15px;color:#68758d;font-size:13px;line-height:1.65}
+.empty{color:#8995aa;font-size:13px;padding:20px 0}.bottom{margin-top:26px;color:#93a0b5;font-size:11px}
+.hidden{display:none!important}.full{grid-column:1/-1}
+.detail-btn{background:#fff;border:1px solid #dce3f2;color:#4a50a3;border-radius:10px;font-size:12px;font-weight:750;padding:9px 11px;cursor:pointer}
+#methodology{margin-top:14px}
+@media(max-width:1050px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}}
+@media(max-width:740px){.app{display:block}.side{padding:18px;gap:13px}.side-foot,.side-caption{display:none}.nav{display:flex;flex-wrap:wrap}.nav button{padding:8px 10px;font-size:12px}.main{padding:24px 15px 35px}.metrics{gap:10px}.metric{padding:14px}.metric strong{font-size:25px}.panel{padding:17px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side" aria-label="Navegação da demonstração">
+ <div class="brand"><span class="logo" aria-hidden="true">im</span><span><b>imagine</b><small>PERFORMANCE AI</small></span></div>
+ <div><div class="side-caption">AMBIENTE DE TESTES</div><nav class="nav" aria-label="Seções do painel">
+  <button type="button" data-view="overview" class="active">Visão geral</button>
+  <button type="button" data-view="campaigns">Campanhas</button>
+  <button type="button" data-view="approvals">Aprovações</button>
+  <button type="button" data-view="reports">Relatórios</button>
+ </nav></div>
+ <div class="side-foot"><strong>Sem conexão externa</strong>Google Ads, Meta, CRM, pagamentos e Portal real estão desativados. Dados inteiramente fictícios.</div>
+</aside>
+<main class="main">
+ <div class="top"><div><div class="eyebrow">Visualização demonstrativa · empresa fictícia</div><h1 id="page-title">Visão geral</h1><p class="muted">Acompanhe capacidade e escopo de campanhas, sem executar anúncios.</p></div><span class="status-pill">● Somente demonstração</span></div>
+ <div class="warning" role="note"><span class="symbol" aria-hidden="true">!</span><div><strong>Ambiente fictício — nenhuma operação ou cobrança autorizada</strong><div>Os números e limites são ilustrativos. O produto não está contratado, homologado ou conectado às plataformas de anúncios.</div></div></div>
+ <div class="filters"><div><span class="eyebrow">Canal</span><p class="muted">Filtre a visualização sem alterar o escopo</p></div><div class="seg" role="group" aria-label="Filtro de canal"><button type="button" class="active" data-channel="all">Todos</button><button type="button" data-channel="google_ads">Google Ads</button><button type="button" data-channel="meta">Meta</button></div></div>
+ <div class="metrics" id="metrics" aria-live="polite"></div>
+ <div class="grid">
+  <section id="scope-panel" class="panel"><div class="panel-head"><div><h2>Capacidade sob gestão</h2><p class="muted">Ativas e pausadas ocupam vagas</p></div><button id="method-btn" type="button" class="detail-btn" aria-expanded="false" aria-controls="methodology">Como contar</button></div><div id="channels" class="stack"></div><div id="methodology" class="notice hidden">Uma campanha pausada continua sob gestão até sua retirada formal. Grupos/conjuntos são contados aqui somente como hipótese de demonstração, ainda sujeita a homologação comercial. Substituições ordinárias não geram cobrança automática.</div></section>
+  <section id="approvals-panel" class="panel"><div class="panel-head"><div><h2>Revisões simuladas</h2><p class="muted">Sugestões sem execução</p></div><span class="minor">Somente leitura</span></div><div id="approvals"></div></section>
+  <section id="campaigns-panel" class="panel full"><div class="panel-head"><div><h2>Campanhas em demonstração</h2><p class="muted">Nenhum anúncio foi publicado ou alterado</p></div><span class="minor" id="campaign-count"></span></div><div id="campaigns"></div></section>
+  <section id="reports-panel" class="panel full"><div class="panel-head"><div><h2>Relatórios e indicadores</h2><p class="muted">Integração externa ainda indisponível</p></div></div><div class="notice">Nenhuma métrica real de impressões, cliques, custo, conversões ou retorno foi consultada. Os relatórios dependem de contratos, autorização, autenticação e validação de dados.</div></section>
+ </div>
+ <p class="bottom">Imagine Performance AI · perf.portal.scope-preview.synthetic.v1 · Sem dados reais, login, cookies, integrações ou armazenamento.</p>
+</main>
+</div>
+<script id="preview-data" type="application/json">
+{"schema_version":"perf.portal.scope-preview.synthetic.v1","source":"in_memory_fixture_only","tenant_ref":"perf-demo-aurora","read_only":true,"contracted":false,"ready_for_production":false,"authorization_eligible":false,"dispatch_enabled":false,"billing_enabled":false,"prices_homologated":false,"commercial":"not_homologated","channels":[{"id":"google_ads","label":"Google Ads","campaigns":{"used":2,"limit":2},"groups":{"used":2,"limit":3}},{"id":"meta","label":"Meta (Instagram/Facebook)","campaigns":{"used":1,"limit":1},"groups":{"used":1,"limit":2}}],"campaigns":[{"ref":"cam-search-demo","title":"Pesquisa de serviços","channel":"google_ads","state":"active_demo"},{"ref":"cam-local-demo","title":"Presença regional","channel":"google_ads","state":"paused_demo"},{"ref":"cam-social-demo","title":"Reconhecimento da marca","channel":"meta","state":"draft_demo"}],"approvals":[{"title":"Revisar peça de pesquisa","channel":"google_ads","status":"Aguardando revisão fictícia"},{"title":"Avaliar campanha regional","channel":"meta","status":"Sugestão sem aprovação real"}]}
+</script>
+<script>
+'use strict';
+const data=JSON.parse(document.getElementById('preview-data').textContent);
+if(data.schema_version!=='perf.portal.scope-preview.synthetic.v1'||data.contracted!==false||data.dispatch_enabled!==false||data.billing_enabled!==false||data.ready_for_production!==false){throw new Error('Contrato de demonstração inválido.');}
+let channel='all',view='overview';
+const $=id=>document.getElementById(id);
+const el=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=String(value);return n;};
+function relevant(items){return items.filter(x=>channel==='all'||x.channel===channel||x.id===channel);}
+function renderMetrics(){const chosen=relevant(data.channels);const c=chosen.reduce((n,x)=>n+x.campaigns.used,0);const g=chosen.reduce((n,x)=>n+x.groups.used,0);const pending=relevant(data.approvals).length;const values=[['Campanhas sob gestão',c,'Inclui campanhas pausadas'],['Grupos/conjuntos',g,'Contagem ilustrativa'],['Revisões simuladas',pending,'Nenhuma aprovação real'],['Estado comercial','Bloqueado','Sem contrato ou cobrança']];$('metrics').replaceChildren();values.forEach((x,i)=>{const m=el('div','metric'+(i===3?' deny':''));m.append(el('label','',x[0]),el('strong','',x[1]),el('small','',x[2]));$('metrics').append(m);});}
+function renderChannels(){$('channels').replaceChildren();relevant(data.channels).forEach(x=>{const c=el('div','channel-card');const head=el('div','channel-head');head.append(el('span','',x.label),el('span','','Capacidade fictícia'));c.append(head);[['Campanhas',x.campaigns,''],['Grupos/conjuntos',x.groups,'group']].forEach(([label,cap,typ])=>{const line=el('div','bar-label');line.append(el('span','',label),el('span','',cap.used+' de '+cap.limit));const bar=el('div','bar '+typ);const filled=el('span');filled.style.width=(cap.limit===0?0:Math.min(100,100*cap.used/cap.limit))+'%';bar.append(filled);c.append(line,bar);});$('channels').append(c);});}
+function renderCampaigns(){const list=relevant(data.campaigns);$('campaign-count').textContent=list.length+' demonstrações';$('campaigns').replaceChildren();if(!list.length){$('campaigns').append(el('p','empty','Nenhuma campanha neste filtro.'));return;}list.forEach(x=>{const card=el('div','campaign');card.append(el('div','avatar',x.channel==='meta'?'M':'G'));const body=el('div','campaign-body');body.append(el('div','campaign-title',x.title),el('div','campaign-sub',(x.channel==='meta'?'Meta':'Google Ads')+' · '+x.ref+' · sem publicação'));card.append(body);const state=x.state==='paused_demo'?'Pausada (sob gestão)':x.state==='draft_demo'?'Rascunho':'Ativa (simulação)';card.append(el('span','tag '+(x.state==='paused_demo'?'paused':x.state==='draft_demo'?'draft':''),state));$('campaigns').append(card);});}
+function renderApprovals(){$('approvals').replaceChildren();const list=relevant(data.approvals);if(!list.length){$('approvals').append(el('p','empty','Nenhuma revisão simulada no canal.'));return;}list.forEach(x=>{const a=el('div','approval');a.append(el('strong','',x.title),el('p','',x.status));$('approvals').append(a);});}
+function renderView(){const panels={overview:['scope','approvals','campaigns','reports'],campaigns:['scope','campaigns'],approvals:['approvals'],reports:['reports']};const labels={overview:'Visão geral',campaigns:'Campanhas sob gestão',approvals:'Revisões e aprovações',reports:'Relatórios'};$('page-title').textContent=labels[view];['scope','approvals','campaigns','reports'].forEach(k=>$(k+'-panel').classList.toggle('hidden',!panels[view].includes(k)));document.querySelectorAll('[data-view]').forEach(b=>{const yes=b.dataset.view===view;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});}
+function render(){renderMetrics();renderChannels();renderCampaigns();renderApprovals();renderView();}
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.view;renderView();}));
+document.querySelectorAll('[data-channel]').forEach(b=>b.addEventListener('click',()=>{channel=b.dataset.channel;document.querySelectorAll('[data-channel]').forEach(x=>{const active=x===b;x.classList.toggle('active',active);x.setAttribute('aria-pressed',String(active));});render();}));
+$('method-btn').addEventListener('click',()=>{const hidden=$('methodology').classList.toggle('hidden');$('method-btn').setAttribute('aria-expanded',String(!hidden));});
+render();
+</script>
+</body>
+</html>
