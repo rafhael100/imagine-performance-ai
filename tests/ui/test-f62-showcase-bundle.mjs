@@ -14,7 +14,7 @@ function check(label,got,want){
 }
 const files=[
  'index.html','painel-campanhas.html','revisoes.html',
- 'relatorio-capacidade.csv','marcas-contas.json','manifest.json'
+ 'relatorio-capacidade.csv','relatorio-capacidade.json','marcas-contas.json','manifest.json'
 ];
 for(const name of files){
  check('bundle contains '+name,existsSync(join(dir,name)),true);
@@ -27,7 +27,7 @@ for(const field of ['contracted','ready_for_production','provider_connected',
  'billing_enabled','dispatch_enabled','external_network_enabled']){
  check('fail-closed manifest '+field,manifest[field],false);
 }
-check('bundle file manifest is exact',manifest.files,files.slice(0,5));
+check('bundle file manifest is exact',manifest.files,files.slice(0,6));
 check('manifest read-only',manifest.read_only,true);
 
 const account=JSON.parse(readFileSync(join(dir,'marcas-contas.json'),'utf8'));
@@ -52,7 +52,7 @@ check('account JSON contains no secrets or financial fields',
  !/access_token|oauth|provider_account_id|customer_email|media_spend|price_brl|R\$/.test(accountText),true);
 
 const index=readFileSync(join(dir,'index.html'),'utf8');
-for(const name of files.slice(1,5)){
+for(const name of files.slice(1,6)){
  check('offline home links to '+name,index.includes('href="'+name+'"'),true);
 }
 check('index CSP disallows script and connect',
@@ -81,10 +81,22 @@ check('approved review count is fixture only',queue.counts.approved_mock_no_acti
 check('external account/customer text not present',
  !/access_token|provider_account_id|customer_email|media_spend/i.test(main+reviews),true);
 
-const csv=readFileSync(join(dir,'relatorio-capacidade.csv'));
-check('CSV starts with UTF-8 BOM',csv.subarray(0,3).toString('hex'),'efbbbf');
-check('CSV has header and two channel rows',csv.toString('utf8').trim().split(/\r?\n/).length,3);
-check('CSV is expressly not billing',csv.toString('utf8').includes('SEM FATURAMENTO OU EXECUCAO'),true);
+const csv=readFileSync(join(dir,'relatorio-capacidade.csv'),'utf8');
+const report=JSON.parse(readFileSync(join(dir,'relatorio-capacidade.json'),'utf8'));
+check('canonical report JSON schema',report.schema_version,'perf.report.synthetic.v1');
+check('canonical report fixture tenant',report.tenant_ref,manifest.tenant_ref);
+check('canonical report source',report.source,'derived_from_f53_in_memory_fixture_only');
+check('canonical report is not a real metric feed',report.real_provider_metrics_available,false);
+check('canonical report forbids dispatch',report.dispatch_enabled,false);
+check('canonical report forbids billing',report.billing_enabled,false);
+check('canonical report media spend is unknown',report.media_spend,null);
+check('canonical report currency is unknown',report.currency,null);
+check('canonical report campaign count matches dashboard',report.campaigns.length,dash.campaigns.length);
+check('canonical report group count matches dashboard',report.groups.length,dash.groups.length);
+check('canonical report channels equal dashboard capacity',report.channels.map(x=>x.id),dash.channels.map(x=>x.id));
+check('canonical CSV begins with explicit record type',csv.startsWith('record_type,channel,reference'),true);
+check('canonical CSV has header, disclaimer, capacity and six cards',csv.trim().split(/\r?\n/).length,12);
+check('CSV is expressly not billing',csv.includes('SEM DADOS REAIS OU COBRANCA'),true);
 check('CSV excludes real Google/Meta account identifiers',
- !/provider_account_id|access_token|media_spend|price_brl/i.test(csv.toString('utf8')),true);
+ !/provider_account_id|access_token|media_spend|price_brl/i.test(csv),true);
 console.log('PASS F62 '+n+' local-only deterministic showcase file checks');
