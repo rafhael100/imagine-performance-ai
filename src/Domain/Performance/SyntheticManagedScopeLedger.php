@@ -196,6 +196,21 @@ final class SyntheticManagedScopeLedger
         return $this->note($tenant,'replace_campaign',$new,'replaced_synthetic_no_fee');
     }
 
+    /**
+     * F1-60 read-only synthetic channel lookup for a managed campaign.
+     * A tenant ref never grants access to another tenant's campaign.
+     */
+    public function campaignChannel(string $tenant,string $campaign): ?string
+    {
+        if(!self::enabled())return null;
+        self::ref($tenant,'perf-demo-');self::ref($campaign,'cam-');
+        $row=$this->campaigns[$campaign]??null;
+        if($row===null||$row['tenant']!==$tenant||!$row['managed']){
+            return null;
+        }
+        return $row['channel'];
+    }
+
     /** @return array<string,mixed> */
     public function capacity(string $tenant,string $channel): array
     {
