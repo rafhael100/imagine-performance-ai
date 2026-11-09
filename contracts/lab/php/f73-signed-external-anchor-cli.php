@@ -48,7 +48,7 @@ $read=static function(string $path,int $max=25000)use($checkPath):string{
     if(!is_string($s))throw new RuntimeException('F73 file unreadable');
     return trim($s);
 };
-$db=static function(int $port,string $database,string $role,string $pw):PDO=>
+$db=static fn(int $port,string $database,string $role,string $pw):PDO =>
  new PDO(
     "pgsql:host=127.0.0.1;port=$port;dbname=$database;connect_timeout=3",
     $role,$pw,[
