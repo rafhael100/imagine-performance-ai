@@ -24,9 +24,13 @@ final class SignedPortalCapabilityGate
     /** @var array<string,int> */
     private array $seenNonces = [];
 
+    /** The key comes from controlled out-of-band configuration, not the envelope. */
+    public function __construct(private readonly string $trustedPublicKeyHex)
+    {
+    }
+
     public function check(
         string $envelope,
-        string $publicKeyHex,
         ?SyntheticCurrentAuthority $authority,
         int $now,
     ): string {
@@ -50,7 +54,7 @@ final class SignedPortalCapabilityGate
             || $packet['key_id']!=='ephemeral-lab-key-1'
             || !is_string($packet['payload'])
             || !is_string($packet['signature'])
-            || !preg_match('/^[a-f0-9]{64}$/D',$publicKeyHex)) {
+            || !preg_match('/^[a-f0-9]{64}$/D',$this->trustedPublicKeyHex)) {
             return 'malformed_envelope';
         }
         $payload=self::decodeBase64url($packet['payload'],2048);
@@ -61,7 +65,7 @@ final class SignedPortalCapabilityGate
         }
         try{
             if(!sodium_crypto_sign_verify_detached(
-                $signature,self::DOMAIN_SEPARATOR.$payload,hex2bin($publicKeyHex)
+                $signature,self::DOMAIN_SEPARATOR.$payload,hex2bin($this->trustedPublicKeyHex)
             )){
                 return 'invalid_signature';
             }
