@@ -1,3 +1,16 @@
+# Imagine Performance AI — FAST-PERF F1-45 e F1-46 (09/11/2026)
+
+> **Somente CI e banco de dados sintético**. Os PRs continuam em rascunho e não existe implantação operacional.
+
+- [F1-45 / PR #112](https://github.com/rafhael100/imagine-performance-ai/pull/112): emissão externa de token HMAC efêmero e verificação SQL de assinatura + epoch + nonce em transação PostgreSQL local. [GitHub Actions SUCCESS #42644512639](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42644512639), **54 testes específicos** (26+8+6+14) e regressões.
+- [F1-46 / PR #114](https://github.com/rafhael100/imagine-performance-ai/pull/114): emissor e consumidor SQL ignoram horários inventados pelo cliente e consultam `clock_timestamp()` do próprio PostgreSQL; revogam EXECUTE direto das roles antigas. [GitHub Actions SUCCESS #42646325659](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42646325659), **50 testes específicos** (27+6+5+12) e regressões. Foi corrigido um primeiro erro de identificador de nonce no CI; sucesso corresponde ao commit corrigido.
+- **Vulnerabilidade ainda reproduzida em F1-45 e F1-46:** autorização anteriormente emitida permanece consumível durante quarentena **somente externa** até a expiração, se o banco local não acompanhar a revogação. O tempo de vida de 30 segundos é apenas de ensaio, não SLA ou medida suficiente de revogação.
+- **Bloqueios P0/HT-R01/SEC-R03/T3, Issue #102 e AppSec/DBA**: sincronização/estado pós-restore resistente a rollback, identidade e autorização de workload (Portal/CRM), gestão de chaves assimétricas ou KMS, mTLS/PoP, limites/credenciais dos provedores, prova de permissão/contrato humano e idempotência de efeitos externos. Há risco de relógios dessíncronos entre hosts, HMAC simétrico replicado, replay de backups dos dois bancos e bypass administrativo. A demonstração não representa homologação.
+
+`dispatch_enabled=false` obrigatório, `pending_synthetic` sem efeitos, `APP_ENV=production` bloqueado nos gateways de laboratório. **Nenhum merge, `main`, VPS, n8n, Google/Meta, CRM, PSP, clientes, gastos ou deploy.**
+
+---
+
 # FAST-PERF F1-45 — 09/11/2026 (somente CI, sem deploy)
 
 [PR draft #112](https://github.com/rafhael100/imagine-performance-ai/pull/112) e [CI SUCCESS #42644512639](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42644512639): **54 testes próprios aprovados** (26+8+6+14) com regressões F1-30–F1-44. Emissão de autorização HMAC sintética pela autoridade F41 externa, verificação e nonce único consumido na mesma transação SQL local F43/F38; roles anteriores sem EXECUTE. **Vulnerabilidade remanescente comprovada:** autorização previamente emitida pode ser consumida durante quarentena externa, antes da quarentena local. Além disso, relógio fornecido pelo chamador, chave HMAC simétrica duplicada entre bancos, ausência de KMS/S2S e retrocesso de backups impedem produção.
