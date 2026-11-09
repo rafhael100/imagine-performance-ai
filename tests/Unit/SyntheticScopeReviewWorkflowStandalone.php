@@ -151,9 +151,10 @@ $check('49 A audit recorded only synthetic billing effect',
 $check('50 A audit recorded no provider effect',
  count(array_filter($flow->auditFor($a),
   static fn(array $row):bool=>$row['provider_action']!=='none_synthetic')),0);
-$check('51 B does not see A audit',
+$check('51 B never sees A successful audit decision',
  count(array_filter($flow->auditFor($b),
-  static fn(array $row):bool=>$row['request_ref']===$first)),0);
+  static fn(array $row):bool=>$row['request_ref']===$first
+    &&$row['status']==='scope_applied_synthetic_only')),0);
 $check('52 old approved request not in pending',
  count($flow->pendingFor($a)),0);
 
