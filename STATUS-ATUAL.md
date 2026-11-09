@@ -1,3 +1,11 @@
+# FAST-PERF F1-48 — 09/11/2026 (CI esperado-negativo)
+
+[PR draft #118](https://github.com/rafhael100/imagine-performance-ai/pull/118) e [CI SUCCESS #42658796516](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42658796516), **37/37 verificações F1-48** em cinco fases e regressões F1-30–F1-47. Em PostgreSQL descartável foi realizado `pg_dump`/restore real da tabela privada `perf_f47_authority.observed`: um token já consumido foi aceito novamente. Ao restaurar também `perf_f41_recovery.guard_state` após quarentena da fonte, tokens antigos/revogados voltaram a ser aceitos. **Esse CI verde demonstra vulnerabilidade, não correção.**
+
+O fluxo de emissão/verificação é **apenas leitura fictícia e observação no banco externo**, sem lease/ACK real, dispatch, Google/Meta ou clientes. Falta autoridade de época irreversível fora do backup, detecção e quarentena automática de restauração, política segura de reabertura, identidade e escopo reais, KMS, AppSec/DBA e idempotência dos efeitos. **P0/HT-R01/SEC-R03/T3, #102, #115 e #117 permanecem abertos.** Nenhum merge, main, VPS, deploy ou gasto.
+
+---
+
 # FAST-PERF F1-47 — 09/11/2026: observação atômica externa contra token obsoleto
 
 [PR draft #116](https://github.com/rafhael100/imagine-performance-ai/pull/116), [CI SUCCESS #42657812543](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42657812543): **44/44 testes próprios F1-47**, regressões F1-30–F1-46. A função SQL `perf_f47_authority.observe` vincula quarentena da fonte, HMAC, época, emissão e recibo de nonce único na **mesma transação no PostgreSQL externo**. Durante `quarantined:9`, tokens assinados antes da revogação foram negados mesmo com base local em `released_mock:8`; após reabertura em época 10 continuaram inválidos. Prova com lock de linha bloqueou a atualização concorrente da quarentena.
