@@ -1,0 +1,249 @@
+name: Performance F1-33 - Portal anchor nonce survives independent authority restore
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-33-portal-anchor-replay-2026-11-09
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f133-portal-anchor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-portal-signed-authority:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    services:
+      portal-authority-postgresql:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f08-db-only
+          POSTGRES_DB: portal_perf_auth_lab
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portal_perf_auth_lab"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+      independent-replay-postgresql:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f31-nonce-db-only
+          POSTGRES_DB: perf_f31_nonce_ci
+        ports:
+          - '127.0.0.1:5433:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f31_nonce_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      PORTAL_PERF_PG_AUTH_LAB: '1'
+      PORTAL_PERF_SIGNED_LAB: '1'
+      PORTAL_PERF_SQL_ISSUER_LAB: '1'
+      PERF_F29_SIGNED_PORTAL_LAB: '1'
+      PERF_F30_PG_END_TO_END_LAB: '1'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: portal_perf_auth_lab
+      DB_USERNAME: postgres
+      DB_PASSWORD: ci-f08-db-only
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: portal_perf_auth_lab
+      PGUSER: postgres
+      PGPASSWORD: ci-f08-db-only
+      LOG_CHANNEL: stderr
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      CACHE_STORE: array
+      F30_PORTAL_SOURCE_ROOT: portal-signed-source
+    steps:
+      - name: Checkout Performance verifier code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Checkout exact Portal F09 source code (never a moving branch)
+        uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: fc95f4bef1b2eab8eef2fcbb16fc6815e479dd21
+          path: portal-signed-source
+          persist-credentials: false
+      - name: Pin the issuer SHA and ensure standalone sodium support
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C portal-signed-source rev-parse HEAD)" = fc95f4bef1b2eab8eef2fcbb16fc6815e479dd21
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab
+      - name: Install isolated PHP 8.4 with PostgreSQL and sodium
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo,pdo_pgsql,mbstring,dom,xml,curl,fileinfo,intl,bcmath,zip,sodium
+      - name: Validate cross-repository domain and test-only PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -m | grep -i '^sodium$'
+          php -l app/Performance/Security/SignedPortalCapabilityGate.php
+          php -l app/Performance/Security/SyntheticCurrentAuthority.php
+          php -l contracts/lab/php/test-portal-pg-signed-capability-e2e.php
+          php -l portal-signed-source/apps/portal/app/Domain/PerformanceBridge/PortalPerfSqlAuthorityResolver.php
+          php -l portal-signed-source/apps/portal/app/Domain/PerformanceBridge/PortalSqlBackedCapabilityIssuer.php
+          php -l portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php
+      - name: Migrate only disposable Portal database using pinned Laravel source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd portal-signed-source/apps/portal
+          composer validate --strict --no-check-publish
+          composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
+          composer dump-autoload --no-interaction --no-scripts --no-plugins
+          cp .env.example .env
+          php artisan key:generate --force --no-interaction
+          test "$DB_DATABASE" = portal_perf_auth_lab
+          php artisan migrate --force --no-interaction
+          cd ../../..
+          git -C portal-signed-source diff --exit-code -- apps/portal/composer.lock
+      - name: Create exact Portal database reader with SELECT only
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "CREATE ROLE portal_f08_reader LOGIN PASSWORD 'ci-f08-read-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO portal_f08_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT USAGE ON SCHEMA public TO portal_f08_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT SELECT ON portal_perf_authority_sessions,portal_perf_authority_memberships,portal_perf_authority_services TO portal_f08_reader"
+      - name: Seed and verify the actual 60+45 Portal PostgreSQL authority/issuer checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          php portal-signed-source/apps/portal/preview/tests/test_pg_perf_authority.php
+          php portal-signed-source/apps/portal/preview/tests/test_pg_signed_issuer.php
+      - name: Cross repository SQL -> Ed25519 -> requery -> Performance (50 checks)
+        shell: bash
+        run: |
+          set -euo pipefail
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F30_PORTAL_CLAIM_FILE="$tempdir/portal-pg-signed.json"
+          export F30_PORTAL_PUBLIC_HEX_FILE="$tempdir/portal-public.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php "$F30_PORTAL_PUBLIC_HEX_FILE" 1800000000 > "$F30_PORTAL_CLAIM_FILE"
+          test "$(wc -c < "$F30_PORTAL_PUBLIC_HEX_FILE")" -eq 64
+          php contracts/lab/php/test-portal-pg-signed-capability-e2e.php
+          echo 'PASS Portal PG-backed Ed25519 claim verified with fresh PG source checks'
+      - name: Verify Ed25519 signed Portal capability plus replay in independent PostgreSQL
+        shell: bash
+        env:
+          PERF_F31_ED25519_REPLAY_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticPortalEd25519DurableReplayGate.php
+          php -l contracts/lab/php/test-f31-portal-ed25519-replay-pg.php
+          export PGPASSWORD=ci-f31-nonce-db-only
+          pg_isready -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "CREATE ROLE perf_f31_consumer LOGIN PASSWORD 'ci-f31-consumer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f contracts/lab/sql/012-f31-independent-ed25519-replay-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT CONNECT ON DATABASE perf_f31_nonce_ci TO perf_f31_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT USAGE ON SCHEMA perf_f31_receipts TO perf_f31_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT EXECUTE ON FUNCTION perf_f31_receipts.consume_validated_nonce(text,text,text,bigint,bigint) TO perf_f31_consumer"
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F31_PORTAL_CLAIM_FILE="$tempdir/f31-portal-pg-signed.json"
+          export F31_PORTAL_PUBLIC_HEX_FILE="$tempdir/f31-portal-public.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php "$F31_PORTAL_PUBLIC_HEX_FILE" 1800000000 > "$F31_PORTAL_CLAIM_FILE"
+          test "$(wc -c < "$F31_PORTAL_PUBLIC_HEX_FILE")" -eq 64
+          php contracts/lab/php/test-f31-portal-ed25519-replay-pg.php
+          if grep -R -E 'SyntheticPortalEd25519DurableReplayGate|perf_f31_receipts' app/Providers/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F31 lab-only replay authority attached to operational Laravel'
+            exit 1
+          fi
+      - name: Restore old pg_dump of nonce authority to reproduce replay, then advance Portal epoch
+        shell: bash
+        env:
+          PERF_F31_ED25519_REPLAY_LAB: '1'
+          PERF_F32_RESTORE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/test-f32-portal-nonce-restore-pg.php
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F32_PORTAL_CLAIM_FILE="$tempdir/ed25519-claim.json"
+          export F32_PORTAL_PUBLIC_HEX_FILE="$tempdir/ed25519-key.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php "$F32_PORTAL_PUBLIC_HEX_FILE" 1800000000 > "$F32_PORTAL_CLAIM_FILE"
+          test "$(wc -c < "$F32_PORTAL_PUBLIC_HEX_FILE")" -eq 64
+          export PGPASSWORD=ci-f31-nonce-db-only
+          pg_dump -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci --data-only -t perf_f31_receipts.used_nonces -Fp -f "$tempdir/receipt-before.sql"
+          test -s "$tempdir/receipt-before.sql"
+          PERF_F32_PHASE=consume php contracts/lab/php/test-f32-portal-nonce-restore-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "TRUNCATE perf_f31_receipts.used_nonces"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f "$tempdir/receipt-before.sql"
+          PERF_F32_PHASE=restored php contracts/lab/php/test-f32-portal-nonce-restore-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE portal_perf_authority_services SET recovery_epoch=8 WHERE organization_ref='org-demo-a' AND recovery_epoch=7"
+          PERF_F32_PHASE=fenced php contracts/lab/php/test-f32-portal-nonce-restore-pg.php
+          if grep -R 'test-f32-portal-nonce-restore-pg' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F32 security proof attached to operational Laravel'
+            exit 1
+          fi
+      - name: Verify Portal anchor prevents nonce-db-only restore replay, but direct old verifier remains unsafe
+        shell: bash
+        env:
+          PERF_F31_ED25519_REPLAY_LAB: '1'
+          PERF_F33_PORTAL_ANCHOR_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticPortalAnchoredReplayGate.php
+          php -l contracts/lab/php/test-f33-portal-anchor-restore-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "CREATE ROLE perf_f33_anchor_consumer LOGIN PASSWORD 'ci-f33-anchor-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f contracts/lab/sql/013-f33-portal-external-nonce-anchor-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO perf_f33_anchor_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT USAGE ON SCHEMA perf_f33_anchor TO perf_f33_anchor_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f33_anchor.consume_validated_nonce(text,text,text,bigint,bigint) TO perf_f33_anchor_consumer"
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F33_PORTAL_CLAIM_FILE="$tempdir/portal-epoch8-ed25519.json"
+          export F33_PORTAL_PUBLIC_HEX_FILE="$tempdir/portal-epoch8-key.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php "$F33_PORTAL_PUBLIC_HEX_FILE" 1800000000 > "$F33_PORTAL_CLAIM_FILE"
+          test "$(wc -c < "$F33_PORTAL_PUBLIC_HEX_FILE")" -eq 64
+          export PGPASSWORD=ci-f31-nonce-db-only
+          pg_dump -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci --data-only -t perf_f31_receipts.used_nonces -Fp -f "$tempdir/nonce-before-f33.sql"
+          PERF_F33_PHASE=consume php contracts/lab/php/test-f33-portal-anchor-restore-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "TRUNCATE perf_f31_receipts.used_nonces"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f "$tempdir/nonce-before-f33.sql"
+          PERF_F33_PHASE=restored php contracts/lab/php/test-f33-portal-anchor-restore-pg.php
+          if grep -R 'SyntheticPortalAnchoredReplayGate' routes/ bootstrap/ app/Providers/ database/migrations/; then
+            echo 'FAIL: F33 anchor lab exposed as operational Laravel component'
+            exit 1
+          fi
+      - name: No production route, provider, VPS or cloud connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -E 'SignedPortalCapabilityGate|SyntheticCurrentAuthority' app/Providers/ routes/ bootstrap/; then
+            echo 'FAIL: lab verifier connected to live framework routing'
+            exit 1
+          fi
+          git diff --exit-code -- app/Providers/ routes/ bootstrap/ composer.lock
