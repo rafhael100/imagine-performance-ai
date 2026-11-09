@@ -40,7 +40,7 @@ $check=static function(string $label,mixed $actual,mixed $expected) use (&$n):vo
     ++$n;
     echo "PASS F23 $n $label\n";
 };
-$one=static function(string $sql) use($admin):mixed=> $admin->query($sql)->fetchColumn();
+$one=static fn (string $sql):mixed => $admin->query($sql)->fetchColumn();
 $state=static function(string $request) use($admin):?array{
     $s=$admin->prepare(
         'SELECT tenant_id,review_state,reviewer_actor_ref,dispatch_state
