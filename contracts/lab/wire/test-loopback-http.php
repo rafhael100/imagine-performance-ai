@@ -86,14 +86,6 @@ $check = static function (string $label, mixed $got, mixed $expected) use (&$n):
     ++$n;
     echo "PASS F1-13 $n $label\n";
 };
-$rev = static function (string $service, PDO $db): array {
-    $stmt = $db->prepare(
-        "SELECT active, ".($db->getAttribute(PDO::ATTR_CONNECTION_STATUS) ? 'min_revision' : 'min_revision')
-        ." FROM perf_external_lab.mock_authority_fences WHERE service_ref=?"
-    );
-    $stmt->execute([$service]);
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-};
 $receiptCount = static fn (): int => (int) $sourceAdmin->query(
     'SELECT count(*) FROM perf_external_lab.mock_wire_receipts'
 )->fetchColumn();
@@ -182,26 +174,26 @@ $check('24 authority records source event ACK',
          WHERE event_id='evt-demo-contract-b2'"
     )->fetchColumn(), 'acked');
 $check('25 destination grant is revoked',
-    $mainAdmin->query(
+    in_array($mainAdmin->query(
         "SELECT active FROM perf_s2s_lab.mock_service_grants WHERE service_ref='svc-demo-b'"
-    )->fetchColumn(), false);
+    )->fetchColumn(), [false, 'f', '0', 0], true), true);
 $check('26 destination revision advanced to 2',
     (int) $mainAdmin->query(
         "SELECT grant_revision FROM perf_s2s_lab.mock_service_grants WHERE service_ref='svc-demo-b'"
     )->fetchColumn(), 2);
 $check('27 tenant A is still revoked',
-    $mainAdmin->query(
+    in_array($mainAdmin->query(
         "SELECT active FROM perf_s2s_lab.mock_service_grants WHERE service_ref='svc-demo-a'"
-    )->fetchColumn(), false);
+    )->fetchColumn(), [false, 'f', '0', 0], true), true);
 $check('28 tenant A revision untouched',
     (int) $mainAdmin->query(
         "SELECT grant_revision FROM perf_s2s_lab.mock_service_grants WHERE service_ref='svc-demo-a'"
     )->fetchColumn(), 6);
 $check('29 denied requests never created extra receipt', $receiptCount(), 1);
 $check('30 source revocation source remains false',
-    $sourceAdmin->query(
+    in_array($sourceAdmin->query(
         "SELECT active FROM perf_external_lab.mock_authority_fences WHERE service_ref='svc-demo-b'"
-    )->fetchColumn(), false);
+    )->fetchColumn(), [false, 'f', '0', 0], true), true);
 $check('31 signed event sample has no person/session or payment data',
     array_key_exists('email',$event)||array_key_exists('session',$event)
         ||array_key_exists('payment',$event), false);
