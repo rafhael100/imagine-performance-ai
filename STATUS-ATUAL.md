@@ -1,3 +1,13 @@
+# FAST-PERF F1-44 — Estado auditado de desenvolvimento (09/11/2026)
+
+**PR draft [#110](https://github.com/rafhael100/imagine-performance-ai/pull/110)**, filho do F1-43 #108. [CI SUCCESS verificado](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42630963783), **44 verificações F1-44** (10 divergência + 10 alinhamento + 8 quarentena unilateral + 16 realinhamento fictício), e regressões F1-30–F1-43. Nenhum merge, deploy, `main`, VPS ou efeito externo.
+
+**Implementado só em CI:** `SyntheticCrossAuthorityAdmission` compara o estado de recuperação da autoridade externa PostgreSQL F1-41 e o guard SQL local F1-43, recusa divergência de época e quarentena unilateral, rejeita token de época antiga e fecha na perda de permissão da fonte externa. O CI também demonstra **bypass remanescente**: chamada direta à função SQL local F1-43 ainda funciona quando a fonte externa está em quarentena ou divergente, se o SQL local estiver liberado. Logo, não há segurança distribuída de produção.
+
+**Riscos e dependências bloqueantes:** falta sincronização autenticada e atômica das épocas, detecção obrigatória de restore e quarentena, armazenamento de epoch resistente a rollback simultâneo, isolamento real de credenciais, IAM/mTLS/PoP/KMS, autorização real Portal/CRM/Google/Meta, travamento de todos os entrypoints, idempotência de efeitos, aprovação humana, testes AppSec/DBA e gates P0, HT-R01 e SEC-R03/T3. Ver [Issue P0/SEC #102](https://github.com/rafhael100/imagine-performance-ai/issues/102). Outbox permanentemente `dispatch_enabled=false`, estado `pending_synthetic`. **Não está pronto para produção.**
+
+---
+
 # Atualização verificável — 09/11/2026: FAST-PERF F1-41 a F1-43
 
 > **Exclusivamente CI e dados sintéticos:** não há backend operacional, merge, deploy, API Google/Meta, n8n, cobrança, VPS ou autorização de campanhas. Registros abaixo são prova de laboratórios de segurança; CI verde não significa homologação.
