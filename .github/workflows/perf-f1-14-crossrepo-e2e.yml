@@ -1,0 +1,164 @@
+name: Performance F1-14 - cross-repository Portal MFA revoke to signed local HTTP
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-14-crossrepo-mfa-http-e2e-2026-11-08
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f114-crossrepo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  two-repository-loopback:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: portal_lab
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portal_lab"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_test_relay_main
+      PERF_FENCE_DB: perf_test_relay_authority
+      PGUSER: postgres
+      PGPASSWORD: local-ci-only
+      PERF_SNAPSHOT_FIXTURE: contracts/demo/performance-dashboard-v1.json
+      PERF_F13_WIRE_LAB: '1'
+      PERF_WIRE_LAB_CLOCK: '1800000000'
+    steps:
+      - name: Check out pinned Performance repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Check out pinned public Portal F13 source
+        uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: cbc8ab322666745c0603a84254c02a5c1ed30bbc
+          path: portal-source
+          persist-credentials: false
+      - name: PHP 8.4, Composer and local PostgreSQL/cURL
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+          extensions: mbstring, dom, xml, pdo, pdo_pgsql, curl, fileinfo, intl, bcmath, zip
+      - name: Assert pinned Portal version and identical signed-wire protocol bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C portal-source rev-parse HEAD)" = cbc8ab322666745c0603a84254c02a5c1ed30bbc
+          cmp portal-source/apps/portal/labs/performance-contract/SyntheticWireEnvelope.php contracts/lab/wire/SyntheticWireEnvelope.php
+          cmp portal-source/apps/portal/labs/performance-contract/perf-revocation-contract-v1.json contracts/lab/demo/perf-revocation-contract-v1.json
+          test "$PGHOST" = 127.0.0.1
+          test "$PERF_FENCE_DB" = perf_test_relay_authority
+          php -l contracts/lab/wire/import-portal-generated-event.php
+          php -l contracts/lab/wire/receiver.php
+          php -l portal-source/apps/portal/labs/performance-contract/export-signed-perf-event.php
+          pg_isready -h 127.0.0.1 -p 5432 -d portal_lab -U postgres
+      - name: Run Portal F1-F10 regressions and issue actual synthetic revoke with MFA
+        shell: bash
+        env:
+          PORTAL_CLIENT_LAB_ENABLED: '1'
+          PORTAL_PERF_F11_LAB_ENABLED: '1'
+          APP_ENV: testing
+          APP_DEBUG: 'false'
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '5432'
+          DB_DATABASE: portal_lab
+          DB_USERNAME: postgres
+          DB_PASSWORD: local-ci-only
+          SESSION_DRIVER: array
+          CACHE_STORE: array
+          QUEUE_CONNECTION: sync
+          LOG_CHANNEL: stderr
+        run: |
+          set -euo pipefail
+          key="$(php -r 'echo bin2hex(random_bytes(32));')"
+          echo "::add-mask::$key"
+          export PERF_WIRE_LAB_TEST_KEY_HEX="$key"
+          echo "PERF_WIRE_LAB_TEST_KEY_HEX=$key" >> "$GITHUB_ENV"
+          export PORTAL_F13_EVENT_EXPORT="$RUNNER_TEMP/portal-perf-f13-event.json"
+          export PORTAL_F13_HEADERS_EXPORT="$RUNNER_TEMP/portal-perf-f13-wire-headers.json"
+          echo "PERF_WIRE_EVENT_FIXTURE=$PORTAL_F13_EVENT_EXPORT" >> "$GITHUB_ENV"
+          echo "PERF_WIRE_HEADERS_FIXTURE=$PORTAL_F13_HEADERS_EXPORT" >> "$GITHUB_ENV"
+          cd portal-source/apps/portal
+          composer validate --strict --no-check-publish
+          composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
+          composer dump-autoload --no-interaction --no-scripts --no-plugins
+          cp .env.example .env
+          php artisan key:generate --force --no-interaction
+          php labs/client-auth/bootstrap_lab.php
+          php vendor/bin/phpunit --configuration=labs/client-auth/phpunit-lab.xml --no-progress
+          php labs/performance-contract/test-perf-f11-revocation.php
+          php labs/performance-contract/export-signed-perf-event.php
+          test -s "$PORTAL_F13_EVENT_EXPORT"
+          test -s "$PORTAL_F13_HEADERS_EXPORT"
+      - name: Build isolated Performance baseline and restore guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          createdb -h 127.0.0.1 -U postgres perf_test_relay_main
+          bash contracts/lab/sql/run-revocation-relay-pg-lab.sh
+      - name: Import exact Portal event into fake Performance authority and wire receipts
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -d "$PERF_FENCE_DB" -q -c "GRANT SELECT ON perf_external_lab.mock_revocation_outbox TO perf_test_fence_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PERF_FENCE_DB" -q -c "GRANT SELECT ON perf_external_lab.mock_authority_fences TO perf_test_fence_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PERF_FENCE_DB" -q -f contracts/lab/sql/004-signed-wire-receipts.sql
+          php contracts/lab/wire/import-portal-generated-event.php
+      - name: Deliver Portal-signed event over a localhost-only HTTP test listener
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/perf-f14-http.log"
+          php -S 127.0.0.1:18783 contracts/lab/wire/receiver.php > "$log" 2>&1 &
+          pid=$!
+          cleanup() {
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=0
+          for i in $(seq 1 50); do
+            if curl --noproxy '*' -sS --connect-timeout 1 --max-time 2 -o /dev/null               http://127.0.0.1:18783/_synthetic/perf/revocation 2>/dev/null; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo 'FAIL local receiver exited'
+              tail -n 60 "$log"
+              exit 1
+            fi
+            sleep 0.1
+          done
+          test "$ready" -eq 1
+          if ! php contracts/lab/wire/test-loopback-http.php; then
+            tail -n 80 "$log" | sed -E 's/(X-Imagine-Lab-Signature:)[^ ]+/\1[REDACTED]/g'
+            exit 1
+          fi
+      - name: Assert both products and migrations stayed untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- routes database/migrations composer.json composer.lock
+          git -C portal-source diff --exit-code -- apps/portal/composer.lock apps/portal/routes/web.php apps/portal/bootstrap/app.php
