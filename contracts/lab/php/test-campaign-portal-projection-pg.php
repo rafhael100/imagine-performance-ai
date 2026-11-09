@@ -129,7 +129,7 @@ $check('42 missing request table privilege refuses all output',
     $projection->build($org,$tenant),null);
 $admin->exec('GRANT SELECT ON performance_campaign_intents TO perf_f24_reader');
 $check('43 restored read-only privilege re-enables fictional projection',
-    $projection->build($org,$tenant)?->dummy ?? null,null);
+    is_array($projection->build($org,$tenant)),true);
 $again=$projection->build($org,$tenant);
 $check('44 projection restored without stale state leak',
     $again['metrics']['approvals_pending'] ?? null,1);
