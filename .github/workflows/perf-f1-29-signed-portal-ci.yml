@@ -1,0 +1,277 @@
+name: Performance F1-29 - signed Portal authority envelope with replay/revocation denial
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-29-signed-portal-capability-2026-11-09
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f129-signed-portal-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  disposable-campaign-storage:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f22-db-only
+          POSTGRES_DB: perf_test_campaign_registry
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_test_campaign_registry"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: perf_test_campaign_registry
+      DB_USERNAME: postgres
+      DB_PASSWORD: ci-f22-db-only
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_test_campaign_registry
+      PGUSER: postgres
+      PGPASSWORD: ci-f22-db-only
+      RUN_PERF_F22_PG_LAB: '1'
+      LOG_CHANNEL: stderr
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: PHP 8.4, Composer locked dependencies and PostgreSQL
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo,pdo_pgsql,mbstring,dom,xml,curl,fileinfo,intl,bcmath,zip,sodium
+      - name: Validate migrations, deny deployment wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000005_create_performance_campaigns_and_intents.php
+          php -l database/migrations/2026_11_09_000006_enable_campaign_intent_rls.php
+          php -l contracts/lab/php/test-campaign-intents-pg.php
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres -d perf_test_campaign_registry
+          if grep -R -E 'performance_campaign_intents|performance_managed_campaigns' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL test-only persistence wired into operational route/provider/bootstrap'
+            exit 1
+          fi
+      - name: Install exact Composer.lock with no scripts/plugins
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer validate --strict --no-check-publish
+          composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
+          composer dump-autoload --no-interaction --no-scripts --no-plugins
+          cp .env.example .env
+          php artisan key:generate --force --no-interaction
+          git diff --exit-code -- composer.lock
+      - name: Apply Laravel migrations only to disposable perf_test_campaign_registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$DB_DATABASE" = perf_test_campaign_registry
+          php artisan migrate --force --no-interaction
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "CREATE ROLE perf_campaign_test_user LOGIN PASSWORD 'ci-f22-role-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_campaign_test_user"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT USAGE ON SCHEMA public TO perf_campaign_test_user"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT,INSERT,UPDATE,DELETE ON performance_managed_campaigns, performance_campaign_intents TO perf_campaign_test_user"
+      - name: Test tenant isolation, SQL constraints and disabled Ads dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-campaign-intents-pg.php
+      - name: Create least-privilege F23 ledger role only on disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/SyntheticCampaignApprovalLedger.php
+          php -l contracts/lab/php/test-campaign-approval-ledger-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "CREATE ROLE perf_f23_writer LOGIN PASSWORD 'ci-f23-ledger-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT USAGE ON SCHEMA public TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT ON performance_managed_campaigns, operational_memberships TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT,INSERT,UPDATE ON performance_campaign_intents TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT,INSERT ON audit_events TO perf_f23_writer"
+      - name: Run 56 atomic proposal, independent review, rollback and audit checks
+        shell: bash
+        env:
+          PERF_F23_LEDGER_LAB: '1'
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-campaign-approval-ledger-pg.php
+          if grep -R 'SyntheticCampaignApprovalLedger' app/ routes/ bootstrap/; then
+            echo 'FAIL F23 laboratory ledger accidentally wired into operational Laravel'
+            exit 1
+          fi
+      - name: Create SELECT-only F24 projection role under tenant RLS
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/SyntheticCampaignPortalProjection.php
+          php -l contracts/lab/php/test-campaign-portal-projection-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "CREATE ROLE perf_f24_reader LOGIN PASSWORD 'ci-f24-read-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f24_reader"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT USAGE ON SCHEMA public TO perf_f24_reader"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT ON performance_managed_campaigns,performance_campaign_intents TO perf_f24_reader"
+      - name: Verify 50 synthetic Portal read-model privacy and fail-closed checks
+        shell: bash
+        env:
+          PERF_F24_READ_MODEL_LAB: '1'
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-campaign-portal-projection-pg.php
+          if grep -R 'SyntheticCampaignPortalProjection' app/ routes/ bootstrap/; then
+            echo 'FAIL: offline projection wired to operational web/API'
+            exit 1
+          fi
+      - name: Export the real synthetic SQL snapshot and assert byte-identical pinned JSON
+        shell: bash
+        env:
+          PERF_F24_READ_MODEL_LAB: '1'
+          PERF_F25_EXPORT_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l tools/export-performance-pg-preview-demo.php
+          php tools/export-performance-pg-preview-demo.php > "$RUNNER_TEMP/performance-storage-preview-v1.json"
+          test -s "$RUNNER_TEMP/performance-storage-preview-v1.json"
+          diff -u contracts/demo/performance-storage-preview-v1.json "$RUNNER_TEMP/performance-storage-preview-v1.json"
+          sha256sum contracts/demo/performance-storage-preview-v1.json
+          echo 'PASS F1-25 PostgreSQL rows match versioned JSON fixture byte-for-byte'
+      - name: Verify PostgreSQL approval integrity guard under direct SQL tampering
+        shell: bash
+        env:
+          PERF_F26_INTEGRITY_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000007_guard_campaign_intent_row_integrity.php
+          php -l contracts/lab/php/test-intent-transition-guard-pg.php
+          php contracts/lab/php/test-intent-transition-guard-pg.php
+          test "$(psql -X -A -t -d "$PGDATABASE" -c "SELECT count(*) FROM pg_trigger WHERE tgname='perf_f26_intent_row_guard' AND tgenabled='O'")" = 1
+          if grep -R -E 'perf_f26_guard_intent_row|test-intent-transition-guard-pg' app/ routes/ bootstrap/; then
+            echo 'FAIL: integrity lab referenced in operational Laravel route/provider'
+            exit 1
+          fi
+      - name: Grant isolated SELECT-only journal reader and validate SQL trigger syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000008_create_intent_review_journal_pg.php
+          php -l contracts/lab/php/test-intent-review-journal-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "CREATE ROLE perf_f27_journal_reader LOGIN PASSWORD 'ci-f27-reader-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f27_journal_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT USAGE ON SCHEMA public TO perf_f27_journal_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT SELECT ON performance_intent_review_journal TO perf_f27_journal_reader"
+      - name: Verify 50 synthetic RLS-journal and transactional rollback assertions
+        shell: bash
+        env:
+          PERF_F27_JOURNAL_LAB: '1'
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-intent-review-journal-pg.php
+          if grep -R -E 'perf_f27_capture_review_transition|perf_f27_journal_reader' app/ routes/ bootstrap/; then
+            echo 'FAIL F27 triggered audit SQL referenced in active product code'
+            exit 1
+          fi
+      - name: Create SELECT-only internal Laravel F28 workbench role
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/Performance/ReadSide/SyntheticWorkbenchScope.php
+          php -l app/Performance/ReadSide/SyntheticCampaignWorkbenchReader.php
+          php -l contracts/lab/php/test-laravel-campaign-workbench-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "CREATE ROLE perf_f28_app_reader LOGIN PASSWORD 'ci-f28-app-read-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f28_app_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT USAGE ON SCHEMA public TO perf_f28_app_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT SELECT ON portal_service_links,performance_managed_campaigns,performance_campaign_intents,performance_intent_review_journal TO perf_f28_app_reader"
+      - name: Run 50 actual Laravel application-class read-model/tenant safety checks
+        shell: bash
+        env:
+          PERF_F28_APP_READ_LAB: '1'
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-laravel-campaign-workbench-pg.php
+          if grep -R 'SyntheticCampaignWorkbenchReader' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F28 read-side accidentally registered in runtime routing/provider'
+            exit 1
+          fi
+      - name: Checkout exact public Portal F07 signature issuer implementation
+        uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 739465b5cc5022aae85385e360e1b4b19ab033cd
+          path: portal-signed-source
+          persist-credentials: false
+      - name: Verify Ed25519 signed claim generated by pinned Portal PHP and 75 negative cases
+        shell: bash
+        env:
+          APP_ENV: testing
+          PERF_F29_SIGNED_PORTAL_LAB: '1'
+          PORTAL_PERF_SIGNED_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$(git -C portal-signed-source rev-parse HEAD)" = 739465b5cc5022aae85385e360e1b4b19ab033cd
+          php -m | grep -i '^sodium$'
+          php -l app/Performance/Security/SignedPortalCapabilityGate.php
+          php -l app/Performance/Security/SyntheticCurrentAuthority.php
+          php -l contracts/lab/php/test-signed-portal-capability.php
+          php -l portal-signed-source/apps/portal/app/Domain/PerformanceBridge/SyntheticCapabilityIssuer.php
+          php -l portal-signed-source/apps/portal/preview/tests/emit_perf_capability.php
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F29_PORTAL_CLAIM_FILE="$tempdir/portal-signed.json"
+          export F29_PORTAL_PUBLIC_HEX_FILE="$tempdir/portal-public.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_perf_capability.php "$F29_PORTAL_PUBLIC_HEX_FILE" 1800000000 > "$F29_PORTAL_CLAIM_FILE"
+          test "$(wc -c < "$F29_PORTAL_PUBLIC_HEX_FILE")" -eq 64
+          php contracts/lab/php/test-signed-portal-capability.php
+          if grep -R -E 'SignedPortalCapabilityGate|SyntheticCurrentAuthority' app/Providers/ routes/ bootstrap/; then
+            echo 'FAIL: synthetic signed authority accidentally registered operationally'
+            exit 1
+          fi
+          echo 'PASS F1-29 cross-repository Ed25519 and 75 test vectors'
+      - name: No public Laravel endpoints, plugins, or deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          php vendor/bin/phpunit --filter NoPublicEndpointsTest --no-progress
+          git diff --exit-code -- composer.lock bootstrap/app.php app/ routes/
