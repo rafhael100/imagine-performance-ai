@@ -44,6 +44,11 @@ final class SyntheticPortalEd25519DurableReplayGate
             || getenv('PGDATABASE') !== 'portal_perf_auth_lab') {
             return 'deployment_gate_closed';
         }
+        // F1-34: the obsolete unanchored test gate defaults to DENY. Only
+        // explicitly marked old attack fixtures may reactivate it in CI.
+        if (getenv('PERF_F34_LEGACY_COMPAT_TEST') !== '1') {
+            return 'legacy_unanchored_denied';
+        }
         if ($this->nonceAuthority->inTransaction()) {
             return 'nonce_authority_transaction_denied';
         }
