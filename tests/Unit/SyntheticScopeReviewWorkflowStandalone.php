@@ -220,7 +220,7 @@ $check('72 no change after expired apply',
 $check('73 foreign tenant pending queue cannot access A request',
  count($flow->pendingFor($b)),0);
 $check('74 no absent token or account IDs in audit',
- preg_match('/token|provider_account|media_spend|charge/i,
+ preg_match('/token|provider_account|media_spend|charge/i',
    json_encode($flow->auditFor($a),JSON_THROW_ON_ERROR)),0);
 $check('75 approval alone is no real execution',
  $l->capacity($a,'google_ads')['dispatch_enabled'],false);
