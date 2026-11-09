@@ -1,0 +1,732 @@
+name: Performance F1-48 - restore source nonce receipts and quarantine expected replay failure
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-48-authority-restore-replay-ci-2026-11-09
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f148-source-restore-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-portal-signed-authority:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    services:
+      portal-authority-postgresql:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f08-db-only
+          POSTGRES_DB: portal_perf_auth_lab
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portal_perf_auth_lab"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+      independent-replay-postgresql:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f31-nonce-db-only
+          POSTGRES_DB: perf_f31_nonce_ci
+        ports:
+          - '127.0.0.1:5433:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f31_nonce_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      PORTAL_PERF_PG_AUTH_LAB: '1'
+      PORTAL_PERF_SIGNED_LAB: '1'
+      PORTAL_PERF_SQL_ISSUER_LAB: '1'
+      PERF_F29_SIGNED_PORTAL_LAB: '1'
+      PERF_F30_PG_END_TO_END_LAB: '1'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: portal_perf_auth_lab
+      DB_USERNAME: postgres
+      DB_PASSWORD: ci-f08-db-only
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: portal_perf_auth_lab
+      PGUSER: postgres
+      PGPASSWORD: ci-f08-db-only
+      LOG_CHANNEL: stderr
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      CACHE_STORE: array
+      F30_PORTAL_SOURCE_ROOT: portal-signed-source
+    steps:
+      - name: Checkout Performance verifier code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Checkout exact Portal F09 source code (never a moving branch)
+        uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: fc95f4bef1b2eab8eef2fcbb16fc6815e479dd21
+          path: portal-signed-source
+          persist-credentials: false
+      - name: Pin the issuer SHA and ensure standalone sodium support
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C portal-signed-source rev-parse HEAD)" = fc95f4bef1b2eab8eef2fcbb16fc6815e479dd21
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab
+      - name: Install isolated PHP 8.4 with PostgreSQL and sodium
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo,pdo_pgsql,mbstring,dom,xml,curl,fileinfo,intl,bcmath,zip,sodium
+      - name: Validate cross-repository domain and test-only PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -m | grep -i '^sodium$'
+          php -l app/Performance/Security/SignedPortalCapabilityGate.php
+          php -l app/Performance/Security/SyntheticCurrentAuthority.php
+          php -l contracts/lab/php/test-portal-pg-signed-capability-e2e.php
+          php -l portal-signed-source/apps/portal/app/Domain/PerformanceBridge/PortalPerfSqlAuthorityResolver.php
+          php -l portal-signed-source/apps/portal/app/Domain/PerformanceBridge/PortalSqlBackedCapabilityIssuer.php
+          php -l portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php
+      - name: Migrate only disposable Portal database using pinned Laravel source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd portal-signed-source/apps/portal
+          composer validate --strict --no-check-publish
+          composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
+          composer dump-autoload --no-interaction --no-scripts --no-plugins
+          cp .env.example .env
+          php artisan key:generate --force --no-interaction
+          test "$DB_DATABASE" = portal_perf_auth_lab
+          php artisan migrate --force --no-interaction
+          cd ../../..
+          git -C portal-signed-source diff --exit-code -- apps/portal/composer.lock
+      - name: Create exact Portal database reader with SELECT only
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "CREATE ROLE portal_f08_reader LOGIN PASSWORD 'ci-f08-read-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO portal_f08_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT USAGE ON SCHEMA public TO portal_f08_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT SELECT ON portal_perf_authority_sessions,portal_perf_authority_memberships,portal_perf_authority_services TO portal_f08_reader"
+      - name: Seed and verify the actual 60+45 Portal PostgreSQL authority/issuer checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          php portal-signed-source/apps/portal/preview/tests/test_pg_perf_authority.php
+          php portal-signed-source/apps/portal/preview/tests/test_pg_signed_issuer.php
+      - name: Cross repository SQL -> Ed25519 -> requery -> Performance (50 checks)
+        shell: bash
+        run: |
+          set -euo pipefail
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F30_PORTAL_CLAIM_FILE="$tempdir/portal-pg-signed.json"
+          export F30_PORTAL_PUBLIC_HEX_FILE="$tempdir/portal-public.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php "$F30_PORTAL_PUBLIC_HEX_FILE" 1800000000 > "$F30_PORTAL_CLAIM_FILE"
+          test "$(wc -c < "$F30_PORTAL_PUBLIC_HEX_FILE")" -eq 64
+          php contracts/lab/php/test-portal-pg-signed-capability-e2e.php
+          echo 'PASS Portal PG-backed Ed25519 claim verified with fresh PG source checks'
+      - name: Verify Ed25519 signed Portal capability plus replay in independent PostgreSQL
+        shell: bash
+        env:
+          PERF_F34_LEGACY_COMPAT_TEST: '1'
+          PERF_F31_ED25519_REPLAY_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticPortalEd25519DurableReplayGate.php
+          php -l contracts/lab/php/test-f31-portal-ed25519-replay-pg.php
+          export PGPASSWORD=ci-f31-nonce-db-only
+          pg_isready -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "CREATE ROLE perf_f31_consumer LOGIN PASSWORD 'ci-f31-consumer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f contracts/lab/sql/012-f31-independent-ed25519-replay-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT CONNECT ON DATABASE perf_f31_nonce_ci TO perf_f31_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT USAGE ON SCHEMA perf_f31_receipts TO perf_f31_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT EXECUTE ON FUNCTION perf_f31_receipts.consume_validated_nonce(text,text,text,bigint,bigint) TO perf_f31_consumer"
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F31_PORTAL_CLAIM_FILE="$tempdir/f31-portal-pg-signed.json"
+          export F31_PORTAL_PUBLIC_HEX_FILE="$tempdir/f31-portal-public.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php "$F31_PORTAL_PUBLIC_HEX_FILE" 1800000000 > "$F31_PORTAL_CLAIM_FILE"
+          test "$(wc -c < "$F31_PORTAL_PUBLIC_HEX_FILE")" -eq 64
+          php contracts/lab/php/test-f31-portal-ed25519-replay-pg.php
+          if grep -R -E 'SyntheticPortalEd25519DurableReplayGate|perf_f31_receipts' app/Providers/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F31 lab-only replay authority attached to operational Laravel'
+            exit 1
+          fi
+      - name: Restore old pg_dump of nonce authority to reproduce replay, then advance Portal epoch
+        shell: bash
+        env:
+          PERF_F34_LEGACY_COMPAT_TEST: '1'
+          PERF_F31_ED25519_REPLAY_LAB: '1'
+          PERF_F32_RESTORE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/test-f32-portal-nonce-restore-pg.php
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F32_PORTAL_CLAIM_FILE="$tempdir/ed25519-claim.json"
+          export F32_PORTAL_PUBLIC_HEX_FILE="$tempdir/ed25519-key.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php "$F32_PORTAL_PUBLIC_HEX_FILE" 1800000000 > "$F32_PORTAL_CLAIM_FILE"
+          test "$(wc -c < "$F32_PORTAL_PUBLIC_HEX_FILE")" -eq 64
+          export PGPASSWORD=ci-f31-nonce-db-only
+          pg_dump -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci --data-only -t perf_f31_receipts.used_nonces -Fp -f "$tempdir/receipt-before.sql"
+          test -s "$tempdir/receipt-before.sql"
+          PERF_F32_PHASE=consume php contracts/lab/php/test-f32-portal-nonce-restore-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "TRUNCATE perf_f31_receipts.used_nonces"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f "$tempdir/receipt-before.sql"
+          PERF_F32_PHASE=restored php contracts/lab/php/test-f32-portal-nonce-restore-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE portal_perf_authority_services SET recovery_epoch=8 WHERE organization_ref='org-demo-a' AND recovery_epoch=7"
+          PERF_F32_PHASE=fenced php contracts/lab/php/test-f32-portal-nonce-restore-pg.php
+          if grep -R 'test-f32-portal-nonce-restore-pg' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F32 security proof attached to operational Laravel'
+            exit 1
+          fi
+      - name: Verify Portal anchor prevents nonce-db-only restore replay, but direct old verifier remains unsafe
+        shell: bash
+        env:
+          PERF_F34_LEGACY_COMPAT_TEST: '1'
+          PERF_F31_ED25519_REPLAY_LAB: '1'
+          PERF_F33_PORTAL_ANCHOR_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticPortalAnchoredReplayGate.php
+          php -l contracts/lab/php/test-f33-portal-anchor-restore-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "CREATE ROLE perf_f33_anchor_consumer LOGIN PASSWORD 'ci-f33-anchor-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f contracts/lab/sql/013-f33-portal-external-nonce-anchor-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO perf_f33_anchor_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT USAGE ON SCHEMA perf_f33_anchor TO perf_f33_anchor_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f33_anchor.consume_validated_nonce(text,text,text,bigint,bigint) TO perf_f33_anchor_consumer"
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F33_PORTAL_CLAIM_FILE="$tempdir/portal-epoch8-ed25519.json"
+          export F33_PORTAL_PUBLIC_HEX_FILE="$tempdir/portal-epoch8-key.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php "$F33_PORTAL_PUBLIC_HEX_FILE" 1800000000 > "$F33_PORTAL_CLAIM_FILE"
+          test "$(wc -c < "$F33_PORTAL_PUBLIC_HEX_FILE")" -eq 64
+          export PGPASSWORD=ci-f31-nonce-db-only
+          pg_dump -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci --data-only -t perf_f31_receipts.used_nonces -Fp -f "$tempdir/nonce-before-f33.sql"
+          PERF_F33_PHASE=consume php contracts/lab/php/test-f33-portal-anchor-restore-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "TRUNCATE perf_f31_receipts.used_nonces"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f "$tempdir/nonce-before-f33.sql"
+          PERF_F33_PHASE=restored php contracts/lab/php/test-f33-portal-anchor-restore-pg.php
+          if grep -R 'SyntheticPortalAnchoredReplayGate' routes/ bootstrap/ app/Providers/ database/migrations/; then
+            echo 'FAIL: F33 anchor lab exposed as operational Laravel component'
+            exit 1
+          fi
+      - name: F34 deny legacy while anchored path still verifies fresh Ed25519 claim
+        shell: bash
+        env:
+          PERF_F31_ED25519_REPLAY_LAB: '1'
+          PERF_F33_PORTAL_ANCHOR_LAB: '1'
+          PERF_F34_GUARD_LAB: '1'
+        run: |
+          set -euo pipefail
+          test -z "${PERF_F34_LEGACY_COMPAT_TEST:-}"
+          php -l contracts/lab/php/SyntheticPortalEd25519DurableReplayGate.php
+          php -l contracts/lab/php/SyntheticPortalAnchoredReplayGate.php
+          php -l contracts/lab/php/test-f34-default-deny-legacy-pg.php
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          export F34_PORTAL_PACKET="$tmp/signed-claim.json"
+          export F34_PORTAL_KEY="$tmp/public.hex"
+          php portal-signed-source/apps/portal/preview/tests/emit_pg_signed_perf_capability.php "$F34_PORTAL_KEY" 1800000000 > "$F34_PORTAL_PACKET"
+          php contracts/lab/php/test-f34-default-deny-legacy-pg.php
+          if grep -R -E 'SyntheticPortalAnchoredReplayGate|SyntheticPortalEd25519DurableReplayGate' app/Providers/ routes/ bootstrap/; then
+            echo 'FAIL: lab verifier referenced in operational Laravel app'
+            exit 1
+          fi
+      - name: F35 disabled outbox atomic intents, retry and idempotency conflicts
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticIdempotentIntentGateway.php
+          php -l contracts/lab/php/test-f35-idempotent-outbox-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "CREATE ROLE perf_f35_writer LOGIN PASSWORD 'ci-f35-writer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f contracts/lab/sql/014-f35-idempotent-intent-outbox-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO perf_f35_writer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT USAGE ON SCHEMA perf_f35_intents TO perf_f35_writer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f35_intents.reserve(text,text,text,text,text,text) TO perf_f35_writer"
+          php contracts/lab/php/test-f35-idempotent-outbox-pg.php
+          if grep -R -E 'perf_f35_intents|SyntheticIdempotentIntentGateway' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL: F35 laboratory-only intent gateway exposed as operational Laravel API'
+            exit 1
+          fi
+      - name: F36 independent concurrent PHP processes reserve ONE intent and outbox
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F36_CONCURRENCY_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/f36-intent-concurrent-worker.php
+          php -l contracts/lab/php/test-f36-concurrent-intent-pg.php
+          php contracts/lab/php/test-f36-concurrent-intent-pg.php before
+          test "$(php contracts/lab/php/f36-intent-concurrent-worker.php crash_before_commit)" = "uncommitted_transaction_exits_without_commit"
+          php contracts/lab/php/test-f36-concurrent-intent-pg.php after_crash
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          pids=()
+          for i in $(seq 1 16); do
+            php contracts/lab/php/f36-intent-concurrent-worker.php race > "$tmp/race-$i.log" &
+            pids+=("$!")
+          done
+          for pid in "${pids[@]}"; do wait "$pid"; done
+          reserved="$(grep -l -x reserved_synthetic "$tmp"/race-*.log | wc -l)"
+          duplicates="$(grep -l -x already_reserved_synthetic "$tmp"/race-*.log | wc -l)"
+          test "$reserved" -eq 1
+          test "$duplicates" -eq 15
+          echo "PASS F36 16 independent PHP processes, 1 reserved, 15 duplicates"
+          php contracts/lab/php/test-f36-concurrent-intent-pg.php after_race
+          if grep -R 'f36-intent-concurrent-worker' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL test-only F36 worker referenced by application'
+            exit 1
+          fi
+      - name: F37 claim, lease expiry, reclaim and demo ACK without any external dispatch
+        shell: bash
+        env:
+          PERF_F38_UNFENCED_COMPAT_TEST: '1'
+          PERF_F37_LEASE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticDryRunOutboxLeaser.php
+          php -l contracts/lab/php/test-f37-dry-run-lease-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "CREATE ROLE perf_f37_lease_worker LOGIN PASSWORD 'ci-f37-lease-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f contracts/lab/sql/015-f37-outbox-lease-dryrun-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO perf_f37_lease_worker"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT USAGE ON SCHEMA perf_f37_dry_run TO perf_f37_lease_worker"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f37_dry_run.claim(text,bigint) TO perf_f37_lease_worker"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f37_dry_run.ack(bigint,text,bigint) TO perf_f37_lease_worker"
+          php contracts/lab/php/test-f37-dry-run-lease-pg.php
+          if grep -R -E 'SyntheticDryRunOutboxLeaser|perf_f37_dry_run' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F37 CI-only leasing code exposed to Laravel'
+            exit 1
+          fi
+      - name: F38 expected negative same-owner ABA plus generation-fenced dry-run ACK
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F37_LEASE_LAB: '1'
+          PERF_F38_FENCED_LEASE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          test -z "${PERF_F38_UNFENCED_COMPAT_TEST:-}"
+          php -l contracts/lab/php/SyntheticFencedLeaseGateway.php
+          php -l contracts/lab/php/test-f38-lease-generation-pg.php
+          php -l contracts/lab/php/SyntheticDryRunOutboxLeaser.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "CREATE ROLE perf_f38_fenced_worker LOGIN PASSWORD 'ci-f38-fenced-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f contracts/lab/sql/016-f38-generation-fenced-lease-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO perf_f38_fenced_worker"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT USAGE ON SCHEMA perf_f38_fenced TO perf_f38_fenced_worker"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f38_fenced.claim(text,bigint) TO perf_f38_fenced_worker"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f38_fenced.ack(bigint,text,bigint,bigint) TO perf_f38_fenced_worker"
+          php contracts/lab/php/test-f38-lease-generation-pg.php
+          if grep -R -E 'perf_f38_fenced|SyntheticFencedLeaseGateway' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F38 test-only lease exposed to operational Laravel'
+            exit 1
+          fi
+      - name: F39 restore old F38 lease backup and detect recycled token on independent PostgreSQL
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F38_FENCED_LEASE_LAB: '1'
+          PERF_F39_EXTERNAL_FENCE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticIndependentLeaseHighwater.php
+          php -l contracts/lab/php/test-f39-external-lease-restore-pg.php
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "CREATE ROLE perf_f39_fence_consumer LOGIN PASSWORD 'ci-f39-fence-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f contracts/lab/sql/017-f39-external-generation-highwater-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT CONNECT ON DATABASE perf_f31_nonce_ci TO perf_f39_fence_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT USAGE ON SCHEMA perf_f39_fence TO perf_f39_fence_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT EXECUTE ON FUNCTION perf_f39_fence.advance(bigint,bigint) TO perf_f39_fence_consumer"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          PERF_F39_PHASE=first php contracts/lab/php/test-f39-external-lease-restore-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          pg_dump -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab --data-only -t perf_f38_fenced.leases -Fp -f "$tmp/f38-old-generations.sql"
+          test -s "$tmp/f38-old-generations.sql"
+          PERF_F39_PHASE=second php contracts/lab/php/test-f39-external-lease-restore-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "TRUNCATE perf_f38_fenced.leases"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f "$tmp/f38-old-generations.sql"
+          PERF_F39_PHASE=restored php contracts/lab/php/test-f39-external-lease-restore-pg.php
+          if grep -R -E 'SyntheticIndependentLeaseHighwater|perf_f39_fence' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F39 independent laboratory fence referenced by operational Laravel'
+            exit 1
+          fi
+      - name: F40 restore BOTH PostgreSQL highwater and Portal lease old snapshots - expected vulnerability
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F38_FENCED_LEASE_LAB: '1'
+          PERF_F39_EXTERNAL_FENCE_LAB: '1'
+          PERF_F40_DUAL_RESTORE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/test-f40-dual-restore-negative-pg.php
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          PERF_F40_PHASE=first php contracts/lab/php/test-f40-dual-restore-negative-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          pg_dump -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab --data-only -t perf_f38_fenced.leases -Fp -f "$tmp/f40-portal-old.sql"
+          test -s "$tmp/f40-portal-old.sql"
+          export PGPASSWORD=ci-f31-nonce-db-only
+          pg_dump -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci --data-only -t perf_f39_fence.generations -Fp -f "$tmp/f40-external-old.sql"
+          test -s "$tmp/f40-external-old.sql"
+          PERF_F40_PHASE=second php contracts/lab/php/test-f40-dual-restore-negative-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "TRUNCATE perf_f38_fenced.leases"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f "$tmp/f40-portal-old.sql"
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "TRUNCATE perf_f39_fence.generations"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f "$tmp/f40-external-old.sql"
+          PERF_F40_PHASE=restored php contracts/lab/php/test-f40-dual-restore-negative-pg.php
+          if grep -R 'test-f40-dual-restore-negative-pg' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F40 negative proof wired to operational code'
+            exit 1
+          fi
+      - name: F41 external quarantine closes leases after restore unless mock admin release
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F38_FENCED_LEASE_LAB: '1'
+          PERF_F41_QUARANTINE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticRecoveryQuarantineGate.php
+          php -l contracts/lab/php/test-f41-recovery-quarantine-pg.php
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "CREATE ROLE perf_f41_guard_reader LOGIN PASSWORD 'ci-f41-guard-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f contracts/lab/sql/018-f41-recovery-quarantine-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT CONNECT ON DATABASE perf_f31_nonce_ci TO perf_f41_guard_reader"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT USAGE ON SCHEMA perf_f41_recovery TO perf_f41_guard_reader"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT EXECUTE ON FUNCTION perf_f41_recovery.read_state() TO perf_f41_guard_reader"
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F41_LEASE_TOKEN_FILE="$tempdir/recovery-lease-token.json"
+          PERF_F41_PHASE=initial php contracts/lab/php/test-f41-recovery-quarantine-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='released_mock',approval_ref='ci-approved-restore-a1',reason='CI mock operator approval only' WHERE singleton_id=true AND epoch=1 AND status='quarantined'"
+          PERF_F41_PHASE=released php contracts/lab/php/test-f41-recovery-quarantine-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI simulated second restore' WHERE singleton_id=true AND epoch=1 AND status='released_mock'"
+          PERF_F41_PHASE=quarantined_again php contracts/lab/php/test-f41-recovery-quarantine-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='released_mock',approval_ref='ci-approved-restore-b2',reason='CI second mock operator approval' WHERE singleton_id=true AND epoch=2 AND status='quarantined'"
+          PERF_F41_PHASE=re_released php contracts/lab/php/test-f41-recovery-quarantine-pg.php
+          if grep -R -E 'SyntheticRecoveryQuarantineGate|perf_f41_recovery' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F41 laboratory-only quarantine wired to operational application'
+            exit 1
+          fi
+      - name: F42 revoke old SQL roles, enforce central mock quarantine and test residual bypass
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F38_FENCED_LEASE_LAB: '1'
+          PERF_F41_QUARANTINE_LAB: '1'
+          PERF_F42_CENTRAL_CUTOVER_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticCentralAdmissionGateway.php
+          php -l contracts/lab/php/test-f42-central-cutover-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "CREATE ROLE perf_f42_admission LOGIN PASSWORD 'ci-f42-admission-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "REVOKE EXECUTE ON FUNCTION perf_f38_fenced.claim(text,bigint) FROM perf_f38_fenced_worker"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "REVOKE EXECUTE ON FUNCTION perf_f38_fenced.ack(bigint,text,bigint,bigint) FROM perf_f38_fenced_worker"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO perf_f42_admission"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT USAGE ON SCHEMA perf_f38_fenced TO perf_f42_admission"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f38_fenced.claim(text,bigint) TO perf_f42_admission"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f38_fenced.ack(bigint,text,bigint,bigint) TO perf_f42_admission"
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI post F41 role cutover quarantine' WHERE singleton_id=true AND epoch=2 AND status='released_mock'"
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F42_OLD_TOKEN_FILE="$tempdir/epoch3-token.json"
+          PERF_F42_PHASE=locked php contracts/lab/php/test-f42-central-cutover-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='released_mock',approval_ref='ci-approved-cutover-c3',reason='CI mock authorization of dedicated role' WHERE singleton_id=true AND epoch=3 AND status='quarantined'"
+          PERF_F42_PHASE=released php contracts/lab/php/test-f42-central-cutover-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI new simulated restore while role cutover' WHERE singleton_id=true AND epoch=3 AND status='released_mock'"
+          PERF_F42_PHASE=locked_again php contracts/lab/php/test-f42-central-cutover-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='released_mock',approval_ref='ci-approved-cutover-d4',reason='CI mock second cutover approval' WHERE singleton_id=true AND epoch=4 AND status='quarantined'"
+          PERF_F42_PHASE=re_released php contracts/lab/php/test-f42-central-cutover-pg.php
+          if grep -R -E 'SyntheticCentralAdmissionGateway|perf_f42_admission' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F42 lab-only admission role exposed to operational code'
+            exit 1
+          fi
+      - name: F43 local SQL quarantine prevents direct bypass using only EXECUTE to guarded procedures
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F41_QUARANTINE_LAB: '1'
+          PERF_F42_CENTRAL_CUTOVER_LAB: '1'
+          PERF_F43_ATOMIC_SQL_GUARD_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticSqlQuarantineGateway.php
+          php -l contracts/lab/php/test-f43-sql-quarantine-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "REVOKE EXECUTE ON FUNCTION perf_f38_fenced.claim(text,bigint) FROM perf_f42_admission"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "REVOKE EXECUTE ON FUNCTION perf_f38_fenced.ack(bigint,text,bigint,bigint) FROM perf_f42_admission"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "CREATE ROLE perf_f43_sql_consumer LOGIN PASSWORD 'ci-f43-sql-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f contracts/lab/sql/019-f43-atomic-local-quarantine-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO perf_f43_sql_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT USAGE ON SCHEMA perf_f43_sql_guard TO perf_f43_sql_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f43_sql_guard.read_state() TO perf_f43_sql_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f43_sql_guard.claim(text,bigint) TO perf_f43_sql_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f43_sql_guard.ack(bigint,text,bigint,bigint,bigint) TO perf_f43_sql_consumer"
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F43_LEASE_FILE="$tempdir/epoch4-sql-lease.json"
+          PERF_F43_PHASE=locked php contracts/lab/php/test-f43-sql-quarantine-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE perf_f43_sql_guard.state SET status='released_mock',approval_ref='ci-approved-f43-e4',reason='CI local SQL operator simulation' WHERE singleton_id=true AND epoch=4 AND status='quarantined'"
+          PERF_F43_PHASE=released php contracts/lab/php/test-f43-sql-quarantine-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE perf_f43_sql_guard.state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI second local SQL quarantine simulation' WHERE singleton_id=true AND epoch=4 AND status='released_mock'"
+          PERF_F43_PHASE=locked_again php contracts/lab/php/test-f43-sql-quarantine-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE perf_f43_sql_guard.state SET status='released_mock',approval_ref='ci-approved-f43-e5',reason='CI local SQL second operator simulation' WHERE singleton_id=true AND epoch=5 AND status='quarantined'"
+          PERF_F43_PHASE=re_released php contracts/lab/php/test-f43-sql-quarantine-pg.php
+          if grep -R -E 'SyntheticSqlQuarantineGateway|perf_f43_sql_guard' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F43 local SQL lab guard exposed as operational app'
+            exit 1
+          fi
+      - name: F44 external and local epoch mismatch denies, explicit CI reconciliation, repeat quarantine
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F43_ATOMIC_SQL_GUARD_LAB: '1'
+          PERF_F44_CROSS_AUTHORITY_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticCrossAuthorityAdmission.php
+          php -l contracts/lab/php/test-f44-cross-authority-pg.php
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F44_CROSS_TOKEN_FILE="$tempdir/epoch5-cross-token.json"
+          PERF_F44_PHASE=mismatch php contracts/lab/php/test-f44-cross-authority-pg.php
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET epoch=5,status='released_mock',approval_ref='ci-approved-f44-aligned5',reason='CI external epoch manual reconcile mock' WHERE singleton_id=true AND epoch=4 AND status='released_mock'"
+          PERF_F44_PHASE=aligned php contracts/lab/php/test-f44-cross-authority-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET epoch=epoch+1,status='quarantined',approval_ref=NULL,reason='CI external restore quarantine while local stale' WHERE singleton_id=true AND epoch=5 AND status='released_mock'"
+          PERF_F44_PHASE=external_quarantine php contracts/lab/php/test-f44-cross-authority-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE perf_f43_sql_guard.state SET epoch=epoch+1,status='quarantined',approval_ref=NULL,reason='CI local SQL sync to external quarantine' WHERE singleton_id=true AND epoch=5 AND status='released_mock'"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE perf_f43_sql_guard.state SET status='released_mock',approval_ref='ci-approved-f44-local6',reason='CI mock local approval after quarantine' WHERE singleton_id=true AND epoch=6 AND status='quarantined'"
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='released_mock',approval_ref='ci-approved-f44-extern6',reason='CI mock external approval after quarantine' WHERE singleton_id=true AND epoch=6 AND status='quarantined'"
+          PERF_F44_PHASE=both_aligned php contracts/lab/php/test-f44-cross-authority-pg.php
+          if grep -R -E 'SyntheticCrossAuthorityAdmission|PERF_F44_CROSS_AUTHORITY_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F44 cross-source test wired to operational code'
+            exit 1
+          fi
+      - name: F45 independent HMAC issuer and local SQL one-time signed permit admission
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F45_SIGNED_PERMIT_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticSignedPermitGateway.php
+          php -l contracts/lab/php/test-f45-signed-permit-pg.php
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F45_CACHED_PERMITS_FILE="$tempdir/cached-short-lived-permits.json"
+          fixture_key="$(openssl rand -hex 32)"
+          test "${#fixture_key}" -eq 64
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "CREATE ROLE perf_f45_issuer LOGIN PASSWORD 'ci-f45-issuer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -v fixture_key="$fixture_key" -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f contracts/lab/sql/020-f45-independent-hmac-issuer-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT CONNECT ON DATABASE perf_f31_nonce_ci TO perf_f45_issuer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT USAGE ON SCHEMA perf_f45_issuer TO perf_f45_issuer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT EXECUTE ON FUNCTION perf_f45_issuer.mint(text,bigint,text,bigint,bigint,text) TO perf_f45_issuer"
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "CREATE ROLE perf_f45_consumer LOGIN PASSWORD 'ci-f45-consumer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -v fixture_key="$fixture_key" -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f contracts/lab/sql/021-f45-signed-permit-admission-ci.sql
+          unset fixture_key
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "REVOKE EXECUTE ON FUNCTION perf_f43_sql_guard.claim(text,bigint) FROM perf_f43_sql_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "REVOKE EXECUTE ON FUNCTION perf_f43_sql_guard.ack(bigint,text,bigint,bigint,bigint) FROM perf_f43_sql_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO perf_f45_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT USAGE ON SCHEMA perf_f45_admission TO perf_f45_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f45_admission.consume(text,bigint) TO perf_f45_consumer"
+          PERF_F45_PHASE=initial php contracts/lab/php/test-f45-signed-permit-pg.php
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI F45 external quarantine after issuance' WHERE singleton_id=true AND epoch=6 AND status='released_mock'"
+          PERF_F45_PHASE=external_quarantine php contracts/lab/php/test-f45-signed-permit-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE perf_f43_sql_guard.state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI F45 local catches up with external quarantine' WHERE singleton_id=true AND epoch=6 AND status='released_mock'"
+          PERF_F45_PHASE=local_quarantine php contracts/lab/php/test-f45-signed-permit-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE perf_f43_sql_guard.state SET status='released_mock',approval_ref='ci-approved-f45-local7',reason='CI-only local operator approval' WHERE singleton_id=true AND epoch=7 AND status='quarantined'"
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='released_mock',approval_ref='ci-approved-f45-external7',reason='CI-only external operator approval' WHERE singleton_id=true AND epoch=7 AND status='quarantined'"
+          PERF_F45_PHASE=both_released php contracts/lab/php/test-f45-signed-permit-pg.php
+          if grep -R -E 'perf_f45_admission|perf_f45_issuer|SyntheticSignedPermitGateway' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F45 lab HMAC issuer accidentally referenced by operational application'
+            exit 1
+          fi
+      - name: F46 trusted PostgreSQL clock refuses stale/future signed permits despite forged caller times
+        shell: bash
+        env:
+          PERF_F35_INTENT_LAB: '1'
+          PERF_F46_SERVER_CLOCK_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticServerClockPermitGateway.php
+          php -l contracts/lab/php/test-f46-server-clock-permits-pg.php
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F46_CACHED_PERMITS_FILE="$tempdir/cached-server-clock-ci-permits.json"
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "CREATE ROLE perf_f46_issuer LOGIN PASSWORD 'ci-f46-issuer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f contracts/lab/sql/022-f46-issuer-server-clock-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "REVOKE EXECUTE ON FUNCTION perf_f45_issuer.mint(text,bigint,text,bigint,bigint,text) FROM perf_f45_issuer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT CONNECT ON DATABASE perf_f31_nonce_ci TO perf_f46_issuer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT USAGE ON SCHEMA perf_f46_issuer TO perf_f46_issuer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT EXECUTE ON FUNCTION perf_f46_issuer.mint_server(text,bigint,text,bigint,text,bigint) TO perf_f46_issuer"
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "CREATE ROLE perf_f46_consumer LOGIN PASSWORD 'ci-f46-consumer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -f contracts/lab/sql/023-f46-admission-server-clock-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "REVOKE EXECUTE ON FUNCTION perf_f45_admission.consume(text,bigint) FROM perf_f45_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT CONNECT ON DATABASE portal_perf_auth_lab TO perf_f46_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT USAGE ON SCHEMA perf_f46_admission TO perf_f46_consumer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "GRANT EXECUTE ON FUNCTION perf_f46_admission.consume_server(text,bigint) TO perf_f46_consumer"
+          PERF_F46_PHASE=initial php contracts/lab/php/test-f46-server-clock-permits-pg.php
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI F46 external quarantine with server clock' WHERE singleton_id=true AND epoch=7 AND status='released_mock'"
+          PERF_F46_PHASE=external_quarantine php contracts/lab/php/test-f46-server-clock-permits-pg.php
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE perf_f43_sql_guard.state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI F46 local follows external quarantine' WHERE singleton_id=true AND epoch=7 AND status='released_mock'"
+          PERF_F46_PHASE=local_quarantine php contracts/lab/php/test-f46-server-clock-permits-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "UPDATE perf_f43_sql_guard.state SET status='released_mock',approval_ref='ci-approved-f46-local8',reason='CI F46 local mock operator approval' WHERE singleton_id=true AND epoch=8 AND status='quarantined'"
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='released_mock',approval_ref='ci-approved-f46-extern8',reason='CI F46 independent mock operator approval' WHERE singleton_id=true AND epoch=8 AND status='quarantined'"
+          PERF_F46_PHASE=both_released php contracts/lab/php/test-f46-server-clock-permits-pg.php
+          if grep -R -E 'SyntheticServerClockPermitGateway|perf_f46_admission|perf_f46_issuer' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F46 SQL server-time lab accidentally referenced in operational code'
+            exit 1
+          fi
+      - name: F47 observe signed read-only permits with atomic external quarantine and nonce receipt
+        shell: bash
+        env:
+          PERF_F47_EXTERNAL_ATOMIC_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/SyntheticExternalAtomicPermitObserver.php
+          php -l contracts/lab/php/test-f47-external-atomic-observer-pg.php
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F47_CACHED_PERMITS_FILE="$tempdir/pre-quarantine-signed-permits.json"
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "CREATE ROLE perf_f47_observer LOGIN PASSWORD 'ci-f47-observer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f contracts/lab/sql/024-f47-external-atomic-permit-observation-ci.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT CONNECT ON DATABASE perf_f31_nonce_ci TO perf_f47_observer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT USAGE ON SCHEMA perf_f47_authority TO perf_f47_observer"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "GRANT EXECUTE ON FUNCTION perf_f47_authority.observe(text) TO perf_f47_observer"
+          export PGPASSWORD=ci-f08-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_perf_auth_lab -c "REVOKE EXECUTE ON FUNCTION perf_f46_admission.consume_server(text,bigint) FROM perf_f46_consumer"
+          PERF_F47_PHASE=issued php contracts/lab/php/test-f47-external-atomic-observer-pg.php
+          export PGPASSWORD=ci-f31-nonce-db-only
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI F47 SOURCE quarantine after signed issue' WHERE singleton_id=true AND epoch=8 AND status='released_mock'"
+          PERF_F47_PHASE=external_quarantine php contracts/lab/php/test-f47-external-atomic-observer-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET epoch=10,status='released_mock',approval_ref='ci-approved-f47-epoch10',reason='CI source-only mock recovery approval' WHERE singleton_id=true AND epoch=9 AND status='quarantined'"
+          PERF_F47_PHASE=released_new_epoch php contracts/lab/php/test-f47-external-atomic-observer-pg.php
+          if grep -R -E 'SyntheticExternalAtomicPermitObserver|perf_f47_authority' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F47 non-operational authority observer referenced by production application'
+            exit 1
+          fi
+      - name: F48 real pg_dump restore of authority receipts and quarantine - expected negative
+        shell: bash
+        env:
+          PERF_F47_EXTERNAL_ATOMIC_LAB: '1'
+          PERF_F48_RESTORE_NEGATIVE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = portal_perf_auth_lab
+          php -l contracts/lab/php/test-f48-authority-restore-replay-pg.php
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          export F48_SAVED_TOKENS_FILE="$tempdir/signed-pre-restore-requests.json"
+          export PGPASSWORD=ci-f31-nonce-db-only
+          PERF_F48_PHASE=before_snapshot php contracts/lab/php/test-f48-authority-restore-replay-pg.php
+          pg_dump -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci --data-only -t perf_f47_authority.observed -Fp -f "$tempdir/old-observations.sql"
+          test -s "$tempdir/old-observations.sql"
+          pg_dump -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci --data-only -t perf_f41_recovery.guard_state -Fp -f "$tempdir/old-authority-state.sql"
+          test -s "$tempdir/old-authority-state.sql"
+          PERF_F48_PHASE=first_use php contracts/lab/php/test-f48-authority-restore-replay-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "TRUNCATE perf_f47_authority.observed"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f "$tempdir/old-observations.sql"
+          PERF_F48_PHASE=restored_receipts php contracts/lab/php/test-f48-authority-restore-replay-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "UPDATE perf_f41_recovery.guard_state SET status='quarantined',epoch=epoch+1,approval_ref=NULL,reason='CI F48 source quarantine before restoring older database snapshot' WHERE singleton_id=true AND epoch=10 AND status='released_mock'"
+          PERF_F48_PHASE=quarantined php contracts/lab/php/test-f48-authority-restore-replay-pg.php
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "TRUNCATE perf_f47_authority.observed"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f "$tempdir/old-observations.sql"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -c "TRUNCATE perf_f41_recovery.guard_state"
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f31_nonce_ci -f "$tempdir/old-authority-state.sql"
+          PERF_F48_PHASE=restored_authority php contracts/lab/php/test-f48-authority-restore-replay-pg.php
+          if grep -R -E 'test-f48-authority-restore-replay|F48_RESTORE_NEGATIVE' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F48 destructive restore CI leaked into operational code'
+            exit 1
+          fi
+      - name: No production route, provider, VPS or cloud connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -E 'SignedPortalCapabilityGate|SyntheticCurrentAuthority' app/Providers/ routes/ bootstrap/; then
+            echo 'FAIL: lab verifier connected to live framework routing'
+            exit 1
+          fi
+          git diff --exit-code -- app/Providers/ routes/ bootstrap/ composer.lock
