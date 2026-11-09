@@ -1,3 +1,13 @@
+# FAST-PERF F1-47 — 09/11/2026: observação atômica externa contra token obsoleto
+
+[PR draft #116](https://github.com/rafhael100/imagine-performance-ai/pull/116), [CI SUCCESS #42657812543](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42657812543): **44/44 testes próprios F1-47**, regressões F1-30–F1-46. A função SQL `perf_f47_authority.observe` vincula quarentena da fonte, HMAC, época, emissão e recibo de nonce único na **mesma transação no PostgreSQL externo**. Durante `quarantined:9`, tokens assinados antes da revogação foram negados mesmo com base local em `released_mock:8`; após reabertura em época 10 continuaram inválidos. Prova com lock de linha bloqueou a atualização concorrente da quarentena.
+
+**A correção é apenas uma observação de leitura sintética na autoridade externa.** A outbox local permanece `dispatch_enabled=false`; nenhum lease, ACK, anúncio ou efeito externo é autorizado. Não há emissão ligada a identidade/tenant/contrato real nem transação com execução local. Restauração do banco externo/recibos pode reabrir replay; outras credenciais administrativas podem contornar a função. `APP_ENV=production` bloqueado no gateway de laboratório.
+
+**P0/HT-R01/SEC-R03/T3, Issues #102 e #115, AppSec/DBA continuam abertos**. Sem merge, main, VPS, Google/Meta/CRM/n8n, clientes ou custos.
+
+---
+
 # Imagine Performance AI — FAST-PERF F1-45 e F1-46 (09/11/2026)
 
 > **Somente CI e banco de dados sintético**. Os PRs continuam em rascunho e não existe implantação operacional.
