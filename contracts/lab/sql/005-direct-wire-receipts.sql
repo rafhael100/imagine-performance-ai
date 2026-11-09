@@ -19,4 +19,13 @@ GRANT SELECT ON perf_s2s_lab.mock_service_grants TO perf_test_wire_ingress;
 GRANT UPDATE(active,grant_revision,updated_at)
   ON perf_s2s_lab.mock_service_grants TO perf_test_wire_ingress;
 GRANT SELECT, INSERT ON perf_s2s_lab.mock_direct_wire_receipts TO perf_test_wire_ingress;
+-- The direct test ingress role may not inspect or update tenant A.
+ALTER TABLE perf_s2s_lab.mock_service_grants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY perf_f15_direct_only_demo_b ON perf_s2s_lab.mock_service_grants
+    FOR ALL TO perf_test_wire_ingress
+    USING (service_ref='svc-demo-b' AND organization_ref='org-demo-b'
+           AND tenant_ref='perf-demo-b')
+    WITH CHECK (service_ref='svc-demo-b' AND organization_ref='org-demo-b'
+                AND tenant_ref='perf-demo-b');
+
 COMMIT;
