@@ -29,7 +29,7 @@ $check=static function(string $name,mixed $got,mixed $expected)use(&$n):void{
  }
  echo "PASS F37 ".++$n." $name".PHP_EOL;
 };
-$count=static function(string $table)use($admin):int=>
+$count=static fn(string $table):int =>
  (int)$admin->query('SELECT count(*) FROM '.$table)->fetchColumn();
 $parse=static function(string $state):int{
  if(!preg_match('/^claimed_mock:([1-9][0-9]*)$/D',$state,$m))
