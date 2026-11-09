@@ -27,7 +27,6 @@ if (PHP_SAPI !== 'cli-server'
     || getenv('PGDATABASE') !== 'perf_test_relay_main'
     || getenv('PERF_FENCE_DB') !== 'perf_test_relay_authority'
     || getenv('PERF_WIRE_LAB_CLOCK') !== '1800000000'
-    || ($_SERVER['SERVER_ADDR'] ?? '') !== '127.0.0.1'
     || (string) ($_SERVER['SERVER_PORT'] ?? '') !== '18783'
     || ($_SERVER['REMOTE_ADDR'] ?? '') !== '127.0.0.1') {
     $respond(404, 'not_found');
