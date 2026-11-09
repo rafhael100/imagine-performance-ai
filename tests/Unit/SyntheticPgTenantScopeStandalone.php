@@ -32,7 +32,11 @@ $check=static function(string $name,mixed $got,mixed $expected)use(&$n):void{
 };
 $call=static function(PDO $db,string $sql,array $params=[]):string{
     $s=$db->prepare($sql);
-    $s->execute($params);
+    // PDO PostgreSQL maps PHP false to empty text on some drivers;
+    // bind explicit PostgreSQL boolean literals for CAST(? AS boolean).
+    $normalized=array_map(static fn(mixed $value):mixed=>
+       is_bool($value)?($value?'true':'false'):$value,$params);
+    $s->execute($normalized);
     return (string)$s->fetchColumn();
 };
 $deny=static function(PDO $db,string $sql,array $params=[]):bool{
