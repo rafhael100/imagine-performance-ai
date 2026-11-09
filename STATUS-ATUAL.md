@@ -1,3 +1,15 @@
+# Imagine Performance AI — FAST-PERF F1-47 a F1-49 | 09/11/2026
+
+**Três PRs draft, todos apenas em branches filhas.** Não houve merge, `main`, VPS, deploy, contas reais, custo, envio, faturamento ou Ads/Meta/CRM/n8n operacionais.
+
+- **F1-47 [PR #116](https://github.com/rafhael100/imagine-performance-ai/pull/116)**: a autoridade PostgreSQL externa lê a quarentena sob `FOR SHARE`, valida assinatura/época e consome o nonce da observação **read-only fictícia** na mesma transação. Com a fonte em quarentena, tokens anteriores são rejeitados mesmo quando a base local está desatualizada. [CI SUCCESS #42657812543](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42657812543) — **44/44 testes próprios**, regressões.
+- **F1-48 [PR #118](https://github.com/rafhael100/imagine-performance-ai/pull/118)**: `pg_dump`/restore real da tabela de observações e da própria quarentena demonstra que token usado e token revogado podem ser admitidos novamente ao restaurar estado antigo. [CI SUCCESS esperado-negativo #42658796516](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42658796516) — **37/37 testes próprios**, regressões. **VULNERABILIDADE REPRODUZIDA, NÃO CORRIGIDA**.
+- **F1-49 [PR #120](https://github.com/rafhael100/imagine-performance-ai/pull/120)**: contrato explícito `release_state=blocked` e `operational_activation_allowed=false`, testes de falsificação de aprovação e ativação, exame de 16 arquivos PHP executáveis e confirmação SQL de `CHECK(dispatch_enabled=false)`, somente `campaigns:read` e `pending_synthetic`. [CI SUCCESS #42659894933](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42659894933) — **25/25 testes próprios**, regressões. O gate é documentação/CI alterável pelo mesmo autor, NÃO runtime de produção.
+
+**P0, HT-R01, SEC-R03/T3, AppSec/DBA, Issues #102/#115/#117/#119 permanecem abertos.** Sem autoridade antirollback resistente a restore, detecção/quarentena obrigatória de recuperação, isolamento real de chaves/workload S2S, vinculação Portal/CRM/contrato/escopo, aprovação humana e idempotência no destino, não se pode habilitar dispatch, campanhas, API de terceiros ou billing. Uma única observação de nonce não equivale a garantia de exactly-once remoto.
+
+---
+
 # FAST-PERF F1-48 — 09/11/2026 (CI esperado-negativo)
 
 [PR draft #118](https://github.com/rafhael100/imagine-performance-ai/pull/118) e [CI SUCCESS #42658796516](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42658796516), **37/37 verificações F1-48** em cinco fases e regressões F1-30–F1-47. Em PostgreSQL descartável foi realizado `pg_dump`/restore real da tabela privada `perf_f47_authority.observed`: um token já consumido foi aceito novamente. Ao restaurar também `perf_f41_recovery.guard_state` após quarentena da fonte, tokens antigos/revogados voltaram a ser aceitos. **Esse CI verde demonstra vulnerabilidade, não correção.**
