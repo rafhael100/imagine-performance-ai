@@ -1,3 +1,24 @@
+# Atualização de segurança — 09/11/2026: FAST-PERF F1-38, F1-39 e F1-40
+
+> **Desenvolvimento apenas de laboratório**, sem código ligado a rotas/worker/Ads, sem PR mergeado nem `main`/VPS/deploy. **CI verde nas etapas de falha esperada significa risco reproduzido, NÃO aprovação de segurança.**
+
+- **F1-38 / [PR #97](https://github.com/rafhael100/imagine-performance-ai/pull/97)**: demonstra ABA de confirmação de lease com `owner_ref` reutilizado, fecha o gateway antigo por padrão (compatibilidade de regressão explícita CI) e introduz ACK `(outbox_id, owner, generation)` com geração incrementada na retomada. [CI SUCCESS #42624737746](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42624737746), **35/35 testes específicos**, regressões anteriores.
+- **F1-39 / [PR #99](https://github.com/rafhael100/imagine-performance-ai/pull/99)**: o `pg_dump`/restore da tabela de leases no Portal recicla o número de geração; a segunda instância PostgreSQL não restaurada detecta a geração reapresentada via high-watermark independente. Teste esperado-negativo ainda mostra bypass do ACK F1-38 direto. [CI SUCCESS #42625496357](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42625496357), **7+5+15=27 testes específicos**, regressões.
+- **F1-40 / [PR #101](https://github.com/rafhael100/imagine-performance-ai/pull/101)**: restaura **ambas** as tabelas de laboratório em **duas instâncias PostgreSQL** via pg_dump/psql e comprova que a geração já usada volta a ser admitida. **Vulnerabilidade reproduzida**: não existe monotonicidade persistente sob restauração dupla. [CI SUCCESS #42626086626](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42626086626), **5+5+12=22 testes específicos**, regressões.
+
+## P0 — Correções necessárias ANTES de integrar a qualquer operação real
+
+1. Sem conexão real com Google Ads, Meta Ads, CRM, PSP ou n8n: `dispatch_enabled=false` permanece obrigatório. Nenhuma das verificações devolve autorização real.
+2. Definir autoridade externa de época/high-watermark **resistente a restauração simultânea**, com fail-closed e política verificável de backup, auditoria, recuperação e quarentena. Uma segunda VPS/DB restaurável não basta.
+3. Eliminar qualquer bypass por execução de gateway legado e por chamada direta a funções SQL, com privilégio mínimo e autenticidade S2S/PoP; exigir avaliação independente AppSec/DBA.
+4. Projetar identidade de workload, rotação de chaves/KMS, mTLS, revogação do Portal, propriedade real da campanha, vínculo contratual, papéis e aprovação humana.
+5. Definir outbox transacional real, idempotência no destino, compensação e recuperação pós-crash/restauração; dry-run com `ACK` não demonstra execução exatamente uma vez.
+6. Concluir gates **P0, HT-R01, SEC-R03/T3** e validação LGPD/infraestrutura antes de homologar clientes ou mídia paga.
+
+**Nota:** em todas as etapas acima, `APP_ENV=production` fecha o código sintético por padrão; isso é um bloqueio do laboratório, **não comprovação de um sistema de autorização operacional confiável**.
+
+---
+
 # Atualização verificável — 09/11/2026: FAST-PERF F1-34 a F1-36
 
 > Desenvolvimento **somente em branches/PRs draft de laboratório**, sem `main`, VPS/deploy, anúncios, pagamentos, dados reais ou homologação. Este marco é posterior às atualizações técnicas abaixo e não substitui os gates de produção.
