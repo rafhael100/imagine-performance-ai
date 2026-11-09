@@ -166,7 +166,7 @@ $check('54 same request duplicate acknowledged',
 $check('55 modified request cannot replay',
     $call($a,$swap,['req-demo-swap','cam-a2','cam-changed',true,true]),'request_conflict_or_out_of_scope');
 $check('56 B cannot reuse A request ID for B',
-    $call($b,$swap,['req-demo-swap','cam-b1','cam-b-new',true,true]),'managed_campaign_not_found');
+    $call($b,$swap,['req-demo-swap','cam-b1','cam-b-new',true,true]),'already_exists_or_out_of_scope');
 $check('57 B never sees A swap receipt',
     (int)$b->query('SELECT count(*) FROM perf_f66_scope.swaps')->fetchColumn(),0);
 $check('58 A sees exactly one receipt',
@@ -175,7 +175,9 @@ $check('59 A swap has no fee field',
     (int)$admin->query("SELECT count(*) FROM information_schema.columns"
       ." WHERE table_schema='perf_f66_scope' AND table_name='swaps'"
       ." AND column_name IN ('price','amount','billing_enabled')")->fetchColumn(),0);
-$check('60 A cannot reuse retired campaign ID',
+$check('60 A can change fake capacity after successful swap',
+    $call($a,$configure,['google_ads',3,2]),'capacity_configured_mock');
+$check('60b A cannot reuse retired campaign ID even with spare capacity',
     $call($a,$reserve,['google_ads','cam-a1']),'already_exists_or_out_of_scope');
 $check('61 B still has own campaign state unchanged',
     $call($b,"SELECT state FROM perf_f66_scope.campaigns WHERE ref='cam-b1'"),'active_demo');
