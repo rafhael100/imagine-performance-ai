@@ -1,3 +1,5 @@
+> **Estado desta branch de desenvolvimento (09/11/2026):** existe implementação PHP/Laravel isolada com mocks e um pacote de demonstração offline, incluindo campanhas, revisões, relatórios e marcas/contas fictícias; ver [STATUS-ATUAL.md](STATUS-ATUAL.md). O texto histórico abaixo descreve o planejamento original da `main` e não deve ser usado para inferir ausência de código nesta branch. **P0/HT-R01/SEC-R03/T3 e produção continuam bloqueados.** Nenhuma integração Google Ads/Meta, contrato real, publicação, faturamento, cliente ou VPS foi ativada.
+
 # Imagine Performance AI
 
 Repositório dedicado ao **planejamento, arquitetura, governança e desenvolvimento isolado do MVP** Imagine Performance AI, com dados sintéticos e contratos de integração ainda não homologados.

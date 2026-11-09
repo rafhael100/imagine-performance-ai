@@ -1,3 +1,29 @@
+# Imagine Performance AI — Consolidação do MVP sintético F1-52 a F1-62 (09/11/2026)
+
+**Status de produto: desenvolvimento em branches PR draft; demonstração offline funcional, sem homologação, cliente, lançamento ou execução de publicidade.** Nenhuma etapa libera `main`, deploy, pagamentos, provedor, dados reais ou gastos.
+
+| Etapa | PR draft | Verificações próprias |
+|---|---|---:|
+| F1-52 — capacidade e escopo de campanhas/grupos | [#126](https://github.com/rafhael100/imagine-performance-ai/pull/126) | 82 |
+| F1-53 — DTO de ocupação do Portal (fictício) | [#128](https://github.com/rafhael100/imagine-performance-ai/pull/128) | 67 |
+| F1-54 — painel visual offline | [#130](https://github.com/rafhael100/imagine-performance-ai/pull/130) | 44 |
+| F1-55 — HTML gerado da fonte PHP | [#132](https://github.com/rafhael100/imagine-performance-ai/pull/132) | 31 |
+| F1-56 — relatório CSV sintético | [#134](https://github.com/rafhael100/imagine-performance-ai/pull/134) | 49 |
+| F1-57 — revisão/operador independentes fictícios | [#136](https://github.com/rafhael100/imagine-performance-ai/pull/136) | 81 |
+| F1-58 — DTO de fila de revisões por tenant | [#141](https://github.com/rafhael100/imagine-performance-ai/pull/141) | 74 |
+| F1-59 — interface offline da fila de revisões | [#143](https://github.com/rafhael100/imagine-performance-ai/pull/143) | 39 |
+| F1-60 — marcas/contas/canais fictícios por tenant | [#145](https://github.com/rafhael100/imagine-performance-ai/pull/145) | 94 |
+| F1-61 — reconciliação cartões ↔ contas fictícias | [#147](https://github.com/rafhael100/imagine-performance-ai/pull/147) | 86 |
+| F1-62 — pacote offline de demonstração integrado | [#149](https://github.com/rafhael100/imagine-performance-ai/pull/149) | 53 |
+
+**CI F1-62:** [SUCCESS #42681972949](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42681972949), **700 verificações somadas no conjunto F1-52–F1-62**, inclusive regressões em fases precedentes; teste de build determinístico de pasta local e rejeição de `APP_ENV=production`. Isso não é `700 funcionalidades` nem homologação. Os ensaios anteriores F1-30–F1-51 têm pipelines próprios, como [CI F1-51 #42667000094](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42667000094).
+
+**Condição NO-GO e segurança:** permanecem P0/HT-R01/SEC-R03/T3, revisão AppSec/DBA, contrato/identidade/autorização Portal, autorização de anunciante, LGPD, gestão de credenciais/segredos OAuth, escopos Meta/Google, antirollback resistente a restore, auditoria e recuperação, controles de orçamento, idempotência no provedor, quotas de campanhas/grupos e preços homologados, teste de carga e implantação segregada. A F1-48 reproduziu replay de tokens após restauração; a F1-50 depende de terceira base também restaurável; a F1-51 bloqueia apenas papéis de laboratório limitados. NÃO habilitar dispatch.
+
+**Integração técnica pendente:** a F1-56 teve dois incrementos de exportação (CSV legado da cadeia F1-57 e exportador CSV/JSON acrescentado diretamente à branch F1-56); consolidá-los numa única API/contrato e alinhar os PRs antes de qualquer release. Reavaliar code review, testes transacionais, RLS, migrações, branch protection e eventual merge para uma branch de integração aprovada — nunca presumir que PRs draft estejam integrados só porque o CI passa.
+
+---
+
 # Atualização operacional do MVP demonstrativo — 09/11/2026 (F1-52 a F1-56)
 
 **Avanço real de desenvolvimento:** cinco etapas com código PHP de domínio, projeção Portal read-only, interface visual responsiva offline e CSV ilustrativo. **Ainda não é um produto operacional.** A `main`, VPS, contas reais, n8n, Google Ads/Meta Ads, CRM, cobranças e contratos não foram alterados.
