@@ -1,3 +1,11 @@
+# Imagine Performance AI — F1-66 | Postgres 16 RLS por empresa em CI (09/11/2026)
+
+[PR draft #157](https://github.com/rafhael100/imagine-performance-ai/pull/157); [CI SUCCESS #42688547650](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42688547650), **67 verificações** SQL e **16 processos disputando 1 vaga (1 admitido/15 negados)**, rollback real antes do COMMIT, pausa sem liberação. Herda regressões F1-52–F1-65. Owner NOLOGIN e duas identidades SQL login fictícias A/B, tabelas FORCE RLS com políticas `session_user`, papéis sem grants diretos de escrita, quotas e swaps com transações e FK por tenant. Corrigido binding PDO boolean em parâmetros de funções PostgreSQL.
+
+**Limites:** estas duas contas de banco são fixtures de laboratório, sem conexão real de identidade Portal/CRM, contrato, consentimento de anunciante, OAuth, KMS/mTLS, RLS de produção, backup/antirollback, AppSec/DBA ou deploy. A revisão humana em funções continua parâmetro booleano mock, e um superuser pode burlar/reconfigurar políticas. Não há contas nem efeito Ads/Meta, cobrança, dinheiro, clientes ou mídia. `release_state=blocked` e gates P0/HT-R01/SEC-R03/T3 **ainda abertos**. Sem merge, `main`, VPS ou produção.
+
+---
+
 # Imagine Performance AI — F1-63 a F1-65 (09/11/2026)
 
 **Três novas etapas entregues em PRs draft, sem merge ou deploy:**
