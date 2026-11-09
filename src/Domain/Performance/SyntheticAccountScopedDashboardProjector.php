@@ -24,7 +24,8 @@ final class SyntheticAccountScopedDashboardProjector
           ||getenv('PERF_F52_SCOPE_LAB')!=='1'
           ||getenv('PERF_F53_PORTAL_PREVIEW_LAB')!=='1'
           ||getenv('PERF_F60_ACCOUNT_SCOPE_LAB')!=='1'
-          ||getenv('PERF_F61_COMBINED_READ_LAB')!=='1'){
+          ||getenv('PERF_F61_COMBINED_READ_LAB')!=='1'
+          ||!preg_match('/^perf-demo-[a-z0-9-]{1,60}$/D',$tenant)){
             return null;
         }
         $scope=(new SyntheticScopeDashboardProjector())->build(
