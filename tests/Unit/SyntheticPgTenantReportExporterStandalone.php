@@ -65,9 +65,8 @@ $check('13 B group count',
     $rb['channels'][0]['groups']['used'],1);
 $check('14 no default Meta quota for B',
     $rb['channels'][1]['campaigns']['limit'],null);
-$check('15 A report campaign refs',
-    array_column($ra['campaigns'],'ref')===['cam-a2','cam-next']
-     ||count($ra['campaigns'])===3,true);
+$check('15 A report includes managed Google campaign',
+    in_array('cam-a2',array_column($ra['campaigns'],'ref'),true),true);
 $check('16 A exactly three scoped campaigns',count($ra['campaigns']),3);
 $check('17 B only scoped campaign',array_column($rb['campaigns'],'ref'),['cam-b1']);
 $check('18 A old groups not exported',count($ra['groups']),0);
