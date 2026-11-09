@@ -85,7 +85,7 @@ $intentInsert=$operator->prepare(
 );
 $makeIntent=static function(
     string $id,string $tenantId,string $campaignId,string $service,
-    string $operation,string $proposer,string $reviewer,string $request,
+    string $operation,string $proposer,?string $reviewer,string $request,
     string $reviewState='awaiting_approval'
 ) use($intentInsert):void {
     $intentInsert->execute([$id,$tenantId,$campaignId,$service,$operation,
