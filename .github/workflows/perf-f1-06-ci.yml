@@ -1,0 +1,30 @@
+name: Imagine Performance AI - F1-06 versioned offline snapshot
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-06-dashboard-snapshot-demo-2026-11-08
+
+permissions:
+  contents: read
+
+jobs:
+  demo-contract:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: PHP syntax and mock parity checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -v
+          php -l src/Domain/Performance/SyntheticPortalDashboardFactory.php
+          php -l tools/export-portal-dashboard-demo.php
+          php -l tests/Unit/SyntheticDashboardSnapshotStandalone.php
+          php tests/Unit/SyntheticDashboardSnapshotStandalone.php
+          php tools/export-portal-dashboard-demo.php > "${RUNNER_TEMP}/performance-dashboard-v1.json"
+          diff -u contracts/demo/performance-dashboard-v1.json "${RUNNER_TEMP}/performance-dashboard-v1.json"

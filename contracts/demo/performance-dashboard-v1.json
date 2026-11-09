@@ -1,0 +1,48 @@
+{
+    "schema_version": "perf.portal.snapshot.demo.v1",
+    "producer": "imagine-performance-ai-mock",
+    "source": "synthetic_fixture_only",
+    "portal_organization_ref": "org-demo-aurora",
+    "performance_tenant_ref": "perf-demo-aurora",
+    "service_state": "onboarding_pending_demo",
+    "commercial": {
+        "contracted": false,
+        "capacity_state": "unknown_not_for_sale_demo",
+        "price_state": "not_homologated"
+    },
+    "metrics": {
+        "source": "synthetic_demo",
+        "status": "not_real_metrics",
+        "campaigns_managed": 2,
+        "clicks": 264,
+        "approvals_pending": 1,
+        "media_spend": null
+    },
+    "campaigns": [
+        {
+            "id": "demo-search-01",
+            "tenant_ref": "perf-demo-aurora",
+            "channel": "google_ads",
+            "title": "Pesquisa — novos contatos (exemplo)",
+            "state": "active_demo",
+            "managed": true
+        },
+        {
+            "id": "demo-meta-01",
+            "tenant_ref": "perf-demo-aurora",
+            "channel": "meta",
+            "title": "Reconhecimento — marca (exemplo)",
+            "state": "paused_demo",
+            "managed": true
+        }
+    ],
+    "approvals": [
+        {
+            "id": "demo-approval-01",
+            "tenant_ref": "perf-demo-aurora",
+            "campaign_id": "demo-search-01",
+            "status": "pending_human_demo",
+            "manifest_version": "demo-v1"
+        }
+    ]
+}
