@@ -19,7 +19,7 @@ Campanhas sob gestão não podem ser associadas a marcas, contas de mídia ou ca
 
 ## Verificação
 
-`tests/Unit/SyntheticBrandAccountScopeIndexStandalone.php` testa **87 cenários** (campanhas Google/Meta, conta de marca inexistente, referências forjadas, duplicatas, acesso entre empresas, canal incompatível, pausa sem liberar capacidade, retirada formal, unlink separado de gestão, histórico sem cobrança, bloqueio em produção). O workflow F60 herda regressões F52–F59.
+`tests/Unit/SyntheticBrandAccountScopeIndexStandalone.php` testa **94 verificações** (campanhas Google/Meta, conta de marca inexistente, referências forjadas, duplicatas, acesso entre empresas, canal incompatível, pausa sem liberar capacidade, retirada formal, unlink separado de gestão, histórico sem cobrança, bloqueio em produção). O workflow F60 herda regressões F52–F59.
 
 ## Pendências
 
