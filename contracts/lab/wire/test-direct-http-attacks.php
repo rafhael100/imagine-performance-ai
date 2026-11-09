@@ -113,10 +113,10 @@ $check('16 ingress role cannot read A under RLS',
         "SELECT count(*) FROM perf_s2s_lab.mock_service_grants WHERE service_ref='svc-demo-a'"
     )->fetchColumn(),0);
 try {
-    $role->exec("UPDATE perf_s2s_lab.mock_service_grants
+    $changed = $role->exec("UPDATE perf_s2s_lab.mock_service_grants
          SET active=true WHERE service_ref='svc-demo-a'");
-    $check('17 ingress role cannot mutate A',true,false);
+    $check('17 ingress role cannot mutate A', $changed, 0);
 } catch (PDOException) {
-    $check('17 ingress role cannot mutate A',true,true);
+    $check('17 ingress role cannot mutate A', true, true);
 }
 echo "PASS F15 $n signed inbound denial / tenant RLS assertions\n";
