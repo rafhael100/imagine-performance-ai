@@ -1,0 +1,24 @@
+{
+  "contract_version": "perf.revocation.synthetic.v1",
+  "event_fields": [
+    "event_id",
+    "service_ref",
+    "organization_ref",
+    "tenant_ref",
+    "source_revision",
+    "event_type",
+    "status",
+    "attempts"
+  ],
+  "authority_fields": [
+    "service_ref",
+    "organization_ref",
+    "tenant_ref",
+    "min_revision",
+    "active"
+  ],
+  "event_type": "service.authorization_changed.synthetic",
+  "status_values": ["pending", "acked"],
+  "source": "portal-imagine-lab",
+  "side_effects": "none"
+}
