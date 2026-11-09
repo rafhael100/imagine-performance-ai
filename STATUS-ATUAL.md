@@ -1,3 +1,23 @@
+# Imagine Performance AI — Consolidação F1-67–F1-73 (09/11/2026)
+
+**Entregas em PRs draft, sem merge, deploy, dados reais, anúncios ou cobrança:**
+
+| Etapa | PR | CI verde no commit de código/documentação | Resultado verificável |
+|---|---|---|---|
+| **F1-67** | [#160](https://github.com/rafhael100/imagine-performance-ai/pull/160) | [#42689870210](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42689870210) | 87 verificações read-only PostgreSQL RLS, snapshot consistente A/B |
+| **F1-68** | [#162](https://github.com/rafhael100/imagine-performance-ai/pull/162) | [#42690998831](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42690998831) | 86 verificações de exportação JSON/CSV por papel SQL, sem métricas Ads reais |
+| **F1-69** | [#164](https://github.com/rafhael100/imagine-performance-ai/pull/164) | [#42692046201](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42692046201) | 47 verificações de revogação de grants/NOLOGIN e encerramento explícito de sessão |
+| **F1-70** | [#166](https://github.com/rafhael100/imagine-performance-ai/pull/166) | [#42693017521](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42693017521) | Negativo real: backup antigo do PostgreSQL apaga reserva e recibo e reabre replay |
+| **F1-71** | [#168](https://github.com/rafhael100/imagine-performance-ai/pull/168) | [#42699871150](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42699871150) | Segunda base PostgreSQL com checkpoints detecta restore isolado do primário |
+| **F1-72** | [#170](https://github.com/rafhael100/imagine-performance-ai/pull/170) | [#42700740656](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42700740656) | Negativo real: restaurar os DOIS PostgreSQL à versão antiga produz falsa concordância |
+| **F1-73** | [#172](https://github.com/rafhael100/imagine-performance-ai/pull/172) | [#42702466698](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42702466698) | Ed25519 e epoch mínimo em arquivos fora dos dois backups detectam rollback duplo **só enquanto a raiz externa não for retrocedida** |
+
+**Pontos críticos:** F1-70 e F1-72 são evidências de vulnerabilidade, **não correções**. F1-73 é **somente simulação**, com chave privada efêmera e arquivos de chave pública/epoch mínimo editáveis; o teste comprovou que retroceder também o epoch externo faz a assinatura antiga voltar a ser aceita. Não existe KMS/HSM, fonte monotônica imutável, protocolo atômico entre sistemas, reconciliação real de provedores, autorização humana/Portal/CRM, OAuth, LGPD operacional ou AppSec/DBA homologado. Os modelos de capacidade continuam fictícios, não representam contratos. **Não alegar recuperação segura ou produto pronto.**
+
+**Estado de entrega:** `release_state=blocked`, `external_provider_dispatch_allowed=false`, `billing_enabled=false`; P0/HT-R01/SEC-R03/T3 e revisões AppSec/DBA pendentes. `main` não modificada, PRs draft, sem integração com Google Ads/Meta, usuários, VPS, n8n, PSP, cobrança, despesas ou deploy.
+
+---
+
 # Imagine Performance AI — F1-66 | Postgres 16 RLS por empresa em CI (09/11/2026)
 
 [PR draft #157](https://github.com/rafhael100/imagine-performance-ai/pull/157); [CI SUCCESS #42688547650](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42688547650), **67 verificações** SQL e **16 processos disputando 1 vaga (1 admitido/15 negados)**, rollback real antes do COMMIT, pausa sem liberação. Herda regressões F1-52–F1-65. Owner NOLOGIN e duas identidades SQL login fictícias A/B, tabelas FORCE RLS com políticas `session_user`, papéis sem grants diretos de escrita, quotas e swaps com transações e FK por tenant. Corrigido binding PDO boolean em parâmetros de funções PostgreSQL.
