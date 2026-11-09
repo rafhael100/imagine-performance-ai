@@ -1,3 +1,23 @@
+# Atualização operacional do MVP demonstrativo — 09/11/2026 (F1-52 a F1-56)
+
+**Avanço real de desenvolvimento:** cinco etapas com código PHP de domínio, projeção Portal read-only, interface visual responsiva offline e CSV ilustrativo. **Ainda não é um produto operacional.** A `main`, VPS, contas reais, n8n, Google Ads/Meta Ads, CRM, cobranças e contratos não foram alterados.
+
+| PR draft | Entrega concluída em branch isolada | CI verificado |
+| --- | --- | --- |
+| [#126 F1-52](https://github.com/rafhael100/imagine-performance-ai/pull/126) | Escopo/quotas fictícias de campanhas e grupos, pausas contabilizadas, substituição sem taxa/efeitos | [82/82](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42672359287) |
+| [#128 F1-53](https://github.com/rafhael100/imagine-performance-ai/pull/128) | Projeção DTO versionada para preview Portal, isolamento por tenant e no-go | [67 próprios + regressões](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42673232973) |
+| [#130 F1-54](https://github.com/rafhael100/imagine-performance-ai/pull/130) | Interface HTML/CSS/JS offline com filtros por canal e revisões simuladas | [44 próprios + regressões](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42674543911) |
+| [#132 F1-55](https://github.com/rafhael100/imagine-performance-ai/pull/132) | Renderização de HTML a partir do DTO PHP, paridade de dados | [31 próprios + regressões](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42675231626) |
+| [#134 F1-56](https://github.com/rafhael100/imagine-performance-ai/pull/134) | CSV de capacidade fictícia, sem fórmulas, preço ou contrato | [49 próprios + regressões](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42675979293) |
+
+**Total de cenários próprios: 273**, reexecutados na suíte F1-56. Este é o total desses cinco blocos, **não** de todos os testes históricos F1-01–F1-51. Ver [relatório consolidado](docs/execucao/FAST-PERF-F1-52-A-F1-56-ENTREGAS-GATES-2026-11-09.md) e [HTML offline](contracts/demo/performance-scope-preview-v1.html).
+
+**Estado de liberação: NO-GO, P0 ainda aberto.** A sentinela de recuperação anterior não é imutável e não elimina replay quando todas as autoridades são restauradas; falta revogação central mandatória, identidade Portal/serviço real, KMS/mTLS/PoP, auditoria AppSec/DBA, RLS real, autorização e orçamento aprovados por cliente, idempotência de Ads e staging validado. Quantitativos/valores de franquias AD01/BL01 e contagem contratual de grupos permanecem não homologados.
+
+Aprovação humana, contas Google/Meta, infraestrutura VPS e acesso real dos clientes são dependências para produção; **não inventar sucesso**. Nenhum PR foi mergeado. P0/HT-R01/SEC-R03/T3 e Issues #102/#115/#117/#119/#121/#123 permanecem abertos.
+
+---
+
 # FAST-PERF F1-50/F1-51 — 09/11/2026
 
 **F1-50 / [PR draft #122](https://github.com/rafhael100/imagine-performance-ai/pull/122):** três instâncias PostgreSQL descartáveis (5432/5433/5434), terceiro ledger de piso de época e nonces excluído dos backups restaurados em CI. Ele detectou rollback de autoridade F41 (época 10 contra piso 11) e replay após restore do ledger de observações F47, **mas o CI também comprovou bypass por chamada F47 SQL direta**. [CI final SUCCESS #42666101565](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42666101565), **43 verificações F1-50** (11+6+8+5+13), mais regressões.
