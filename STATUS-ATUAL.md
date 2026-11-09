@@ -1,3 +1,15 @@
+# Status técnico adicional — 09/11/2026, FAST-PERF F1-31–33 (PRs draft)
+
+> **Apenas desenvolvimento de laboratório:** este resumo é posterior ao status histórico abaixo, que NÃO deve ser usado isoladamente para inferir prontidão operacional. Branch `dev/perf-f1-33-portal-anchor-replay-2026-11-09` e ancestrais, **sem merge**, sem VPS/deploy/Ads/CRM/PSP/clientes reais.
+
+- **F1-31 / [PR #83](https://github.com/rafhael100/imagine-performance-ai/pull/83)**: Ed25519 emitido pelo Portal fictício, reconsulta PostgreSQL da fonte e consumo único de nonce em uma segunda instância SQL; [CI SUCCESS #42617243110](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42617243110), **27 verificações F1-31** e 50 de regressão F1-30.
+- **F1-32 / [PR #85](https://github.com/rafhael100/imagine-performance-ai/pull/85)**: execução real de pg_dump/restore da tabela de recibos, demonstra que **token já consumido pode ser reutilizado depois de restaurar backup antigo**. Incrementar recovery_epoch na fonte Portal em banco separado bloqueia a assinatura antiga **somente depois** da atualização. [CI SUCCESS esperado-negativo #42617965451](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42617965451), **7+7+7 verificações F1-32**; verde significa risco reproduzido, NÃO correção.
+- **F1-33 / [PR #87](https://github.com/rafhael100/imagine-performance-ai/pull/87)**: âncora sintética adicional de nonce no Portal, antes do recibo do Performance. Ao restaurar somente o banco secundário, o caminho com âncora recusa replay, **mas chamar diretamente o verificador antigo sem a âncora continua aceitando replay**; [CI SUCCESS #42618567247](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42618567247), **11+13 verificações F1-33**.
+- **Bloqueadores P0**: o Portal e a âncora também são restauráveis; atualização de epoch não é automaticamente monotônica; chaves são efêmeras, a âncora não verifica Ed25519 diretamente, há possibilidade de pré-consumo/DoS e execução por caminho legado, não existe prova real de posse de recursos, identidade S2S mTLS, API operacional, commit distribuído, idempotência de efeito, recuperação nem homologação AppSec/DBA/LGPD. P0, HT-R01 e SEC-R03/T3 permanecem **abertos**.
+- **Próxima prioridade técnica**: centralizar enforcement sem bypass de verificadores antigos; projetar marca monotônica de recuperação fora do domínio restaurável, outbox/idempotência de efeitos e revisão independente do protocolo antes de qualquer operação real. O CI não autoriza merge, lançamento ou acesso comercial.
+
+---
+
 # STATUS ATUAL — Imagine Performance AI
 
 ## Atualização técnica prioritária — 08/11/2026 (substitui status técnicos antigos abaixo)
