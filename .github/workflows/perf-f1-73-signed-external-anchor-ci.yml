@@ -490,20 +490,7 @@ jobs:
           set -euo pipefail
           test "$APP_ENV" = testing
           test "$GITHUB_ACTIONS" = true
-          php -m | grep -qi '^sodium
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
-          grep -q '"billing_allowed": false' contracts/lab/ci/performance-release-no-go.json
-          test ! -e routes/web.php
-          test ! -e routes/api.php
-          if grep -R -n -E 'SyntheticScopeCsvExporter|PERF_F56_CSV_LAB' app/ routes/ bootstrap/ database/migrations/; then
-            echo 'FAIL F56 synthetic CSV must not become a public or authenticated endpoint'
-            exit 1
-          fi
-          test -z "$(git status --porcelain)"
-
+          php -m | grep -qi '^sodium$'
           php -l src/Domain/Performance/SyntheticSignedFixtureAnchorGuard.php
           php -l contracts/lab/php/f73-signed-external-anchor-cli.php
           bash -n tests/ui/test-f73-signed-external-anchor-negative.sh
