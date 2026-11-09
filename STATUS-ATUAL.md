@@ -1,3 +1,17 @@
+# Imagine Performance AI — F1-63 a F1-65 (09/11/2026)
+
+**Três novas etapas entregues em PRs draft, sem merge ou deploy:**
+
+| Etapa | PR | Evidência CI | Escopo |
+|---|---|---|---|
+| **F1-63** | [#151](https://github.com/rafhael100/imagine-performance-ai/pull/151) | [SUCCESS #42684374385](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42684374385) | SHA-256 de 6 arquivos offline mais manifesto, verificador contra falta/excesso/symlink/adulteração; hashes sem assinatura **não atestam autoria** |
+| **F1-64** | [#153](https://github.com/rafhael100/imagine-performance-ai/pull/153) | [SUCCESS #42685672846](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42685672846) | SQLite local transacional, cotas fictícias, FK compostas tenant+recurso, **80 testes** e corrida de 16 processos: **1** vaga ocupada, **15** negadas; crash antes de commit revertido |
+| **F1-65** | [#155](https://github.com/rafhael100/imagine-performance-ai/pull/155) | [SUCCESS #42686643336](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42686643336) | Leitura consistente de SQLite em um único snapshot e DTO demonstrativo do Portal; **82 testes**, inclusive fechamento/reabertura de arquivo, isolamento entre tenants e atualização após troca de campanha |
+
+**Estado:** os testes F1-52–F1-65 permanecem **exclusivamente sintéticos e locais**. A F1-64 não transforma SQLite em escolha operacional: arquitetura final Laravel/PostgreSQL ainda depende de migrations/RLS/Audit, autorização Portal real, contratos comerciais, credenciais e auditoria. A F1-65 não cria rota, SSO ou disponibilização de cliente. F1-63 é integridade não assinada, não release atestado. P0, HT-R01, SEC-R03/T3, AppSec/DBA, restauração/antirollback, identidade de trabalho S2S, real Google Ads/Meta e autorizações de operações permanecem **abertos**. `release_state=blocked`, `dispatch_enabled=false`, sem `main`, merge, deploy, VPS, anúncios, cobranças ou gastos.
+
+---
+
 # Imagine Performance AI — Consolidação do MVP sintético F1-52 a F1-62 (09/11/2026)
 
 **Status de produto: desenvolvimento em branches PR draft; demonstração offline funcional, sem homologação, cliente, lançamento ou execução de publicidade.** Nenhuma etapa libera `main`, deploy, pagamentos, provedor, dados reais ou gastos.
