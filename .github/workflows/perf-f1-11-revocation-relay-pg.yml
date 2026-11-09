@@ -1,0 +1,73 @@
+name: Imagine Performance AI - F1-11 source revocation outbox/recovery lab
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-11-revocation-relay-pg-lab-2026-11-08
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f111-revoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  disposable-revocation-relay:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: perf_test_relay_main
+          POSTGRES_PASSWORD: local-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_test_relay_main"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_test_relay_main
+      PERF_FENCE_DB: perf_test_relay_authority
+      PGUSER: postgres
+      PGPASSWORD: local-ci-only
+      PERF_SNAPSHOT_FIXTURE: contracts/demo/performance-dashboard-v1.json
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Use PHP 8.4 and disposable PG client
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo, pdo_pgsql
+      - name: Validate test-only path, syntax, and no live credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGDATABASE" = perf_test_relay_main
+          test "$PERF_FENCE_DB" = perf_test_relay_authority
+          php -m | grep -i '^pdo_pgsql$'
+          php -l contracts/lab/php/SyntheticRevocationRelay.php
+          php -l contracts/lab/php/test-revocation-relay-phases.php
+          bash -n contracts/lab/sql/run-revocation-relay-pg-lab.sh
+          pg_dump --version
+          pg_restore --version
+          pg_isready -h "$PGHOST" -p "$PGPORT" -U postgres -d "$PGDATABASE"
+      - name: Exercise source transaction, relay, failures, and real old-backup restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash contracts/lab/sql/run-revocation-relay-pg-lab.sh
+      - name: Verify no service routes or production migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- routes database/migrations composer.json composer.lock
