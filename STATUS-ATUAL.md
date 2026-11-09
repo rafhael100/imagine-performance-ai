@@ -1,3 +1,15 @@
+# Atualização verificável — 09/11/2026: FAST-PERF F1-34 a F1-36
+
+> Desenvolvimento **somente em branches/PRs draft de laboratório**, sem `main`, VPS/deploy, anúncios, pagamentos, dados reais ou homologação. Este marco é posterior às atualizações técnicas abaixo e não substitui os gates de produção.
+
+- **F1-34 / [PR #89](https://github.com/rafhael100/imagine-performance-ai/pull/89)** — verificador antigo sem âncora passa a negar autorizações **por padrão**, com exceção explicitamente restrita aos passos de regressão CI; verificador ancorado reconsulta Portal e consome recibo diretamente em SQL separado. [CI SUCCESS #42621215613](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42621215613), **12/12 testes novos**, regressões aprovadas.
+- **F1-35 / [PR #91](https://github.com/rafhael100/imagine-performance-ai/pull/91)** — registro idempotente de intenção fictícia `campaigns:read`, manifesto vinculado à chave, outbox SQL atômica com `dispatch_enabled=false`, sem consumidor. [CI SUCCESS #42621938701](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42621938701), **31/31 novos testes**, regressões aprovadas.
+- **F1-36 / [PR #93](https://github.com/rafhael100/imagine-performance-ai/pull/93)** — 16 processos PHP distintos concorrendo por uma mesma chave: **uma nova reserva, 15 duplicidades reconhecidas**, uma outbox única; processo encerrado antes de COMMIT provoca rollback SQL, seguido de retry seguro da reserva. [CI SUCCESS #42622441085](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42622441085); **4+7+8 verificações próprias**, além da checagem 1/15 e regressões.
+- **Riscos preservados:** o fluxo é somente `campaigns:read` fictício, sem worker real, chamada Google/Meta, dados/contas, aprovações comerciais, ligação autenticada de identidade, idempotência externa ou suporte confiável a restore conjunto dos bancos. O SQL de laboratório não fornece autorização operacional; um emissor autenticamente assinado e identidade de workload confiável ainda faltam. Não existe execução exatamente uma vez. Gates **P0, HT-R01, SEC-R03/T3, AppSec/DBA e infraestrutura/homologação abertos**.
+- **Próximo recorte recomendado:** desenhar e ensaiar consumidor de outbox **desativado** com leasing/idempotência/fencing, autoridade de revogação monotônica pós-restore e contratos de API S2S autenticada com KMS/mTLS; jamais disparar mídia sem permissão real e aprovação específica.
+
+---
+
 # Status técnico adicional — 09/11/2026, FAST-PERF F1-31–33 (PRs draft)
 
 > **Apenas desenvolvimento de laboratório:** este resumo é posterior ao status histórico abaixo, que NÃO deve ser usado isoladamente para inferir prontidão operacional. Branch `dev/perf-f1-33-portal-anchor-replay-2026-11-09` e ancestrais, **sem merge**, sem VPS/deploy/Ads/CRM/PSP/clientes reais.
