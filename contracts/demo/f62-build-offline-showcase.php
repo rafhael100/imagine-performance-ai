@@ -1,8 +1,10 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__,2).'/src/Domain/Performance/SyntheticOfflineReportExporter.php';
+
 /**
- * F1-62: build a FOUR-PART OFFLINE MVP DEMO in a new local folder.
+ * F1-62/F1-63: build a consolidated OFFLINE MVP DEMO in a new folder.
  * Requires *all* offline feature flags and fake-only PHP CLI. It NEVER
  * publishes, calls a provider, connects to customers or changes a project.
  *
@@ -14,6 +16,7 @@ if(PHP_SAPI!=='cli'||getenv('APP_ENV')!=='testing'
   ||getenv('PERF_F53_PORTAL_PREVIEW_LAB')!=='1'
   ||getenv('PERF_F55_RENDER_LAB')!=='1'
   ||getenv('PERF_F56_CSV_LAB')!=='1'
+  ||getenv('PERF_F56_EXPORT_LAB')!=='1'
   ||getenv('PERF_F57_REVIEW_LAB')!=='1'
   ||getenv('PERF_F58_REVIEW_QUEUE_LAB')!=='1'
   ||getenv('PERF_F59_UI_LAB')!=='1'
@@ -55,11 +58,23 @@ $index=file_get_contents(__DIR__.'/f62-offline-showcase-index.html');
 if(!is_string($index)||strlen($index)>40000){
     throw new RuntimeException('F62 index missing or oversized');
 }
+$reportSource=json_decode($run('f53-generate-scope-preview.php'),
+    true,32,JSON_THROW_ON_ERROR);
+if(!is_array($reportSource)){
+    throw new RuntimeException('Missing canonical F53 synthetic report source');
+}
+$reportExporter=new \Imagine\Performance\Domain\SyntheticOfflineReportExporter();
+$reportCsv=$reportExporter->export($reportSource,'perf-demo-aurora','csv');
+$reportJson=$reportExporter->export($reportSource,'perf-demo-aurora','json');
+if(!is_string($reportCsv)||!is_string($reportJson)){
+    throw new RuntimeException('F63 unified CSV/JSON report gate refused fixture');
+}
 $files=[
     'index.html'=>$index,
     'painel-campanhas.html'=>$run('f55-render-offline-preview.php'),
     'revisoes.html'=>$run('f59-render-review-queue.php'),
-    'relatorio-capacidade.csv'=>$run('f56-export-capacity-csv.php'),
+    'relatorio-capacidade.csv'=>$reportCsv,
+    'relatorio-capacidade.json'=>$reportJson,
     'marcas-contas.json'=>$run('f62-generate-account-overview.php'),
 ];
 $account=json_decode($files['marcas-contas.json'],true,32,JSON_THROW_ON_ERROR);
