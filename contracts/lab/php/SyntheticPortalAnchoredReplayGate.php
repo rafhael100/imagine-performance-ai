@@ -84,10 +84,34 @@ final class SyntheticPortalAnchoredReplayGate
             ]);
             if((int)$q->fetchColumn()!==1)return 'portal_anchor_replay_denied';
 
-            $local=(new SyntheticPortalEd25519DurableReplayGate(
-                $this->trustedPublicKeyHex,$this->nonceAuthority
-            ))->verifyOnce($packet,$currentPortal,$now);
-            if($local!=='verified_synthetic_once') {
+            // F1-34: no longer call the publicly callable legacy gate.
+            // Reconsult current Portal facts after the anchor has committed.
+            $fresh=$currentPortal();
+            if(!$fresh instanceof SyntheticCurrentAuthority
+               || (new SignedPortalCapabilityGate($this->trustedPublicKeyHex))
+                  ->check($packet,$fresh,$now)!=='verified_synthetic_only') {
+                return 'local_nonce_or_source_denied';
+            }
+            if($this->nonceAuthority->inTransaction()) {
+                return 'local_nonce_or_source_denied';
+            }
+            $identity=$this->nonceAuthority->query(
+                'SELECT current_database() AS db,current_user AS role'
+            )->fetch(PDO::FETCH_ASSOC);
+            if(!is_array($identity)
+               || $identity['db']!=='perf_f31_nonce_ci'
+               || $identity['role']!=='perf_f31_consumer') {
+                return 'local_nonce_or_source_denied';
+            }
+            $consumeLocal=$this->nonceAuthority->prepare(
+                'SELECT CASE WHEN perf_f31_receipts.consume_validated_nonce('
+                .'?,?,?,CAST(? AS bigint),CAST(? AS bigint)) THEN 1 ELSE 0 END'
+            );
+            $consumeLocal->execute([
+                $claims['nonce'],$claims['performance_tenant_ref'],
+                $claims['portal_service_ref'],$claims['expires_at'],$now
+            ]);
+            if((int)$consumeLocal->fetchColumn()!==1) {
                 // The Portal anchor remains spent. This is intentional
                 // fail-closed behavior with availability loss, not exactly-once.
                 return 'local_nonce_or_source_denied';
