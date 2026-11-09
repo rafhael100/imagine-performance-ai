@@ -69,7 +69,7 @@ final class SyntheticCampaignApprovalLedger
 
             $row = $this->db->prepare(
                 'SELECT tenant_id,portal_service_ref,dispatch_state
-                 FROM performance_managed_campaigns WHERE id=? FOR UPDATE'
+                 FROM performance_managed_campaigns WHERE id=?'
             );
             $row->execute([$campaign]);
             $target=$row->fetch(PDO::FETCH_ASSOC);
