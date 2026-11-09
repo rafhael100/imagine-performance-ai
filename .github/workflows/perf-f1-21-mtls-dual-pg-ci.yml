@@ -1,0 +1,237 @@
+name: Performance F1-21 - ephemeral mutual TLS to separate Portal PG16 with isolated motor restore
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-21-mtls-authority-restore-lab-2026-11-09
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f121-mtls-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dual-cluster-revocation-restore:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    services:
+      portal-source:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: portal_f20_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: portal-ci-f20-only
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portal_f20_test"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+      performance-motor:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: perf_f20_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: performance-ci-f20-only
+        ports:
+          - '127.0.0.1:5433:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f20_test"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F20_DUAL_CLUSTER_LAB: '1'
+      PORTAL_F20_PORT: '5432'
+      PERF_F20_PORT: '5433'
+      PORTAL_F20_ADMIN_PASS: portal-ci-f20-only
+      PERF_F20_ADMIN_PASS: performance-ci-f20-only
+    steps:
+      - name: Checkout laboratory branch only
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install PHP 8.4 PDO PostgreSQL only
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo,pdo_pgsql
+      - name: Syntax and network-safety guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/dual-cluster/IndependentClusterSyntheticFence.php
+          php -l contracts/lab/dual-cluster/test-dual-instance-restore.php
+          php -m | grep -i '^pdo_pgsql$'
+          test "$PORTAL_F20_PORT" = 5432
+          test "$PERF_F20_PORT" = 5433
+          if grep -R 'IndependentClusterSyntheticFence' routes/ app/; then
+            echo 'FAIL: test-only F20 wired into operational routes'
+            exit 1
+          fi
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" pg_isready -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" pg_isready -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test
+      - name: Prove PostgreSQL instances have different system identifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+          portal_id="$(PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -A -t -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -c 'SELECT system_identifier FROM pg_control_system()')"
+          motor_id="$(PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -A -t -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c 'SELECT system_identifier FROM pg_control_system()')"
+          test -n "$portal_id"
+          test -n "$motor_id"
+          test "$portal_id" != "$motor_id"
+          echo 'PASS two distinct PG16 data clusters, still on one CI host'
+      - name: Create two independent synthetic grant schemas with restricted roles
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -c "CREATE ROLE portal_f20_reader LOGIN PASSWORD 'ci-only-source-reader-f20' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c "CREATE ROLE perf_f20_writer LOGIN PASSWORD 'ci-only-motor-writer-f20' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -c "GRANT CONNECT ON DATABASE portal_f20_test TO portal_f20_reader"
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c "GRANT CONNECT ON DATABASE perf_f20_test TO perf_f20_writer"
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -f contracts/lab/dual-cluster/001-portal-source.sql
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -f contracts/lab/dual-cluster/002-performance-target.sql
+      - name: Generate ephemeral CA and mutual TLS certs, then exercise 84 dual-PG tests
+        shell: bash
+        env:
+          PERF_F21_MTLS_LAB: '1'
+        run: |
+          set -euo pipefail
+          certdir="$RUNNER_TEMP/perf-f21-ephemeral-tls"
+          mkdir -p "$certdir"
+          chmod 700 "$certdir"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj "/CN=Imagine-F21-Temporary-CA" \
+            -keyout "$certdir/ca.key" -out "$certdir/ca.crt" >/dev/null 2>&1
+          cat > "$certdir/server.ext" <<'EOF'
+          subjectAltName=DNS:localhost,IP:127.0.0.1
+          extendedKeyUsage=serverAuth
+          keyUsage=digitalSignature,keyEncipherment
+          EOF
+          cat > "$certdir/client.ext" <<'EOF'
+          extendedKeyUsage=clientAuth
+          keyUsage=digitalSignature,keyEncipherment
+          EOF
+          issue_leaf() {
+            local name="$1"
+            local cn="$2"
+            local ext="$3"
+            openssl req -newkey rsa:2048 -nodes -subj "/CN=$cn" \
+              -keyout "$certdir/$name.key" \
+              -out "$certdir/$name.csr" >/dev/null 2>&1
+            openssl x509 -req -days 1 -in "$certdir/$name.csr" \
+              -CA "$certdir/ca.crt" -CAkey "$certdir/ca.key" \
+              -CAcreateserial -out "$certdir/$name.crt" \
+              -extfile "$certdir/$ext.ext" >/dev/null 2>&1
+          }
+          issue_leaf server localhost server
+          issue_leaf client performance-reader.lab client
+          issue_leaf rogue rogue-reader.lab client
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj "/CN=Unrelated-F21-CA" \
+            -keyout "$certdir/untrusted-ca.key" \
+            -out "$certdir/untrusted-ca.crt" >/dev/null 2>&1
+          chmod 600 "$certdir"/*.key
+          export PERF_F21_CA="$certdir/ca.crt"
+          export PERF_F21_SERVER_CERT="$certdir/server.crt"
+          export PERF_F21_SERVER_KEY="$certdir/server.key"
+          export PERF_F21_CLIENT_CERT="$certdir/client.crt"
+          export PERF_F21_CLIENT_KEY="$certdir/client.key"
+          export PERF_F21_ROGUE_CLIENT_CERT="$certdir/rogue.crt"
+          export PERF_F21_ROGUE_CLIENT_KEY="$certdir/rogue.key"
+          export PERF_F21_UNKNOWN_CA="$certdir/untrusted-ca.crt"
+          export PERF_F21_SERVER_HOST=localhost
+          python3 contracts/lab/mtls/portal-fence-server.py \
+            > "$RUNNER_TEMP/perf-f21-tls-server.log" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=0
+          for i in $(seq 1 70); do
+            if curl --noproxy '*' -fsS --connect-timeout 1 --max-time 3 \
+              --cacert "$PERF_F21_CA" \
+              --cert "$PERF_F21_CLIENT_CERT" --key "$PERF_F21_CLIENT_KEY" \
+              https://localhost:18785/_synthetic/portal/fence/v1/svc-demo-b \
+              2>/dev/null | grep -q 'perf.mtls.fence.synthetic.v1'; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo 'FAIL: temporary mTLS server exited'
+              tail -n 30 "$RUNNER_TEMP/perf-f21-tls-server.log"
+              exit 1
+            fi
+            sleep 0.2
+          done
+          test "$ready" -eq 1
+          php -l contracts/lab/mtls/SyntheticMtlsPortalFence.php
+          php -l contracts/lab/mtls/test-mtls-restore.php
+          python3 -m py_compile contracts/lab/mtls/portal-fence-server.py
+          export PERF_F20_PHASE=baseline PERF_F21_PHASE=baseline
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+          php contracts/lab/mtls/test-mtls-restore.php
+          
+          snapshot="$RUNNER_TEMP/perf-f21-before-revocation.dump"
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" pg_dump \
+            -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test \
+            --schema=perf_f20 --format=custom --no-owner --no-acl --file="$snapshot"
+          test -s "$snapshot"
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -c \
+            "UPDATE portal_f20.mock_authority SET active=false,current_revision=2,recovery_epoch=2 WHERE service_ref='svc-demo-b' AND current_revision=1 AND active=true"
+          export PERF_F20_PHASE=revoked PERF_F21_PHASE=revoked
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+          php contracts/lab/mtls/test-mtls-restore.php
+          
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c \
+            "BEGIN; UPDATE perf_f20.mock_grants SET active=false,grant_revision=2,recovery_epoch=2 WHERE service_ref='svc-demo-b'; INSERT INTO perf_f20.mock_receipts(event_id,service_ref,grant_revision) VALUES ('evt-demo-f21-revoke-b2','svc-demo-b',2); COMMIT"
+          export PERF_F20_PHASE=delivered PERF_F21_PHASE=delivered
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+          php contracts/lab/mtls/test-mtls-restore.php
+          
+          restore_motor() {
+            PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 \
+              -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test \
+              -c 'DROP SCHEMA perf_f20 CASCADE'
+            PGPASSWORD="$PERF_F20_ADMIN_PASS" pg_restore \
+              -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test \
+              --no-owner --no-acl --exit-on-error "$snapshot"
+            PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 \
+              -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c \
+              "GRANT USAGE ON SCHEMA perf_f20 TO perf_f20_writer; GRANT SELECT ON perf_f20.mock_grants TO perf_f20_writer; GRANT UPDATE(active,grant_revision,recovery_epoch) ON perf_f20.mock_grants TO perf_f20_writer; GRANT SELECT ON perf_f20.mock_receipts TO perf_f20_writer"
+          }
+          restore_motor
+          export PERF_F20_PHASE=restored
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+          restore_motor
+          export PERF_F21_PHASE=restored
+          php contracts/lab/mtls/test-mtls-restore.php
+          
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test \
+            -c 'REVOKE SELECT ON portal_f20.mock_authority FROM portal_f20_reader'
+          export PERF_F20_PHASE=source_outage
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test \
+            -c 'GRANT SELECT ON portal_f20.mock_authority TO portal_f20_reader'
+          kill "$server_pid" 2>/dev/null || true
+          wait "$server_pid" 2>/dev/null || true
+          export PERF_F21_PHASE=outage
+          php contracts/lab/mtls/test-mtls-restore.php
+          echo 'PASS F1-21 temporary mTLS across two independent PG16 clusters and restore'
+      - name: No operational runtime routes or migrations added
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- routes/ app/ database/migrations/ composer.json composer.lock
