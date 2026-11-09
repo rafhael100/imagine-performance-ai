@@ -1,3 +1,22 @@
+# Atualização verificável — 09/11/2026: FAST-PERF F1-41 a F1-43
+
+> **Exclusivamente CI e dados sintéticos:** não há backend operacional, merge, deploy, API Google/Meta, n8n, cobrança, VPS ou autorização de campanhas. Registros abaixo são prova de laboratórios de segurança; CI verde não significa homologação.
+
+- **F1-41 / [PR #104](https://github.com/rafhael100/imagine-performance-ai/pull/104)** — estado externo de quarentena começa fechado; liberação `released_mock` exige identificador fictício de aprovação; novas quarentenas incrementam época e invalidam tokens antigos no wrapper. **Falha ainda reproduzida:** chamadas diretas a F1-38 ignoram a quarentena. [CI SUCCESS #42628622465](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42628622465), **44/44 verificações F1-41**, regressões.
+- **F1-42 / [PR #106](https://github.com/rafhael100/imagine-performance-ai/pull/106)** — revoga EXECUTE nas funções SQL F1-38 da role antiga e cria admissão isolada sob nova role. **Falha ainda reproduzida:** portador da nova role consegue chamar F1-38 direto sem consultar quarentena. [CI SUCCESS #42629482044](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42629482044), **45/45 F1-42**, regressões.
+- **F1-43 / [PR #108](https://github.com/rafhael100/imagine-performance-ai/pull/108)** — revoga EXECUTE também da role F1-42 e cria role F1-43 que executa somente funções `SECURITY DEFINER` com guarda local da quarentena usando `FOR SHARE` na **mesma transação** de `claim/ack`. **Risco ainda confirmado:** autoridade externa F1-41 estava em `released_mock:4`, enquanto a guarda SQL local evoluiu para `released_mock:5`; não há sincronização de recuperação confiável. [CI SUCCESS #42630260057](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42630260057), **46/46 F1-43**, regressões.
+
+## Gates de homologação ainda abertos
+
+- Quarentena **automática antes de retomar qualquer operação** após restore e detecção de regressões de autoridade.
+- Época monotônica resistente a rollback simultâneo de todas as fontes; cópias SQL restauráveis não bastam.
+- Garantia de execução de somente um caminho com autenticação real de workload, credenciais segregadas, mTLS/PoP, KMS e enforcement SQL sem bypass.
+- Sincronização de fonte externa/guarda local e resistência a TOCTOU, indisponibilidade, falhas em rede, restore e revogação.
+- Consentimento, contrato e escopo real do Portal, orçamento, dupla aprovação humana em ações com gastos, limites de conta, idempotência no provedor e reconciliação, auditoria LGPD/AppSec/DBA.
+- `dispatch_enabled=false` na outbox e `APP_ENV=production` fechado para todos os testes. **P0, HT-R01, SEC-R03/T3 e [Issue #102](https://github.com/rafhael100/imagine-performance-ai/issues/102) continuam abertos.**
+
+---
+
 # Atualização de segurança — 09/11/2026: FAST-PERF F1-38, F1-39 e F1-40
 
 > **Desenvolvimento apenas de laboratório**, sem código ligado a rotas/worker/Ads, sem PR mergeado nem `main`/VPS/deploy. **CI verde nas etapas de falha esperada significa risco reproduzido, NÃO aprovação de segurança.**
