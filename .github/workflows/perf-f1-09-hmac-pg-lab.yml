@@ -1,0 +1,66 @@
+name: Imagine Performance AI - F1-09 synthetic HMAC and PG bridge
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-09-synthetic-bridge-pg-2026-11-08
+
+permissions:
+  contents: read
+
+jobs:
+  offline-hmac-to-pg:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: perf_test_s2s_bridge
+          POSTGRES_PASSWORD: local-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_test_s2s_bridge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_test_s2s_bridge
+      PGUSER: postgres
+      PGPASSWORD: local-ci-only
+      PERF_SNAPSHOT_FIXTURE: contracts/demo/performance-dashboard-v1.json
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install PHP 8.4 and only required PostgreSQL extension
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo, pdo_pgsql
+      - name: Verify isolated test DB and PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -m | grep -i '^pdo_pgsql$'
+          php -l contracts/lab/php/SyntheticIngressBridge.php
+          php -l contracts/lab/php/test-synthetic-ingress-bridge.php
+          test "$PGDATABASE" = perf_test_s2s_bridge
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres -d "$PGDATABASE"
+      - name: Create LAB-only DB role and tables
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_s2s_lab_caller LOGIN PASSWORD 'ci-test-only-s2s-role'"
+          psql -X -v ON_ERROR_STOP=1 -c "GRANT CONNECT ON DATABASE perf_test_s2s_bridge TO perf_s2s_lab_caller"
+          psql -X -v ON_ERROR_STOP=1 -f contracts/lab/sql/001-replay-revocation-lab.sql
+      - name: Test signature, tenant isolation, replay, grant revision and revocation together
+        shell: bash
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-synthetic-ingress-bridge.php
