@@ -26,6 +26,11 @@ final class SyntheticDryRunOutboxLeaser
             ||getenv('PGDATABASE')!=='portal_perf_auth_lab'){
             return 'lease_lab_disabled';
         }
+        // F1-38: unfenced F37 is now DENY-BY-DEFAULT. The prior failure
+        // scenario runs only behind a separate explicit CI compatibility flag.
+        if(getenv('PERF_F38_UNFENCED_COMPAT_TEST')!=='1'){
+            return 'unfenced_legacy_denied';
+        }
         if($this->db->inTransaction())return 'nested_transaction_denied';
         try{
             $id=$this->db->query(
