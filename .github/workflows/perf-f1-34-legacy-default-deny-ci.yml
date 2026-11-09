@@ -249,7 +249,7 @@ jobs:
           PERF_F34_GUARD_LAB: '1'
         run: |
           set -euo pipefail
-          test -z "\${PERF_F34_LEGACY_COMPAT_TEST:-}"
+          test -z "${PERF_F34_LEGACY_COMPAT_TEST:-}"
           php -l contracts/lab/php/SyntheticPortalEd25519DurableReplayGate.php
           php -l contracts/lab/php/SyntheticPortalAnchoredReplayGate.php
           php -l contracts/lab/php/test-f34-default-deny-legacy-pg.php
