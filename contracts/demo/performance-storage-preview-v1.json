@@ -1,0 +1,70 @@
+{
+    "schema_version": "perf.portal.storage.synthetic.v1",
+    "producer": "imagine-performance-ai-lab",
+    "source": "synthetic_postgresql_only",
+    "portal_organization_ref": "org-demo-a",
+    "performance_tenant_ref": "perf-demo-a",
+    "portal_service_ref": "svc-demo-a",
+    "read_only": true,
+    "contracted": false,
+    "dispatch_enabled": false,
+    "commercial": {
+        "capacity_state": "unknown_not_for_sale_demo",
+        "price_state": "not_homologated"
+    },
+    "metrics": {
+        "managed_campaigns": 2,
+        "paused_campaigns": 1,
+        "approvals_pending": 1,
+        "approvals_approved_internal": 2,
+        "approvals_rejected": 1,
+        "clicks": null,
+        "media_spend": null
+    },
+    "campaigns": [
+        {
+            "ref": "demo-cam-a1",
+            "channel": "google_ads",
+            "title": "A One (exemplo)",
+            "state": "paused_demo",
+            "managed": true
+        },
+        {
+            "ref": "demo-cam-f23-demo",
+            "channel": "google_ads",
+            "title": "F23 test draft (exemplo)",
+            "state": "draft_demo",
+            "managed": true
+        }
+    ],
+    "approvals": [
+        {
+            "ref": "demo-req-demo-f23-failed-audit",
+            "campaign_ref": "demo-cam-f23-demo",
+            "operation": "campaign.pause",
+            "status": "approved_demo_no_execution",
+            "manifest_version": "demo-v1"
+        },
+        {
+            "ref": "demo-req-demo-f23-first",
+            "campaign_ref": "demo-cam-f23-demo",
+            "operation": "campaign.pause",
+            "status": "approved_demo_no_execution",
+            "manifest_version": "demo-v1"
+        },
+        {
+            "ref": "demo-req-demo-f23-rejected",
+            "campaign_ref": "demo-cam-f23-demo",
+            "operation": "campaign.replace",
+            "status": "rejected_demo",
+            "manifest_version": "demo-v1"
+        },
+        {
+            "ref": "demo-request-demo-1",
+            "campaign_ref": "demo-cam-a1",
+            "operation": "campaign.pause",
+            "status": "pending_human_demo",
+            "manifest_version": "demo-v1"
+        }
+    ]
+}
