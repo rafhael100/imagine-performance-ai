@@ -95,14 +95,17 @@ CREATE TABLE IF NOT EXISTS f64_campaigns (
 );
 CREATE INDEX IF NOT EXISTS f64_campaign_tenant_channel
     ON f64_campaigns(tenant,channel,managed);
+CREATE UNIQUE INDEX IF NOT EXISTS f64_campaign_tenant_ref
+    ON f64_campaigns(tenant,ref);
 CREATE TABLE IF NOT EXISTS f64_groups (
     ref TEXT PRIMARY KEY CHECK(ref GLOB 'grp-*'),
     tenant TEXT NOT NULL CHECK(tenant GLOB 'perf-demo-*'),
-    campaign_ref TEXT NOT NULL REFERENCES f64_campaigns(ref),
+    campaign_ref TEXT NOT NULL,
     state TEXT NOT NULL CHECK(state IN (
         'active_demo','paused_demo','outside_scope_demo'
     )),
-    managed INTEGER NOT NULL CHECK(managed IN (0,1))
+    managed INTEGER NOT NULL CHECK(managed IN (0,1)),
+    FOREIGN KEY(tenant,campaign_ref) REFERENCES f64_campaigns(tenant,ref)
 );
 CREATE INDEX IF NOT EXISTS f64_group_tenant
     ON f64_groups(tenant,managed);
@@ -111,7 +114,9 @@ CREATE TABLE IF NOT EXISTS f64_swaps (
     tenant TEXT NOT NULL CHECK(tenant GLOB 'perf-demo-*'),
     old_ref TEXT NOT NULL REFERENCES f64_campaigns(ref),
     new_ref TEXT NOT NULL REFERENCES f64_campaigns(ref),
-    result TEXT NOT NULL CHECK(result='replaced_synthetic_no_fee')
+    result TEXT NOT NULL CHECK(result='replaced_synthetic_no_fee'),
+    FOREIGN KEY(tenant,old_ref) REFERENCES f64_campaigns(tenant,ref),
+    FOREIGN KEY(tenant,new_ref) REFERENCES f64_campaigns(tenant,ref)
 );
 SQL
         );
