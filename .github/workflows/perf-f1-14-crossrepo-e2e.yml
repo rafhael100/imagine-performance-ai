@@ -77,7 +77,6 @@ jobs:
         shell: bash
         env:
           PORTAL_CLIENT_LAB_ENABLED: '1'
-          PORTAL_PERF_F11_LAB_ENABLED: '1'
           APP_ENV: testing
           APP_DEBUG: 'false'
           DB_CONNECTION: pgsql
@@ -108,6 +107,7 @@ jobs:
           php artisan key:generate --force --no-interaction
           php labs/client-auth/bootstrap_lab.php
           php vendor/bin/phpunit --configuration=labs/client-auth/phpunit-lab.xml --no-progress
+          export PORTAL_PERF_F11_LAB_ENABLED=1
           php labs/performance-contract/test-perf-f11-revocation.php
           php labs/performance-contract/export-signed-perf-event.php
           test -s "$PORTAL_F13_EVENT_EXPORT"
