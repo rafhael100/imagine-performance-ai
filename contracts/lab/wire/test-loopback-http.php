@@ -22,7 +22,18 @@ $key = hex2bin($hex);
 if (!is_string($key) || strlen($key) !== 32) {
     throw new RuntimeException('Bad synthetic signing key.');
 }
+$externalEvent = getenv('PERF_WIRE_EVENT_FIXTURE');
 $fixture = dirname(__DIR__).'/demo/perf-revocation-event-example-v1.json';
+if (is_string($externalEvent) && $externalEvent !== '') {
+    $runnerTemp = realpath((string) getenv('RUNNER_TEMP'));
+    if (!is_string($runnerTemp)
+        || realpath(dirname($externalEvent)) !== $runnerTemp
+        || basename($externalEvent) !== 'portal-perf-f13-event.json'
+        || !is_file($externalEvent) || is_link($externalEvent)) {
+        throw new RuntimeException('F1-14 refuses non-temporary Portal event source.');
+    }
+    $fixture = $externalEvent;
+}
 $body = file_get_contents($fixture);
 if (!is_string($body) || strlen($body) < 50) {
     throw new RuntimeException('Missing Portal example fixture.');
@@ -31,6 +42,23 @@ $event = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
 $clock = 1800000000;
 $nonce = 'nonce-demo-http-accepted001';
 $headers = Wire::signForLab($body, $key, $clock, $nonce);
+$portalSigned = getenv('PERF_WIRE_HEADERS_FIXTURE');
+if (is_string($portalSigned) && $portalSigned !== '') {
+    $runnerTemp = realpath((string) getenv('RUNNER_TEMP'));
+    if (!is_string($runnerTemp)
+        || realpath(dirname($portalSigned)) !== $runnerTemp
+        || basename($portalSigned) !== 'portal-perf-f13-wire-headers.json'
+        || !is_file($portalSigned) || is_link($portalSigned)) {
+        throw new RuntimeException('F1-14 refuses non-temp Portal signed headers.');
+    }
+    $headers = json_decode((string) file_get_contents($portalSigned),
+        true, 512, JSON_THROW_ON_ERROR);
+    if (!is_array($headers)
+        || Wire::verifyForLab('POST', Wire::PATH, $body, $headers, $key, $clock)
+            !== 'wire_valid_demo') {
+        throw new RuntimeException('F1-14 Portal-generated signature did not verify.');
+    }
+}
 $sourceAdmin = new PDO(
     'pgsql:host=127.0.0.1;port=5432;dbname=perf_test_relay_authority',
     'postgres', (string) getenv('PGPASSWORD'),
@@ -159,7 +187,7 @@ $check('20 one durable accepted wire receipt', $receiptCount(), 1);
 $check('21 original event ID persisted in receipt',
     $sourceAdmin->query(
         "SELECT event_id FROM perf_external_lab.mock_wire_receipts LIMIT 1"
-    )->fetchColumn(), 'evt-demo-contract-b2');
+    )->fetchColumn(), $event['event_id']);
 $check('22 canonical key ID persisted with receipt',
     $sourceAdmin->query(
         'SELECT key_id FROM perf_external_lab.mock_wire_receipts LIMIT 1'
@@ -171,7 +199,7 @@ $check('23 verified raw digest persisted',
 $check('24 authority records source event ACK',
     $sourceAdmin->query(
         "SELECT status FROM perf_external_lab.mock_revocation_outbox
-         WHERE event_id='evt-demo-contract-b2'"
+         WHERE service_ref='svc-demo-b' AND source_revision=2"
     )->fetchColumn(), 'acked');
 $check('25 destination grant is revoked',
     in_array($mainAdmin->query(
