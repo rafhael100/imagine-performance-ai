@@ -1,0 +1,150 @@
+name: Performance F1-20 - two physically distinct PostgreSQL containers, restore only motor
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-20-dual-pg-cluster-restore-lab-2026-11-09
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f120-dual-pg-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dual-cluster-revocation-restore:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      portal-source:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: portal_f20_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: portal-ci-f20-only
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portal_f20_test"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+      performance-motor:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: perf_f20_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: performance-ci-f20-only
+        ports:
+          - '127.0.0.1:5433:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f20_test"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F20_DUAL_CLUSTER_LAB: '1'
+      PORTAL_F20_PORT: '5432'
+      PERF_F20_PORT: '5433'
+      PORTAL_F20_ADMIN_PASS: portal-ci-f20-only
+      PERF_F20_ADMIN_PASS: performance-ci-f20-only
+    steps:
+      - name: Checkout laboratory branch only
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install PHP 8.4 PDO PostgreSQL only
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo,pdo_pgsql
+      - name: Syntax and network-safety guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/dual-cluster/IndependentClusterSyntheticFence.php
+          php -l contracts/lab/dual-cluster/test-dual-instance-restore.php
+          php -m | grep -i '^pdo_pgsql$'
+          test "$PORTAL_F20_PORT" = 5432
+          test "$PERF_F20_PORT" = 5433
+          if grep -R 'IndependentClusterSyntheticFence' routes/ app/; then
+            echo 'FAIL: test-only F20 wired into operational routes'
+            exit 1
+          fi
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" pg_isready -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" pg_isready -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test
+      - name: Prove PostgreSQL instances have different system identifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+          portal_id="$(PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -A -t -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -c 'SELECT system_identifier FROM pg_control_system()')"
+          motor_id="$(PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -A -t -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c 'SELECT system_identifier FROM pg_control_system()')"
+          test -n "$portal_id"
+          test -n "$motor_id"
+          test "$portal_id" != "$motor_id"
+          echo 'PASS two distinct PG16 data clusters, still on one CI host'
+      - name: Create two independent synthetic grant schemas with restricted roles
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -c "CREATE ROLE portal_f20_reader LOGIN PASSWORD 'ci-only-source-reader-f20' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c "CREATE ROLE perf_f20_writer LOGIN PASSWORD 'ci-only-motor-writer-f20' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -c "GRANT CONNECT ON DATABASE portal_f20_test TO portal_f20_reader"
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c "GRANT CONNECT ON DATABASE perf_f20_test TO perf_f20_writer"
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -f contracts/lab/dual-cluster/001-portal-source.sql
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -f contracts/lab/dual-cluster/002-performance-target.sql
+      - name: Prove baseline allowed ONLY as a synthetic value; snapshot old motor
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PERF_F20_PHASE=baseline
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+          snapshot="$RUNNER_TEMP/perf-f20-before-revocation.dump"
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" pg_dump -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test \
+            --schema=perf_f20 --format=custom --no-owner --no-acl --file="$snapshot"
+          test -s "$snapshot"
+      - name: Revoke B on Portal cluster while motor remains stale; fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -c \
+            "UPDATE portal_f20.mock_authority SET active=false,current_revision=2,recovery_epoch=2 WHERE service_ref='svc-demo-b' AND current_revision=1 AND active=true"
+          export PERF_F20_PHASE=revoked
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+      - name: Simulate delivery and recorded replay receipt in motor cluster
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c \
+            "BEGIN; UPDATE perf_f20.mock_grants SET active=false,grant_revision=2,recovery_epoch=2 WHERE service_ref='svc-demo-b'; INSERT INTO perf_f20.mock_receipts(event_id,service_ref,grant_revision) VALUES ('evt-demo-f20-revoke-b2','svc-demo-b',2); COMMIT"
+          export PERF_F20_PHASE=delivered
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+      - name: Restore ONLY motor container from historical real pg_dump
+        shell: bash
+        run: |
+          set -euo pipefail
+          snapshot="$RUNNER_TEMP/perf-f20-before-revocation.dump"
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c 'DROP SCHEMA perf_f20 CASCADE'
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" pg_restore -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test \
+            --no-owner --no-acl --exit-on-error "$snapshot"
+          PGPASSWORD="$PERF_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5433 -U postgres -d perf_f20_test -c \
+            "GRANT USAGE ON SCHEMA perf_f20 TO perf_f20_writer; GRANT SELECT ON perf_f20.mock_grants TO perf_f20_writer; GRANT UPDATE(active,grant_revision,recovery_epoch) ON perf_f20.mock_grants TO perf_f20_writer; GRANT SELECT ON perf_f20.mock_receipts TO perf_f20_writer"
+          export PERF_F20_PHASE=restored
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+      - name: Prove loss of SOURCE SELECT fails closed after motor reconciliation
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPASSWORD="$PORTAL_F20_ADMIN_PASS" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d portal_f20_test -c \
+            'REVOKE SELECT ON portal_f20.mock_authority FROM portal_f20_reader'
+          export PERF_F20_PHASE=source_outage
+          php contracts/lab/dual-cluster/test-dual-instance-restore.php
+      - name: No operational runtime routes or migrations added
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- routes/ app/ database/migrations/ composer.json composer.lock
