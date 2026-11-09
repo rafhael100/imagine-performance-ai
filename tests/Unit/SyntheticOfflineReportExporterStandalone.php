@@ -71,8 +71,8 @@ $check('CSV first channel campaign count',$rows[2][4],'2');
 $check('CSV first channel quota',$rows[2][5],'2');
 $check('CSV first channel remaining',$rows[2][6],'0');
 $check('CSV Meta capacity separated',$rows[4][1],'meta');
-$check('CSV contains correct rows for campaign and group cards',
-    array_count_values(array_column($rows,'0'))['campaign']??null,null); // arrays are positional only
+$check('CSV contains three campaign cards',
+    count(array_filter($rows,static fn(array $r):bool=>$r[0]==='campaign')),3);
 $check('CSV does not include network credentials or customer data',
     (bool)preg_match('/access_token|provider_account_id|CPF|CNPJ|https?:\/\//i',$csv),false);
 $check('CSV never invents prices',
