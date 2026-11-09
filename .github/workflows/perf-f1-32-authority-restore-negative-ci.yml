@@ -204,6 +204,7 @@ jobs:
           if grep -R 'test-f32-portal-nonce-restore-pg' app/ routes/ bootstrap/ database/migrations/; then
             echo 'FAIL F32 security proof attached to operational Laravel'
             exit 1
+          fi
       - name: No production route, provider, VPS or cloud connection
         shell: bash
         run: |
