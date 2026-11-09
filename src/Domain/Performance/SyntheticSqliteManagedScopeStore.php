@@ -347,4 +347,38 @@ SQL
         $v=$q->fetchColumn();
         return is_string($v)?$v:'not_found';
     }
+    /**
+     * F1-65: obtain a consistent read snapshot from one local SQLite DB.
+     * This is a test-only read transaction, NOT tenant authentication or RLS.
+     * Writes attempted by normal store methods inside it fail closed.
+     */
+    public function consistentRead(callable $reader):mixed
+    {
+        if(!self::enabled()||$this->db->inTransaction())return null;
+        $this->db->exec('BEGIN DEFERRED');
+        try{
+            $result=$reader($this);
+            $this->db->exec('COMMIT');
+            return $result;
+        }catch(Throwable $e){
+            try{$this->db->exec('ROLLBACK');}catch(Throwable){}
+            throw $e;
+        }
+    }
+
+    public function groupState(string $tenant,string $group):string
+    {
+        if(!self::enabled())return 'lab_disabled';
+        self::id($tenant,'perf-demo-');self::id($group,'grp-');
+        $q=$this->db->prepare(
+            'SELECT g.state FROM f64_groups AS g'
+            .' JOIN f64_campaigns AS c ON g.campaign_ref=c.ref'
+            .' WHERE g.ref=? AND g.tenant=? AND g.managed=1'
+            .' AND c.managed=1 AND c.tenant=?'
+        );
+        $q->execute([$group,$tenant,$tenant]);
+        $v=$q->fetchColumn();
+        return is_string($v)?$v:'not_found';
+    }
+
 }
