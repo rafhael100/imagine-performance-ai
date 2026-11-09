@@ -1,0 +1,97 @@
+name: Performance F1-56 - offline synthetic report export with CSV injection defenses
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-56-offline-report-export-2026-11-09
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f156-offline-export-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-report-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+      PERF_F56_EXPORT_LAB: '1'
+    steps:
+      - name: Checkout only isolated Performance branch
+        uses: actions/checkout@v5
+      - name: PHP 8.4 standalone (no Composer or provider)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - name: Run F52, F53, F54, F55 and F56 safety and domain regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/SyntheticOfflineReportExporter.php
+          php -l tests/Unit/SyntheticOfflineReportExporterStandalone.php
+          php -l contracts/demo/f56-export-scope-report.php
+          php tests/Unit/SyntheticManagedScopeLedgerStandalone.php
+          php tests/Unit/SyntheticScopeDashboardProjectorStandalone.php
+          node tests/ui/test-offline-preview.mjs
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          export F55_RENDERED_PREVIEW_FILE="$tmp/render.html"
+          export F55_PROJECTED_JSON_FILE="$tmp/dto.json"
+          php contracts/demo/f53-generate-scope-preview.php > "$F55_PROJECTED_JSON_FILE"
+          php contracts/demo/f55-render-offline-preview.php > "$F55_RENDERED_PREVIEW_FILE"
+          node tests/ui/test-f55-dto-parity.mjs
+          php tests/Unit/SyntheticOfflineReportExporterStandalone.php
+      - name: Produce and inspect real CSV/JSON files in disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          php contracts/demo/f56-export-scope-report.php json > "$tmp/report.json"
+          php contracts/demo/f56-export-scope-report.php csv > "$tmp/report.csv"
+          jq -e '
+            .schema_version == "perf.report.synthetic.v1" and
+            .source == "derived_from_f53_in_memory_fixture_only" and
+            .tenant_ref == "perf-demo-aurora" and
+            .contracted == false and
+            .dispatch_enabled == false and
+            .billing_enabled == false and
+            .ready_for_production == false and
+            .real_provider_metrics_available == false and
+            .media_spend == null and
+            (.channels | length == 2) and
+            (.campaigns | length == 3) and
+            (.groups | length == 3)
+          ' "$tmp/report.json"
+          head -1 "$tmp/report.csv" | grep -q '^record_type,channel,reference,status,used,limit,remaining,note'
+          test "$(wc -l < "$tmp/report.csv")" -eq 12
+          if APP_ENV=production php contracts/demo/f56-export-scope-report.php json >/dev/null 2>&1; then
+            echo 'FAIL F56 CLI must deny production'
+            exit 1
+          fi
+          if PERF_F56_EXPORT_LAB=0 php contracts/demo/f56-export-scope-report.php csv >/dev/null 2>&1; then
+            echo 'FAIL F56 CLI must deny missing flag'
+            exit 1
+          fi
+      - name: Enforce unchanged production paths and release blocked
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e routes/api.php
+          test ! -e routes/web.php
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json
+          if grep -R -n -E 'SyntheticOfflineReportExporter|PERF_F56_EXPORT_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F56 report exporter wired to live operational code'
+            exit 1
+          fi
+          test -z "$(git status --porcelain)"
