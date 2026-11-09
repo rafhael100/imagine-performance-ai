@@ -1,3 +1,13 @@
+# FAST-PERF F1-50 — Sentinela externa de restauração (09/11/2026)
+
+[PR #122 (draft)](https://github.com/rafhael100/imagine-performance-ai/pull/122), [CI SUCCESS #42665666689](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42665666689): **43 verificações F1-50** (11+6+8+5+13), regressões F1-30–F1-49. O terceiro PostgreSQL descartável (porta 5434), excluído do restore simulado, conserva piso de época e recibos de nonce: o novo wrapper nega o uso de autorização com época da fonte retrocedida (10 versus piso 11) e nega replay mesmo após restaurar a tabela F47 de observações. Se a sentinela perder permissão, o wrapper falha fechado.
+
+**VULNERABILIDADE ABERTA REPRODUZIDA:** acesso direto à função F47 SQL, sem consultar a sentinela, ainda admite os tokens antigos após restauração. A terceira base é convencional e também pode ser restaurada; não há domínio WORM, época irrevogável, detector automático de restore, atomicidade entre os bancos, S2S real, KMS/mTLS/PoP, integração Portal/CRM, aprovação de campanhas, idempotência de provedor ou revisão AppSec/DBA. O mecanismo só registra observações de leitura fictícias, nunca envios.
+
+**NO-GO preservado:** `dispatch_enabled=false`, `pending_synthetic` e `APP_ENV=production` fechado; P0/HT-R01/SEC-R03/T3, Issues #102/#115/#117/#119/#121. Nenhum merge, main, VPS, Ads/Meta, n8n, clientes ou custos.
+
+---
+
 # Imagine Performance AI — FAST-PERF F1-47 a F1-49 | 09/11/2026
 
 **Três PRs draft, todos apenas em branches filhas.** Não houve merge, `main`, VPS, deploy, contas reais, custo, envio, faturamento ou Ads/Meta/CRM/n8n operacionais.
