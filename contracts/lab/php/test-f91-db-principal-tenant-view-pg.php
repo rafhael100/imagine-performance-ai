@@ -116,10 +116,10 @@ $check(in_array($fn['prosecdef'],[true,'t','1',1],true),
     'lookup is SECURITY DEFINER');
 $check(str_contains((string)$fn['proconfig'],'search_path=pg_catalog'),
     'lookup has fixed pg_catalog search_path');
-$check($admin->query(
+$check(!in_array($admin->query(
     "SELECT has_table_privilege('perf_f91_reader_a','performance_db_principal_tenant_bindings','SELECT')"
-)->fetchColumn()===false,'mapping table privilege not granted');
-$check($admin->query(
+)->fetchColumn(),[true,'t','1',1],true),'mapping table privilege not granted');
+$check(!in_array($admin->query(
     "SELECT has_table_privilege('perf_f91_reader_a','performance_ad_account_candidates','SELECT')"
-)->fetchColumn()===false,'base table privilege not granted');
+)->fetchColumn(),[true,'t','1',1],true),'base table privilege not granted');
 echo "PASS F91 $n credential-bound tenant view, GUC spoofing, and revocation assertions\n";
