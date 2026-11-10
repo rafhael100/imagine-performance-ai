@@ -94,6 +94,25 @@ $a->rollBack();
 $check($reader->read($a)['accounts']===$baselineA['accounts'],
     'normal view resumes after transaction owner rolls back');
 
+// The F100 workbench is intentionally composed under READ COMMITTED,
+// READ ONLY. The new guard must preserve that legitimate readonly usage.
+$a->beginTransaction();
+$a->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED, READ ONLY');
+$check($reader->read($a)['accounts']===$baselineA['accounts'],
+    'F100 read committed READ ONLY composition remains supported');
+$check($a->inTransaction(),
+    'reader never commits workbench-owned readonly transaction');
+$a->rollBack();
+
+// READ COMMITTED with write permissions is not an approved consumer path.
+$a->beginTransaction();
+$a->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED, READ WRITE');
+$denied($reader->read($a),'invalid_connection_state',
+    'caller READ COMMITTED write-capable transaction');
+$a->rollBack();
+$check($reader->read($a)['accounts']===$baselineA['accounts'],
+    'safe account read resumes after write-capable transaction ended');
+
 $update=$admin->prepare(
     'UPDATE public.performance_db_principal_tenant_bindings '
     .'SET revoked_at=clock_timestamp() WHERE db_login=?'
