@@ -61,4 +61,17 @@ putenv('PERF_F75_SIGNED_WITNESS_LAB=0');
 $res=$verify('{}',$pub,$tenant,$recovery,4,4,$at);
 if($res['status']!=='lab_disabled') throw new RuntimeException('F75 lab flag not enforced');
 ++$n;
+putenv('PERF_F75_SIGNED_WITNESS_LAB=1');
+putenv('APP_ENV=production');
+if($verify('{}',$pub,$tenant,$recovery,4,4,$at)['status']!=='lab_disabled') {
+    throw new RuntimeException('F75 production verification enabled');
+}
+++$n;
+try {
+    SyntheticSignedRecoveryWitness::signFixture($payload,$secret);
+    throw new RuntimeException('F75 production signing unexpectedly enabled');
+} catch(RuntimeException $e) {
+    if($e->getMessage()==='F75 production signing unexpectedly enabled') throw $e;
+}
+++$n;
 echo "PASS F75 $n assertions; mock crypto never authorizes external actions\n";
