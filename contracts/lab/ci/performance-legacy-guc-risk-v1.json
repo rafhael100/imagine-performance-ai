@@ -1,0 +1,23 @@
+{
+  "schema_version": "perf.security.legacy-guc-risk.lab.v1",
+  "risk_state": "open_no_go",
+  "description": "Legacy PostgreSQL RLS using current_setting('app.performance_tenant_id') is not proof of tenant identity when a SQL login can freely set its session GUC.",
+  "role_under_test": "perf_f90_projection_reader",
+  "affected_ci_tables": [
+    "performance_managed_campaigns",
+    "performance_ad_account_candidates",
+    "performance_campaign_account_links"
+  ],
+  "legacy_guc_spoof_reproduced": true,
+  "new_credential_bound_view_tested_separately": true,
+  "direct_sql_client_access_allowed": false,
+  "release_allowed": false,
+  "remediation_requirements": [
+    "Do not grant SQL client access or use direct SQL roles controlled by external callers",
+    "Review legacy role grants and remove or replace GUC-based direct-table access before production",
+    "Bind tenant to independently authenticated Portal/IAM identity in trusted service",
+    "Independent PostgreSQL RLS and SECURITY DEFINER ownership/grant review by AppSec and DBA",
+    "Test credential rotation, pooling, revocation, and tenant move/reassignment"
+  ],
+  "production_evidence": false
+}
