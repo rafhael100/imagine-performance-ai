@@ -48,11 +48,16 @@ final class CredentialBoundDemoAccountReader
             if($db->getAttribute(PDO::ATTR_DRIVER_NAME)!=='pgsql') {
                 return self::denied('invalid_database_driver');
             }
-            $id=$db->query(
-                'SELECT current_database() AS dbname, '
+            // The F91 tenant binding must not be read through a pre-existing
+            // caller transaction (especially REPEATABLE READ or SERIALIZABLE),
+            // which could retain a previously revoked database identity.
+            if($db->inTransaction()) {
+                return self::denied('invalid_connection_state');
+            }
+            $identitySql='SELECT current_database() AS dbname, '
                 .'session_user::text AS db_login, '
-                .'public.perf_f91_tenant_for_login()::text AS bound_tenant'
-            )->fetch(PDO::FETCH_ASSOC);
+                .'public.perf_f91_tenant_for_login()::text AS bound_tenant';
+            $id=$db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
             if (!is_array($id)
                 || $id['dbname']!=='perf_test_campaign_registry'
                 || !in_array($id['db_login'],[
@@ -99,6 +104,19 @@ final class CredentialBoundDemoAccountReader
                     'connection_state'=>'unverified_demo',
                 ];
             }
+
+            // Recheck the authenticated SQL principal after materializing
+            // rows. A revocation or reassignment committed between SELECT
+            // and return invalidates the entire DEMO result set. This is a
+            // CI safeguard, not an atomic production IAM protocol.
+            $after=$db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
+            if(!is_array($after)
+                || $after['dbname']!==$id['dbname']
+                || $after['db_login']!==$id['db_login']
+                || $after['bound_tenant']!==$id['bound_tenant']) {
+                return self::denied('credential_changed_during_read');
+            }
+
             return [
                 'schema_version'=>self::SCHEMA,
                 'status'=>'credential_scoped_demo_preview_only',
