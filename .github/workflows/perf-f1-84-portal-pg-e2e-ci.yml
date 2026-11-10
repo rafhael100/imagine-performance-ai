@@ -255,7 +255,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           repository: rafhael100/imagine-portal
-          ref: acfd4f210c1c2000287c93525d89b040c19e9ba9
+          ref: 9efd00cc5218db02ec3ed2aed8017d393aa7fe7a
           path: pinned-portal
           persist-credentials: false
           sparse-checkout: |
@@ -265,18 +265,23 @@ jobs:
             apps/portal/app/Domain/PerformanceOnboarding/DemoPerformanceEvent.php
             apps/portal/app/Domain/PerformanceDashboard/OfflinePerformanceWorkbenchPreview.php
             apps/portal/tests/Unit/OfflinePerformanceWorkbenchPreviewStandalone.php
-      - name: F82/F83/F85 parity with checked-out Portal PHP and F84 PostgreSQL DTO
+            apps/portal/tools/f60-render-performance-workbench.php
+            apps/portal/tests/ui/test-f60-static-workbench.mjs
+            apps/portal/tests/Fixtures/performance-workbench-offline-v1.json
+      - name: F82-F86 SQL-backed Portal contract and HTML end-to-end
         shell: bash
         env:
           PORTAL_PERFORMANCE_ENUM_PATH: pinned-portal/apps/portal/app/Domain/Catalog/PerformanceChannel.php
           PORTAL_CHECKOUT_ROOT: pinned-portal
           PORTAL_F59_WORKBENCH_LAB: '1'
+          PORTAL_F60_HTML_LAB: '1'
         run: |
           set -euo pipefail
           php tests/Unit/PortalPerformanceChannelContractStandalone.php
           php tests/Unit/PortalOnboardingEventContractStandalone.php
           test -s "$RUNNER_TEMP/perf-f84-output.json"
           php pinned-portal/apps/portal/tests/Unit/OfflinePerformanceWorkbenchPreviewStandalone.php "$RUNNER_TEMP/perf-f84-output.json"
+          ( cd pinned-portal && node apps/portal/tests/ui/test-f60-static-workbench.mjs "$RUNNER_TEMP/perf-f84-output.json" )
 
       - name: No public Laravel endpoints, plugins, or deployment
         shell: bash
