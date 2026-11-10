@@ -1012,69 +1012,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C portal-f123-signer rev-parse HEAD)" = 739465b5cc5022aae85385e360e1b4b19ab033cd
-          php -m | grep -i '^sodium
-        shell: bash
-        run: |
-          set -euo pipefail
-          php vendor/bin/phpunit --filter NoPublicEndpointsTest --no-progress
-          git diff --exit-code -- composer.lock bootstrap/app.php app/ routes/
-
-      - name: Regress safety contracts F74-F79 together with migrated Laravel PostgreSQL
-        shell: bash
-        env:
-          PERF_F75_SIGNED_WITNESS_LAB: '1'
-          PERF_F76_RECONCILIATION_LAB: '1'
-          PERF_F77_INCIDENT_LAB: '1'
-          PERF_F78_HTML_PREVIEW_LAB: '1'
-          PERF_F79_RELEASE_AUDIT_LAB: '1'
-        run: |
-          set -euo pipefail
-          test "$APP_ENV" = testing
-          test "$DB_DATABASE" = perf_test_campaign_registry
-          php -l src/Domain/Performance/SyntheticRecoveryAdmissionPolicy.php
-          php -l src/Domain/Performance/SyntheticSignedRecoveryWitness.php
-          php -l src/Domain/Performance/SyntheticOfflineProviderReconciler.php
-          php -l src/Domain/Performance/SyntheticRecoveryIncidentReadModel.php
-          php -l src/Domain/Performance/SyntheticReleaseNoGoAuditor.php
-          php tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
-          php tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php
-          php tests/Unit/SyntheticOfflineProviderReconcilerStandalone.php
-          php tests/Unit/SyntheticRecoveryIncidentReadModelStandalone.php
-          php tests/Unit/SyntheticReleaseNoGoAuditorStandalone.php
-          node tests/ui/test-f78-offline-incident-ui.mjs
-          set +e
-          php contracts/lab/php/f79-release-no-go-audit.php > "$RUNNER_TEMP/f80-release-blocked.json"
-          gate_code=$?
-          set -e
-          test "$gate_code" -eq 3
-          jq -e '.decision == "BLOCKED_AS_EXPECTED_NO_GO"
-            and .eligible_to_dispatch == false
-            and .eligible_to_bill == false
-            and .eligible_to_deploy == false
-            and .eligible_to_merge_main == false' "$RUNNER_TEMP/f80-release-blocked.json"
-          php vendor/bin/phpunit --filter NoPublicEndpointsTest --no-progress
-          test "$(php artisan route:list --json | jq length)" -eq 0
-          if grep -R -n -E 'SyntheticSignedRecoveryWitness|SyntheticOfflineProviderReconciler|SyntheticRecoveryIncidentReadModel|SyntheticReleaseNoGoAuditor' routes/ bootstrap/ app/Providers/; then
-            echo 'FAIL F80 mocked recovery or mock provider logic registered for web runtime'
-            exit 1
-          fi
-          echo 'PASS F80: real disposable migrations, SQL/RLS checks and NO-GO held together'
-
-      - name: Audit locked Composer dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          composer audit --no-interaction
-          git diff --exit-code -- composer.lock bootstrap/app.php
-
-      - name: F1-81 read-only VPS diagnostics script (runner rehearsal only)
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash -n ops/homologacao/preflight-host-readonly.sh
-          bash -n ops/homologacao/test-preflight-host-readonly.sh
-          bash ops/homologacao/test-preflight-host-readonly.sh
-
+          php -m | grep -i '^sodium$'
           php -l app/Performance/Security/SignedPortalCapabilityGate.php
           php -l contracts/lab/php/SyntheticPortalSqlWorkbenchBridge.php
           php -l contracts/lab/php/test-f123-pinned-signed-portal-sql-workbench-pg.php
