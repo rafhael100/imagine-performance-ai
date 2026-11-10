@@ -1,3 +1,23 @@
+# Imagine Performance AI — integração F1-97 a F1-99 (10/11/2026)
+
+**Estado validado:** desenvolvimento em CI e laboratório PostgreSQL16, **sem release operacional**.
+
+| Etapa | Resultado técnico real | Evidência |
+|---|---|---|
+| F1-97 | Nova VIEW de revisões DEMO, vinculada ao login SQL real; exige journal F27 consistente e coloca em quarentena registro terminal incompatível | [PR #197](https://github.com/rafhael100/imagine-performance-ai/pull/197), [CI #42755985467](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42755985467) SUCCESS |
+| F1-98 | Leitor autoloadável Laravel da VIEW F97, comparando estados tipados com PHP real do Portal, sem autorização de anúncios | [PR #198](https://github.com/rafhael100/imagine-performance-ai/pull/198), [CI #42756321019](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42756321019) SUCCESS |
+| F1-99 | Inventário de oito roles SQL legadas de CI e revogação de todos os seus grants diretos em 12 tabelas fictícias **após os testes**, preservando três leitores protegidos | [PR #199](https://github.com/rafhael100/imagine-performance-ai/pull/199), [CI #42756681017](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42756681017) SUCCESS |
+
+**Números extraídos do log do último CI:** F97: 53 asserções; F98: 83; F99: 799 e **26 privilégios SQL diretos revogados**, **apenas no banco PostgreSQL16 efêmero do runner**. As revogações **não** foram feitas em VPS, ambiente compartilhado nem produção. Nos workflows, os testes legados recriam os grants antes da etapa F99, portanto o repositório ainda precisa de uma migração operacional segura com remoção/substituição de consumidores legados F22–F28.
+
+**Risco material ABERTO:** a RLS antiga baseada em `app.performance_tenant_id` pode ser falsificada se uma role com acesso SQL direto escolher o tenant; o manifesto F95 permanece `open_no_go`. F91/F93/F97/ leitores novos são alternativas **de laboratório** com SQL `SECURITY DEFINER` e VIEWs com ownership elevado que precisam de auditoria AppSec/DBA. Não compartilhar credenciais SQL com clientes, agentes ou integrações.
+
+**Gates imprescindíveis:** P0, HT-R01, SEC-R03/T3, IAM/MFA/S2S Portal e autorização real por organização/serviço, OAuth/permissões Google Ads e Meta, consentimento LGPD, orçamento e autorização comercial, idempotência/reconciliação com fornecedores, root monotônica pós-restore, backups/QA, VPS Leaseweb ativa e revisão de segurança independente.
+
+**Main, produção, VPS, publicidade real, cobrança, clientes, contas de fornecedor e novas despesas inalteradas. PRs permanecem draft e NO-GO.**
+
+---
+
 # Imagine Performance AI — segurança SQL F1-93 a F1-96 (10/11/2026)
 
 **Nível atual: laboratório aprovado, release NO-GO.** A branch mantém os trabalhos prévios até F1-92 e avança quatro etapas adicionais:
