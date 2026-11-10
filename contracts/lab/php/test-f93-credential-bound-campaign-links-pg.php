@@ -46,10 +46,10 @@ $check($read($a)===$baselineA,'attacker A forged tenant GUC, but read unchanged'
 $check($read($b)===$baselineB,'attacker B forged tenant GUC, but read unchanged');
 $check($a->query(
    "SELECT count(*) FROM perf_f93_demo_campaign_account_read WHERE tenant_id='$tenantB'"
-)->fetchColumn()==='0','explicit WHERE tenant B cannot expose another tenant');
+)->fetchColumn()===0,'explicit WHERE tenant B cannot expose another tenant');
 $check($b->query(
    "SELECT count(*) FROM perf_f93_demo_campaign_account_read WHERE tenant_id='$tenantA'"
-)->fetchColumn()==='0','explicit WHERE tenant A cannot expose another tenant');
+)->fetchColumn()===0,'explicit WHERE tenant A cannot expose another tenant');
 
 $deny=static function(PDO $pdo,string $sql,string $label)use($check):void {
     $failed=false;
