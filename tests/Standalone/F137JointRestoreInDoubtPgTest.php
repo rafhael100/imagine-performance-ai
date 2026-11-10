@@ -80,9 +80,9 @@ if ($phase==='seed') {
     $primary->rollBack();
     $check($pc()===2 && $wc()===3 && $rc()===2,
        'local rollback also undoes remote redemption in normal FDW session');
-    $check(!$pAdmin->query(
-       "SELECT EXISTS (SELECT 1 FROM perf_f129_lab.receipts WHERE operation_id='operation_9703')"
-    )->fetchColumn(),'C not present after abort');
+    $check((int)$pAdmin->query(
+       "SELECT count(*) FROM perf_f129_lab.receipts WHERE operation_id='operation_9703'"
+    )->fetchColumn()===0,'C not present after abort');
 
     // Inject post-commit response loss: the client discards the success
     // return, reconnects and inspects both authorities rather than replaying.
