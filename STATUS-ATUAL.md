@@ -1,3 +1,23 @@
+# Imagine Performance AI — progresso de integração F1-87–F1-90 (09/11/2026)
+
+**Estado consolidado: desenvolvimento em PRs draft, sem merge, lançamento e operações reais.**
+
+| Entrega | Prova de execução | Escopo real |
+|---|---|---|
+| Portal F61 | [Portal PR #197](https://github.com/rafhael100/imagine-portal/pull/197) | Enums tipados de **observação** `draft_demo`, `paused_demo`, `archived_demo`, `pending_human_demo`, `approved_demo_no_execution`, `rejected_demo`; não equivalem a autorização |
+| Performance F87 | [PR #185](https://github.com/rafhael100/imagine-performance-ai/pull/185), [CI #42746355425 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42746355425) | PostgreSQL CI → DTO → classes reais Portal F61 e HTML offline |
+| Performance F88 | [PR #186](https://github.com/rafhael100/imagine-performance-ai/pull/186), [CI #42746883572 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42746883572) | Migration PostgreSQL de candidatos **DEMO** de contas por tenant/serviço/canal, com FORCE RLS e proibição de tokens, provider, despacho e billing |
+| Performance F89 | [PR #187](https://github.com/rafhael100/imagine-performance-ai/pull/187), [CI #42747253846 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42747253846) | FK composta entre campanha e conta DEMO exige mesmo tenant, serviço e canal, além de RLS e CHECK desabilitando despacho |
+| Performance F90 | [PR #188](https://github.com/rafhael100/imagine-performance-ai/pull/188), [CI #42747585221 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42747585221) | Leitura do PostgreSQL com role SELECT-only → instância da classe PHP **real** `DemoAdAccount` do Portal, fixado em commit; rejeita refs reais |
+
+**Advertência:** RLS com `app.performance_tenant_id` configurável pela conexão só é segurança operacional quando o servidor vincula esse contexto a uma identidade Portal autenticada e limita quem executa SQL. Os testes atuais provam o isolamento sob **contexto da aplicação de teste**, não impedem que um ator com acesso direto ao banco tente definir o GUC de outro tenant. A camada real IAM/MFA/S2S e as políticas de acesso à base continuam bloqueadores antes de produção.
+
+**Gates críticos em aberto:** P0, HT-R01, SEC-R03/T3, revisão independente AppSec/DBA, Portal/IAM real, S2S autenticado e antifraude, permissionamento OAuth Google Ads/Meta por anunciante, rastreabilidade/consentimento, orçamento e alçadas, conexão e ressincronização com fontes oficiais, antirreplay/antirollback monotônico confiável, LGPD e implantação/QA da VPS Leaseweb.
+
+`main`, VPS, Ads reais, contratos com fornecedores, clientes, cobranças e pagamentos NÃO foram alterados. CI verde aqui é evolução de banco/contratos de laboratório, não finalização comercial.
+
+---
+
 # Imagine Performance AI — integração cruzada com Portal F1-82–F1-86
 
 **Data-base: 09/11/2026. PRs draft; sem publicação ou merge.**
