@@ -61,8 +61,8 @@ $cases=[
     ['unknown extra property',json_encode([...$payload,'billing_enabled'=>true],JSON_THROW_ON_ERROR),$org->value,$onboard->value,null,'invalid_shape_or_order'],
     ['reordered keys',json_encode(array_reverse($payload,true),JSON_THROW_ON_ERROR),$org->value,$onboard->value,null,'invalid_shape_or_order'],
     ['wrong context argument',$raw,'../bad',$onboard->value,null,'invalid_expected_context'],
-    ['broken json','{',$org->value,$onboard->value,null,'invalid_expected_context'],
-    ['duplicate key',substr($raw,0,-1).',"event_id":"evt-demo-99"}',$org->value,$onboard->value,null,'invalid_shape_or_order'],
+    ['broken json',str_repeat('{',40),$org->value,$onboard->value,null,'invalid_json'],
+    ['duplicate key',substr($raw,0,-1).',"event_id":"evt-demo-99"}',$org->value,$onboard->value,null,'noncanonical_json'],
     ['whitespace',str_replace(',"event_type"',', "event_type"',$raw),$org->value,$onboard->value,null,'noncanonical_json'],
 ];
 foreach($cases as [$label,$json,$o,$ob,$sha,$expected]) {
