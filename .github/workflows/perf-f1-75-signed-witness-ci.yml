@@ -28,5 +28,12 @@ jobs:
           php -l src/Domain/Performance/SyntheticSignedRecoveryWitness.php
           php -l tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php
           php tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php
+          php -l src/Domain/Performance/SyntheticRecoveryAdmissionPolicy.php
+          php -l tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          php tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          if grep -R -n -E 'SyntheticSignedRecoveryWitness|PERF_F75_SIGNED_WITNESS_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F75 synthetic signer/verifier wired to operational application'
+            exit 1
+          fi
           grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
           grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json
