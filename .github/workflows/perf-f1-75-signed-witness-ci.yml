@@ -1,0 +1,39 @@
+name: Performance F1-75 - signed recovery witness negative tests
+on:
+  push:
+    branches:
+      - dev/perf-f1-75-signed-recovery-witness-ci-2026-11-09
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/SyntheticSignedRecoveryWitness.php'
+      - 'tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php'
+      - '.github/workflows/perf-f1-75-signed-witness-ci.yml'
+permissions:
+  contents: read
+jobs:
+  signed-recovery-witness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sodium
+          coverage: none
+          tools: none
+      - name: Lint and test standalone signed synthetic recovery witness
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/SyntheticSignedRecoveryWitness.php
+          php -l tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php
+          php tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php
+          php -l src/Domain/Performance/SyntheticRecoveryAdmissionPolicy.php
+          php -l tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          php tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          if grep -R -n -E 'SyntheticSignedRecoveryWitness|PERF_F75_SIGNED_WITNESS_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F75 synthetic signer/verifier wired to operational application'
+            exit 1
+          fi
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json
