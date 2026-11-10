@@ -56,6 +56,11 @@ REVOKE ALL ON ALL FUNCTIONS IN SCHEMA perf_f134_primary FROM PUBLIC;
 -- Prior credential cannot invoke SQL-side registration bypass.
 REVOKE EXECUTE ON FUNCTION perf_f132_primary.record_with_generation(text,text,text,bigint)
   FROM perf_f132_primary_bridge;
+-- The PHP bridge may read only the current generation, never call the old
+-- mutating F132 function. SECURITY DEFINER executes the mutating call as owner.
+GRANT USAGE ON SCHEMA perf_f132_primary TO perf_f134_primary_bridge;
+GRANT EXECUTE ON FUNCTION perf_f132_primary.current_generation()
+  TO perf_f134_primary_bridge;
 GRANT USAGE ON SCHEMA perf_f134_primary TO perf_f134_primary_bridge;
 GRANT EXECUTE ON FUNCTION perf_f134_primary.record_signed(text,text,text,bigint,bigint,text)
   TO perf_f134_primary_bridge;
