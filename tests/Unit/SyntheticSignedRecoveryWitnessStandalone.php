@@ -58,7 +58,7 @@ foreach($cases as [$label,$env,$keyHex,$t,$r,$db,$floor,$now,$status,$sig]) {
     }
 }
 putenv('PERF_F75_SIGNED_WITNESS_LAB=0');
-$res=$verify($make/*noop*/ ? '{}' : '{}',$pub,$tenant,$recovery,4,4,$at);
+$res=$verify('{}',$pub,$tenant,$recovery,4,4,$at);
 if($res['status']!=='lab_disabled') throw new RuntimeException('F75 lab flag not enforced');
 ++$n;
 echo "PASS F75 $n assertions; mock crypto never authorizes external actions\n";
