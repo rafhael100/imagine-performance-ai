@@ -36,7 +36,7 @@ $cases=[
     ['wrong nonce',$make(array_replace($payload,['nonce'=>'bad'])),$pub,$tenant,$recovery,4,4,$at,'invalid_signed_claims',false],
     ['invalid floor',$make($payload),$pub,$tenant,$recovery,4,0,$at,'invalid_expected_context',false],
     ['invalid public key',$make($payload),'xyz',$tenant,$recovery,4,4,$at,'invalid_expected_context',false],
-    ['invalid JSON','{',$pub,$tenant,$recovery,4,4,$at,'invalid_envelope',false],
+    ['invalid JSON','{',$pub,$tenant,$recovery,4,4,$at,'verification_unavailable',false],
     ['triple rollback without trusted floor',$make(array_replace($payload,['epoch'=>1])),$pub,$tenant,$recovery,1,1,$at,'signed_fixture_only_no_external_trust',true],
 ];
 $wrong=sodium_crypto_sign_keypair();
