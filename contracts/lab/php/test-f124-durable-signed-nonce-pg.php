@@ -159,7 +159,8 @@ foreach($role as $k=>$v){
 
 $valid=$fixture($public1,$w1)->preview($a,$packet1,$authority,$now);
 $check($valid['status']==='signed_sql_demo_with_local_durable_nonce_only',
-    'signed Portal + SQL A workbench + first durable nonce receipt succeed');
+    'signed Portal + SQL A workbench + first durable nonce receipt succeed; received status: '
+    .($valid['status']??'<missing>'));
 $check($valid['cryptographic_lab_proof_verified']===true
     &&$valid['replay_receipt_recorded']===true
     &&$valid['credential_binding_confirmed']===true,
