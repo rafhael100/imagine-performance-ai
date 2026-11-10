@@ -1,3 +1,22 @@
+# Imagine Performance AI — entregas recentes F1-74 a F1-79 (09/11/2026)
+
+**Situação verificada:** desenvolvimento de laboratório e pré-homologação em PRs draft **encadeados**. Nenhum PR desta sequência foi mesclado na `main`. Os CIs verdes confirmam os comportamentos explicitamente testados, **não** segurança de produção, integração real ou entrega comercial.
+
+| Etapa | PR draft | GitHub Actions concluído | Entrega |
+|---|---|---|---|
+| F1-74 | [#173](https://github.com/rafhael100/imagine-performance-ai/pull/173) | [SUCCESS #42718046604](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42718046604) | Contrato que nega autoridade a epoch/witness externo não autenticado |
+| F1-75 | [#174](https://github.com/rafhael100/imagine-performance-ai/pull/174) | [SUCCESS #42731305523](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42731305523) | Assinatura Ed25519 em testemunha sintética, tenant/recovery/validade vinculados; nenhuma raiz real |
+| F1-76 | [#175](https://github.com/rafhael100/imagine-performance-ai/pull/175) | [SUCCESS #42736498381](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42736498381) | Reconciliação offline de intenções/recibos fictícios, detecção de duplicidade, mismatch e pendências |
+| F1-77 | [#176](https://github.com/rafhael100/imagine-performance-ai/pull/176) | [SUCCESS #42736851535](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42736851535) | Triagem de incidentes sintéticos, quarentena e revisão humana obrigatória |
+| F1-78 | [#177](https://github.com/rafhael100/imagine-performance-ai/pull/177) | [SUCCESS #42737176946](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42737176946) | Painel HTML responsivo offline, sem scripts ou rede, a partir do DTO F77 |
+| F1-79 | [#178](https://github.com/rafhael100/imagine-performance-ai/pull/178) | [SUCCESS #42737611298](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42737611298) | Auditoria reprodutível de NO-GO; exit 3 esperado significa **bloqueio**, nunca aprovação |
+
+**Próximos gates reais (não resolvidos por mais mocks):** integração autenticada Portal–Performance; liberações e contratos Google/Meta; autoridade antirollback genuinamente monotônica e reconciliação de efeitos; homologação AppSec/DBA; P0/HT-R01/SEC-R03/T3; consentimento/LGPD, gestão de credenciais, QA integrado e infraestrutura/staging VPS. O plano de execução e responsabilidades consta de [F1-79](docs/execucao/FAST-PERF-F1-79-RELEASE-NO-GO-AUDIT-2026-11-09.md).
+
+**Estado operacional imutável nesta sequência:** `release_state=blocked`, `authorization_eligible=false`, `ready_for_production=false`, `dispatch_enabled=false`, `billing_enabled=false`. Sem merge, `main`, VPS, deploy, anúncios, clientes, PSP, CRM/n8n ou custos.
+
+---
+
 # Imagine Performance AI — Consolidação F1-67–F1-73 (09/11/2026)
 
 **Entregas em PRs draft, sem merge, deploy, dados reais, anúncios ou cobrança:**
