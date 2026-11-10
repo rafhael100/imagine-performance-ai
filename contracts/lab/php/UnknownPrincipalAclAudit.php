@@ -82,40 +82,40 @@ final class UnknownPrincipalAclAudit
             // Excluding owner entries avoids treating PostgreSQL implicit
             // ownership rights as grants to external actors.
             $tableAcl=$db->prepare(
-                'SELECT c.relname AS object, '
+                "SELECT c.relname AS object, "
                 ."CASE WHEN acl.grantee=0 THEN 'PUBLIC' "
-                .'ELSE pg_catalog.pg_get_userbyid(acl.grantee) END AS principal, '
-                'acl.privilege_type AS privilege, '
-                "'object' AS scope, NULL::text AS column_name "
-                'FROM pg_catalog.pg_class c '
-                'JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace '
-                'CROSS JOIN LATERAL pg_catalog.aclexplode('
-                "COALESCE(c.relacl,pg_catalog.acldefault('r',c.relowner))) acl "
-                'WHERE n.nspname=? AND c.relname IN ('.$params.') '
-                'AND acl.grantee<>c.relowner'
+                ."ELSE pg_catalog.pg_get_userbyid(acl.grantee) END AS principal, "
+                ."acl.privilege_type AS privilege, "
+                ."'object' AS scope, NULL::text AS column_name "
+                ."FROM pg_catalog.pg_class c "
+                ."JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace "
+                ."CROSS JOIN LATERAL pg_catalog.aclexplode("
+                ."COALESCE(c.relacl,pg_catalog.acldefault('r',c.relowner))) acl "
+                ."WHERE n.nspname=? AND c.relname IN (".$params.") "
+                ."AND acl.grantee<>c.relowner"
             );
             $tableAcl->execute(['public',...$objects]);
             $edges=$tableAcl->fetchAll(PDO::FETCH_ASSOC);
             $columnAcl=$db->prepare(
-                'SELECT c.relname AS object, '
+                "SELECT c.relname AS object, "
                 ."CASE WHEN acl.grantee=0 THEN 'PUBLIC' "
-                .'ELSE pg_catalog.pg_get_userbyid(acl.grantee) END AS principal, '
-                'acl.privilege_type AS privilege, '
-                "'column' AS scope, a.attname AS column_name "
-                'FROM pg_catalog.pg_attribute a '
-                'JOIN pg_catalog.pg_class c ON c.oid=a.attrelid '
-                'JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace '
-                'CROSS JOIN LATERAL pg_catalog.aclexplode(a.attacl) acl '
-                'WHERE n.nspname=? AND c.relname IN ('.$params.') '
-                'AND a.attnum>0 AND NOT a.attisdropped '
-                'AND acl.grantee<>c.relowner'
+                ."ELSE pg_catalog.pg_get_userbyid(acl.grantee) END AS principal, "
+                ."acl.privilege_type AS privilege, "
+                ."'column' AS scope, a.attname AS column_name "
+                ."FROM pg_catalog.pg_attribute a "
+                ."JOIN pg_catalog.pg_class c ON c.oid=a.attrelid "
+                ."JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace "
+                ."CROSS JOIN LATERAL pg_catalog.aclexplode(a.attacl) acl "
+                ."WHERE n.nspname=? AND c.relname IN (".$params.") "
+                ."AND a.attnum>0 AND NOT a.attisdropped "
+                ."AND acl.grantee<>c.relowner"
             );
             $columnAcl->execute(['public',...$objects]);
             $edges=[...$edges,...$columnAcl->fetchAll(PDO::FETCH_ASSOC)];
             $exists=$db->prepare(
-                'SELECT count(*) FROM pg_catalog.pg_class c '
-                'JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace '
-                'WHERE n.nspname=? AND c.relname IN ('.$params.')'
+                "SELECT count(*) FROM pg_catalog.pg_class c "
+                ."JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace "
+                ."WHERE n.nspname=? AND c.relname IN (".$params.")"
             );
             $exists->execute(['public',...$objects]);
             if((int)$exists->fetchColumn()!==count($objects)){
