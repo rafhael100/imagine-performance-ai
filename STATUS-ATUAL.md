@@ -1,3 +1,15 @@
+# Imagine Performance AI — consolidação e preparação de homologação F1-80/F1-81
+
+**09/11/2026 — andamento verificável, ainda NÃO implantado:** o [PR #179](https://github.com/rafhael100/imagine-performance-ai/pull/179) integra em um único GitHub Actions PostgreSQL 16/Laravel, migrations RLS, controles de campanhas/SQL F22–F28 e regressões F74–F79. A execução [#42740339290](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42740339290) foi **SUCCESS** incluindo o pré-check F81, enquanto `BLOCKED_AS_EXPECTED_NO_GO` segue sendo a resposta exigida da auditoria de release. Nenhuma rota web/API foi aberta.
+
+**F1-81:** script read-only `ops/homologacao/preflight-host-readonly.sh` para verificar, quando a VPS Leaseweb estiver acessível, versão Ubuntu, CPU, memória, disco, Docker/Compose, sem alterar host ou revelar segredos. O CI apenas executou esse script no runner; **não houve acesso à VPS**. Resultado é sempre `REQUIRES_HUMAN_REVIEW_NO_GO`.
+
+**Revisão única:** [PR #180](https://github.com/rafhael100/imagine-performance-ai/pull/180) (draft) apresenta a cadeia F1-01–F1-81 frente à branch `dev/fast-track-performance-2026-11-05`, sem merge. `main` divergiu e não foi tocada. O PR requer inspeção de componentes duplicados, qualidade do código, SQL/SECURITY DEFINER, autorização e revisão de segurança antes de qualquer integração mais ampla.
+
+**Gates ainda impeditivos:** P0, HT-R01, SEC-R03/T3, AppSec/DBA, Portal real/MFA/identidade S2S, contratos/certificação de integração Google/Meta, raiz de confiança monotônica pós-restore, idempotência externa, consentimento/LGPD, VPS homologada, controles de gasto e cobrança. Sem anúncios, pagamentos, clientes, deploy ou novas despesas.
+
+---
+
 # Imagine Performance AI — entregas recentes F1-74 a F1-79 (09/11/2026)
 
 **Situação verificada:** desenvolvimento de laboratório e pré-homologação em PRs draft **encadeados**. Nenhum PR desta sequência foi mesclado na `main`. Os CIs verdes confirmam os comportamentos explicitamente testados, **não** segurança de produção, integração real ou entrega comercial.
