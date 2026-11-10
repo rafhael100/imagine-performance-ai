@@ -1,0 +1,52 @@
+name: Performance F1-83 - real Portal mock onboarding event parity
+on:
+  push:
+    branches:
+      - dev/perf-f1-83-portal-onboarding-wire-parity-2026-11-09
+  pull_request:
+    paths:
+      - 'app/Performance/Contracts/PortalOnboardingEventContract.php'
+      - 'tests/Unit/PortalOnboardingEventContractStandalone.php'
+      - '.github/workflows/perf-f1-83-portal-event-parity-ci.yml'
+permissions:
+  contents: read
+jobs:
+  portal-onboarding-parity:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 3176e4e5acaeb1268ade656fef8ce753d65299c0
+          path: pinned-portal
+          sparse-checkout: |
+            apps/portal/app/Domain/Organizations/OrganizationId.php
+            apps/portal/app/Domain/PerformanceOnboarding/DemoOnboardingId.php
+            apps/portal/app/Domain/PerformanceOnboarding/DemoPerformanceEvent.php
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - name: Verify exact Portal PHP fingerprint algorithm, not a copied fixture
+        env:
+          PORTAL_CHECKOUT_ROOT: pinned-portal
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Contracts/PortalOnboardingEventContract.php
+          php -l tests/Unit/PortalOnboardingEventContractStandalone.php
+          php tests/Unit/PortalOnboardingEventContractStandalone.php
+          if grep -R -n -E 'PortalOnboardingEventContract|PERF_F83_ONBOARDING_PARITY_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F83 synthetic contract wired into active routes'
+            exit 1
+          fi
+          test ! -f routes/api.php
+          test ! -f routes/web.php
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json
