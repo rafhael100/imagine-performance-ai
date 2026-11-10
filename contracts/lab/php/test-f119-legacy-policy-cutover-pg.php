@@ -9,6 +9,7 @@ if(PHP_SAPI!=='cli'
     ||getenv('APP_ENV')!=='testing'
     ||getenv('PERF_F119_DROP_GUC_RLS_LAB')!=='1'
     ||getenv('PERF_F107_BUDGET_READER_LAB')!=='1'
+    ||getenv('PERF_F92_CREDENTIAL_READER_LAB')!=='1'
     ||getenv('PGHOST')!=='127.0.0.1'
     ||getenv('PGPORT')!=='5432'
     ||getenv('PGDATABASE')!=='perf_test_campaign_registry'){
