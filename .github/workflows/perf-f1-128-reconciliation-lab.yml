@@ -1,0 +1,24 @@
+name: PERF F128 synthetic reconciliation
+on:
+  push:
+    branches:
+      - dev/perf-f1-128-reconcile-proof-lab-2026-11-10
+  pull_request:
+    paths:
+      - 'src/Lab/SyntheticWitnessReconciliation.php'
+      - 'tests/Standalone/F128SyntheticWitnessReconciliationTest.php'
+      - '.github/workflows/perf-f1-128-reconciliation-lab.yml'
+permissions:
+  contents: read
+jobs:
+  reconciliation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax and cases
+        run: |
+          php -l src/Lab/SyntheticWitnessReconciliation.php
+          php -l tests/Standalone/F128SyntheticWitnessReconciliationTest.php
+          php tests/Standalone/F127AmbiguousWitnessQuarantineTest.php
+          php tests/Standalone/F128SyntheticWitnessReconciliationTest.php
