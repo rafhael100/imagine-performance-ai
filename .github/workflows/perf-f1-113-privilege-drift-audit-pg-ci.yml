@@ -813,7 +813,7 @@ jobs:
           PERF_F113_PRIVILEGE_AUDIT_LAB: '1'
         run: |
           set -euo pipefail
-          php -l app/Performance/Security/LegacySqlGrantDriftAudit.php
+          php -l contracts/lab/php/LegacySqlGrantDriftAudit.php
           php -l contracts/lab/php/test-f113-privilege-drift-audit-pg.php
           php contracts/lab/php/test-f113-privilege-drift-audit-pg.php
           if grep -R -n -E 'LegacySqlGrantDriftAudit|PERF_F113_PRIVILEGE_AUDIT_LAB' routes/ bootstrap/ app/Providers/; then
