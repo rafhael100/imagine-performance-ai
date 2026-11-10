@@ -35,21 +35,24 @@ $add->execute(['perf_f91_reader_b',$tenantB]);
 
 $read=static fn(PDO $db):array=>$db->query(
     'SELECT tenant_id,portal_service_ref,channel,account_ref,connection_state '
-    .'FROM public.perf_f91_demo_account_read'
+    .'FROM public.perf_f91_demo_account_read ORDER BY channel,account_ref'
 )->fetchAll(PDO::FETCH_ASSOC);
 $check($a->query('SELECT session_user')->fetchColumn()==='perf_f91_reader_a','authenticated A login');
 $check($b->query('SELECT session_user')->fetchColumn()==='perf_f91_reader_b','authenticated B login');
 foreach ([[$a,$tenantA,'A'],[$b,$tenantB,'B']] as [$db,$tenant,$label]) {
     $rows=$read($db);
-    $check(count($rows)===1,"$label gets one scoped candidate (rows=".count($rows)
+    $check(count($rows)===($label==='A'?2:1),"$label gets expected scoped candidates (rows=".count($rows)
         .", bound=".($db->query("SELECT public.perf_f91_tenant_for_login()")->fetchColumn()?:'NULL')
         .", session=".$db->query('SELECT session_user')->fetchColumn()
         .", total=".$admin->query('SELECT count(*) FROM performance_ad_account_candidates')->fetchColumn().")");
-    $check($rows[0]['tenant_id']===$tenant,"$label cannot read foreign tenant");
-    $check($rows[0]['portal_service_ref']==='svc-demo-f88',"$label service");
-    $check($rows[0]['channel']==='meta',"$label channel");
-    $check($rows[0]['account_ref']==='demo_meta_a',"$label DEMO alias");
-    $check($rows[0]['connection_state']==='unverified_demo',"$label always unverified");
+    $expectedChannels=$label==='A'?['google_ads','meta']:['meta'];
+    $check(array_column($rows,'channel')===$expectedChannels,"$label channel scope");
+    foreach($rows as $row) {
+        $check($row['tenant_id']===$tenant,"$label cannot read foreign tenant");
+        $check($row['portal_service_ref']==='svc-demo-f88',"$label service");
+        $check(in_array($row['account_ref'],['demo_google_a','demo_meta_a'],true),"$label DEMO alias");
+        $check($row['connection_state']==='unverified_demo',"$label always unverified");
+    }
     $check($db->query("SELECT public.perf_f91_tenant_for_login()")->fetchColumn()===$tenant,
            "$label bound to LOGIN identity");
 }
@@ -59,7 +62,7 @@ $spoof->execute([$tenantB]);
 $check($a->query("SELECT current_setting('app.performance_tenant_id')")->fetchColumn()===$tenantB,
     'attacker can forge legacy GUC (known weakness)');
 $rows=$read($a);
-$check(count($rows)===1 && $rows[0]['tenant_id']===$tenantA,
+$check(count($rows)===2 && count(array_filter($rows,fn($r)=>$r['tenant_id']!==$tenantA))===0,
     'new view ignores forged GUC and stays bound to SESSION_USER A');
 
 $spoofB=$b->prepare("SELECT set_config('app.performance_tenant_id',?,false)");
@@ -103,7 +106,7 @@ $restore=$admin->prepare(
 );
 $restore->execute(['perf_f91_reader_a']);
 $rows=$read($a);
-$check(count($rows)===1 && $rows[0]['tenant_id']===$tenantA,
+$check(count($rows)===2 && count(array_filter($rows,fn($r)=>$r['tenant_id']!==$tenantA))===0,
     'restored admin mapping brings back only A');
 $check($read($b)[0]['tenant_id']===$tenantB,'B remains scoped');
 
