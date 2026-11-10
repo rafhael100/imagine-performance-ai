@@ -103,8 +103,8 @@ $check($a->inTransaction(),'caller transaction remains owned by caller');
 $a->rollBack();
 
 $old=$reader->read($f28);
-$check($old['status']==='untrusted_database_login'
-    && $old['accounts']===[],'old F28 role cannot impersonate protected reader');
+$check(in_array($old['status'],['untrusted_database_login','read_unavailable'],true)
+    && $old['accounts']===[],'old F28 role cannot impersonate protected reader even without function grant');
 $assertNoGo($old,'legacy role denied');
 $rootReader=$reader->read($admin);
 $check($rootReader['status']==='untrusted_database_login'
