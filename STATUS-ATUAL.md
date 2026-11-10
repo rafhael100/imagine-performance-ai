@@ -1,3 +1,22 @@
+# Imagine Performance AI — recuperação de nonce e testemunha independente F1-125/F1-126 (10/11/2026)
+
+**Status de engenharia:** testes de antirreplay após restauração de backup avançaram usando **duas instâncias PostgreSQL16 efêmeras do CI**, com emissor Ed25519 demonstrativo pinado do Imagine Portal. **Produção e clientes: NO-GO.** Nenhuma migração nova foi executada na VPS ou em produção.
+
+| Etapa | O que passou no CI | Evidência |
+|---|---|---|
+| F125 | [PR #232](https://github.com/rafhael100/imagine-performance-ai/pull/232): segundo PostgreSQL16 (5433), role de testemunha `INSERT-only` e owner `NOLOGIN`; `pg_dump --data-only` real dos recibos antigos da primeira base, restaurado com `psql`. O F124 local **aceita o nonce antigo** depois de perder o recibo; o bridge com testemunha externa **nega** a mesma assinatura sem entregar dados. | [CI #42888614809 — SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42888614809), **202 verificações F125** |
+| F126 | [PR #233](https://github.com/rafhael100/imagine-performance-ai/pull/233): preflight verifica autenticação e privilégios do SQL writer externo antes de F124 consumir nonce. `REVOKE INSERT` e transação externa inválida são detectados cedo, preservando o token até restabelecer o serviço. O teste **também reproduz uma corrida posterior ao preflight**, durante a qual o nonce local ainda pode ser consumido; resultado permanece bloqueado. | [CI #42889699983 — SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42889699983), **129 verificações F126** |
+
+### Escopo e limites
+
+O backup/restauração F125 cobre **somente dados da tabela de recibos** da base principal, não o cluster inteiro. A testemunha F125 está em um segundo contêiner do **mesmo runner**, portanto não representa witness offsite, ambiente operacional independente ou prova de sobrevivência a rollback conjunto. Não existe autorização real da sessão Portal, porque `SyntheticCurrentAuthority` F29 é caller-constructible e F123 fixa somente um tenant DEMO A. **A solução F126 não é transação distribuída (sem XA/2PC); a corrida entre preflight e INSERT foi comprovada**.
+
+Aprovações/gates faltantes: fonte Portal IAM/MFA/S2S com permissão por usuário/empresa/serviço, chaves e vínculo seguro com SQL, witness externo resistente a restore + protocolo de recuperação idempotente, DBA/AppSec independente, inventário e migração operacional RLS/roles F112/F117/F119, consentimentos OAuth Google Ads/Meta, LGPD, aprovação humana e limites de orçamento, reconciliação sem gasto duplo, VPS Leaseweb para homologação, backup/restore/QA e P0/HT-R01/SEC-R03/T3.
+
+**Todas as entregas novas estão em PRs DRAFT, sem merge em `main`, deploy, acesso a clientes, anúncio, veiculação, faturamento ou nova despesa com fornecedores.**
+
+---
+
 # Imagine Performance AI — integração criptográfica de laboratório Portal–SQL F1-123/F1-124 (10/11/2026)
 
 **Estado atual:** assinatura Ed25519 emitida pelo Portal e verificada no Performance com vínculo SQL F91/F100, mais antirreplay em banco PostgreSQL16 de CI. **PROD/COMERCIAL: NO-GO.** Nenhuma migração desta rodada foi aplicada a VPS ou produção.
