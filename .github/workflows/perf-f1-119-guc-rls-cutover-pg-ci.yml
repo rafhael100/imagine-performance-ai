@@ -915,6 +915,7 @@ jobs:
         env:
           PERF_F119_DROP_GUC_RLS_LAB: '1'
           PERF_F107_BUDGET_READER_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
           PERF_F119_BUDGET_JSON_FILE: /tmp/perf-f119-budget.json
           PORTAL_F64_BUDGET_PREVIEW_LAB: '1'
           PORTAL_F65_BUDGET_HTML_LAB: '1'
