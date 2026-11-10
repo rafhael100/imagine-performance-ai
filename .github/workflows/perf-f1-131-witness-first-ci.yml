@@ -1,0 +1,125 @@
+name: Performance F1-131 - witness first mandatory laboratory registration
+on:
+  push:
+    branches:
+      - dev/perf-f1-131-witness-first-enforced-lab-2026-11-10
+  pull_request:
+    paths:
+      - 'src/Lab/F131WitnessFirstRegistration.php'
+      - 'tests/Standalone/F131WitnessFirstPgTest.php'
+      - 'database/lab-migrations/f131_cutover_primary_bridge_ci.sql'
+      - 'database/lab-migrations/f131_cutover_witness_bridge_ci.sql'
+      - '.github/workflows/perf-f1-131-witness-first-ci.yml'
+permissions:
+  contents: read
+jobs:
+  ephemeral-cross-db:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      primary:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f131-admin-only
+          POSTGRES_DB: perf_f131_ci
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f131_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+      witness:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f131-witness-admin-only
+          POSTGRES_DB: perf_f131_witness_ci
+        ports:
+          - '127.0.0.1:5433:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f131_witness_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F131_LAB: '1'
+      PGHOST: '127.0.0.1'
+      PGPORT: '5432'
+      PGDATABASE: perf_f131_ci
+      PGUSER: postgres
+      PGPASSWORD: ci-f131-admin-only
+      WITNESS_DB: perf_f131_witness_ci
+      WITNESS_PASSWORD: ci-f131-witness-admin-only
+      PERF_F129_WRITER_PASSWORD: ci-f129-writer-only
+      PERF_F130_WRITER_PASSWORD: ci-f130-writer-only
+      PERF_F131_PRIMARY_PASSWORD: ci-f131-primary-only
+      PERF_F131_WITNESS_PASSWORD: ci-f131-witness-only
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Enable PHP pgsql and run regressions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo,pdo_pgsql
+          coverage: none
+      - name: PHP syntax, regressions and no runtime wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Lab/F131WitnessFirstRegistration.php
+          php -l tests/Standalone/F131WitnessFirstPgTest.php
+          php tests/Standalone/F127AmbiguousWitnessQuarantineTest.php
+          php tests/Standalone/F128SyntheticWitnessReconciliationTest.php
+          if grep -R -E 'F131WitnessFirstRegistration|perf_f131_primary_bridge|perf_f131_witness_bridge' routes/ app/ bootstrap/; then
+            echo 'FAIL: synthetic registration wired into product runtime'
+            exit 1
+          fi
+      - name: Prepare ephemeral SQL domains and revoke legacy writers
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F131_LAB" = 1
+          test "$PGDATABASE" = perf_f131_ci
+          pg_isready -h 127.0.0.1 -p 5432 -d perf_f131_ci -U postgres
+          PGPASSWORD="$WITNESS_PASSWORD" pg_isready -h 127.0.0.1 -p 5433 -d perf_f131_witness_ci -U postgres
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f129_writer LOGIN PASSWORD 'ci-f129-writer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f129_failure_simulator LOGIN PASSWORD 'ci-f129-sim-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f131_primary_bridge LOGIN PASSWORD 'ci-f131-primary-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f129_disposable_quarantine_journal.sql
+          psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f131_cutover_primary_bridge_ci.sql
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f130_writer LOGIN PASSWORD 'ci-f130-writer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f131_witness_bridge LOGIN PASSWORD 'ci-f131-witness-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f130_disposable_external_witness.sql
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f131_cutover_witness_bridge_ci.sql
+      - name: Seed A and test legacy bypass closure
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F131WitnessFirstPgTest.php seed
+      - name: Record old data-only primary snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_dump -h 127.0.0.1 -d perf_f131_ci --data-only --column-inserts --no-owner --no-privileges \
+            --table=perf_f129_lab.circuit --table=perf_f129_lab.receipts \
+            --table=perf_f129_lab.uncertainty --file="$RUNNER_TEMP/f131-old-primary.sql"
+          test -s "$RUNNER_TEMP/f131-old-primary.sql"
+      - name: Exercise revoke and fault after witness write
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F131WitnessFirstPgTest.php after-backup
+      - name: Restore primary only, leave witness intact
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -c "TRUNCATE perf_f129_lab.uncertainty,perf_f129_lab.receipts,perf_f129_lab.circuit"
+          psql -X -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/f131-old-primary.sql" > /dev/null
+      - name: Verify duplicate block and reveal remaining rollback gap
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F131WitnessFirstPgTest.php after-restore
