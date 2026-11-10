@@ -65,6 +65,15 @@ final class SyntheticExternallyWitnessedPortalPreview
             return self::denied('external_witness_lab_disabled');
         }
         try{
+            // F126 opt-in lab optimization: reject a visibly unavailable,
+            // read-only, wrong-role or overprivileged witness BEFORE the
+            // F124 local nonce receipt can be burned. A race between this
+            // preflight and the later external INSERT remains; no XA/2PC.
+            if(getenv('PERF_F126_WITNESS_PREFLIGHT_LAB')==='1'
+                &&$this->externalWitness->preflight()
+                    !=='external_witness_preflight_ready_ci_only'){
+                return self::denied('independent_witness_not_ready');
+            }
             $local=$this->localBridge->preview(
                 $tenantConnection,$signedEnvelope,$authority,$now
             );
