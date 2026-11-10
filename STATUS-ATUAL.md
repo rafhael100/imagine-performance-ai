@@ -1,3 +1,24 @@
+# Imagine Performance AI — integração criptográfica de laboratório Portal–SQL F1-123/F1-124 (10/11/2026)
+
+**Estado atual:** assinatura Ed25519 emitida pelo Portal e verificada no Performance com vínculo SQL F91/F100, mais antirreplay em banco PostgreSQL16 de CI. **PROD/COMERCIAL: NO-GO.** Nenhuma migração desta rodada foi aplicada a VPS ou produção.
+
+| Entrega | Implementação | Evidência |
+|---|---|---|
+| F123 | [PR #229](https://github.com/rafhael100/imagine-performance-ai/pull/229) — emissor Ed25519 **real do repositório Portal**, pinado no commit `739465b5...`; gate F29 valida assinatura, escopo read-only, MFA e revisões **sintéticos**; integração real com `session_user` A do PostgreSQL e workbench Laravel F100 de três VIEWs. Só aceita fixture A e sempre nega lançamento/Ads/billing. | [CI #42881109290 — SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42881109290), **368 verificações** |
+| F124 | [PR #230](https://github.com/rafhael100/imagine-performance-ai/pull/230) — migração separada de **CI apenas** para ledger de nonces Ed25519 sob owner SQL `NOLOGIN` e role `INSERT-only`, com PK no hash. Impede a segunda apresentação de nonce no mesmo DB, inclusive após criar novo verificador PHP e outra conexão SQL. `INSERT` simples + SQLSTATE 23505 mantém o writer sem SELECT. | [CI #42883645843 — SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42883645843), **181 verificações** |
+
+### Limites de segurança reconhecidos
+
+**IAM Portal não existe no fluxo real**: o F29 recebe `SyntheticCurrentAuthority`, que pode ser construída pelo chamador. O F123 usa apenas uma associação fixa de fixture Portal A ↔ SQL A, sem controle de sessão ou serviço de cliente. **NÃO expor como endpoint público nem autorizar anúncios.**
+
+**Replay/recuperação:** F124 registra o nonce somente no banco do próprio laboratório. Um restore de backup antigo pode remover recibos e permitir reutilizar uma declaração antiga ainda dentro da validade; requer **fonte externa independente e recuperação antifraude**. O writer não consegue ler/deletar recibos, mas pode queimar nonces e causar negativa de serviço se sua credencial for comprometida. A função de emissão Portal só trabalha com chave efêmera do CI; nenhuma chave privada de cliente foi usada.
+
+**Pendências comerciais:** Portal IAM/MFA/S2S e controle de empresa/serviço; plano de autenticação e pooling SQL, appsec/DBA independente, migração operacional RLS e concessões F112/F117/F119, antirreplay com testemunha externa e antirollback, OAuth Google Ads e Meta, consentimento LGPD, orçamento e alçadas humanas, idempotência/reconciliação, VPS/homologação, backup/restore, gates P0/HT-R01/SEC-R03/T3.
+
+**Sem merge/main, deploy, conexão com anunciantes, mídia paga, clientes ou billing.** PRs DRAFT. O CI demonstrativo não certifica prontidão de produção.
+
+---
+
 # Imagine Performance AI — isolamento de leitura e revogação SQL F1-120–F1-122 (10/11/2026)
 
 **Estado:** implementações Laravel e testes de segurança PostgreSQL16 avançaram até F1-122; **somente cenários DEMO e runners descartáveis**, sem integração IAM Portal, anúncios ou produção. **NO-GO permanece.**
