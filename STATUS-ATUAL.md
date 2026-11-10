@@ -1,3 +1,28 @@
+# Imagine Performance AI — hardening PostgreSQL F1-112–F1-116 (10/11/2026)
+
+**Resultado do trabalho desta rodada:** migração versionada de revogação de grants SQL legados em laboratório; auditoria de deriva de permissões; inspeção de ACLs de roles novas, grafo de herança/SET ROLE; inventário explícito de owners privilegiados. **NO-GO mantido.** Nenhuma dessas etapas foi aplicada à VPS, produção ou clientes.
+
+| Entrega | Mudança de código e resultado |
+|---|---|
+| F112 | [PR #215](https://github.com/rafhael100/imagine-performance-ai/pull/215); migration Laravel **isolada de `database/migrations`** em `database/lab-migrations`, fechamento de grants de oito roles CI × 13 tabelas com rollback transacional se houver privilégio herdado. **786 asserts** em PostgreSQL16 [SUCCESS #42847842508](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42847842508) |
+| F113 | [PR #216](https://github.com/rafhael100/imagine-performance-ai/pull/216); auditor somente CI de privilégios efetivos em tabelas/colunas/views e regrants diretos, herdados e PUBLIC. **63 asserts** [SUCCESS #42849547740](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42849547740) |
+| F114 | [PR #217](https://github.com/rafhael100/imagine-performance-ai/pull/217); inventário de ACLs reais via `pg_class.relacl`/`pg_attribute.attacl`, detecta roles **desconhecidas**, PUBLIC e UPDATE/INSERT inesperado. **49 asserts** [SUCCESS #42850987297](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42850987297) |
+| F115 | [PR #218](https://github.com/rafhael100/imagine-performance-ai/pull/218); auditor de `pg_auth_members`, herança de roles, `SET ROLE`, owner de journal F104 e atributos `BYPASSRLS`/superuser. **53 asserts** [SUCCESS #42857610360](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42857610360) |
+| F116 | [PR #219](https://github.com/rafhael100/imagine-performance-ai/pull/219); inventário de owners reais das quatro VIEWs e funções SECURITY DEFINER. **59 asserts** [SUCCESS #42858679167](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42858679167). **Encontrou revisão independente necessária para owners privilegiados de VIEWs e função F91.** |
+
+## Bloqueios para finalizar o produto
+
+1. **SQL/IAM:** reduzir e revisar privilégios de owners de VIEWs/F91, conexões e pooling, preservar isolamento das empresas, preparar migração real F112 sem indisponibilidade e executar revisão independente AppSec/DBA. F116 **não** comprova autorização de produção; F112 **não** foi executada em banco real.
+2. **Portal:** autenticação e autorização IAM/MFA/S2S por usuário, empresa, serviço e alçada, com trilha de auditoria e revogação fim a fim.
+3. **Anunciantes:** OAuth, consentimentos e permissões oficiais de Google Ads/Meta, tokens em cofre, limites/alçadas de orçamento, idempotência/reconciliação e prevenção de execução não aprovada.
+4. **Operação:** LGPD, recuperação, backups/antirollback, testes em VPS Leaseweb, QA e gates P0/HT-R01/SEC-R03/T3 aprovados.
+
+**F105–F111 permanecem como implementação funcional de orçamento BRL em centavos com PostgreSQL/Laravel, Portal HTML estático e CSV somente offline/CI**, sem publicar campanha, cobrar, autenticar cliente real ou usar credenciais Ads. A aprovação de CI não equivale a liberação do produto.
+
+**Permanece proibido** mesclar em `main`, fazer deploy real, emitir cobrança ou executar mídia sem os gates de segurança/consentimento. PRs draft, `main` e VPS inalteradas.
+
+---
+
 # Imagine Performance AI — orçamento seguro F1-105–F1-111 / Portal F64–F66 (10/11/2026)
 
 **Estado:** base de produto e integração offline concluídas nesta rodada; **sem prontidão de produção (NO-GO)**. Não há login/conta de cliente real, OAuth Ads, pagamento, aprovação operacional nem deploy.
