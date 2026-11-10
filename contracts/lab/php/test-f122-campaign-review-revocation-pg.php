@@ -96,8 +96,12 @@ foreach($fixtures as $name=>$f){
     $two=$f['reader']->read($b);
     $check($one['status']===$f['status'],"$name A baseline is valid");
     $check($two['status']===$f['status'],"$name B baseline is valid");
-    $check(count($one[$f['field']])===1,"$name A one visible DEMO item");
-    $check(count($two[$f['field']])===1,"$name B one visible DEMO item");
+    $check(count($one[$f['field']])===1,
+        "$name A one visible DEMO item; actual ".count($one[$f['field']])
+        .' / '.json_encode($one,JSON_UNESCAPED_SLASHES));
+    $check(count($two[$f['field']])===1,
+        "$name B one visible DEMO item; actual ".count($two[$f['field']])
+        .' / '.json_encode($two,JSON_UNESCAPED_SLASHES));
     $check($one[$f['field']]!==$two[$f['field']],
         "$name A/B projections differ");
     foreach([$one,$two] as $dto){
