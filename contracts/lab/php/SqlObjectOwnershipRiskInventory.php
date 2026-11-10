@@ -73,7 +73,7 @@ final class SqlObjectOwnershipRiskInventory
                 .'FROM pg_catalog.pg_class c '
                 .'JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace '
                 .'JOIN pg_catalog.pg_roles o ON o.oid=c.relowner '
-                'WHERE n.nspname=? AND c.relname=?'
+                .'WHERE n.nspname=? AND c.relname=?'
             );
             foreach(self::VIEWS as $name){
                 $prepared->execute(['public',$name]);
@@ -113,7 +113,7 @@ final class SqlObjectOwnershipRiskInventory
                 .'FROM pg_catalog.pg_proc p '
                 .'JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace '
                 .'JOIN pg_catalog.pg_roles o ON o.oid=p.proowner '
-                'WHERE n.nspname=? AND p.proname=?'
+                .'WHERE n.nspname=? AND p.proname=?'
             );
             foreach($functions as $config){
                 $functionStmt->execute(['public',$config['name']]);
