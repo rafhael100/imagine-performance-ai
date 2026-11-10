@@ -48,11 +48,23 @@ final class CredentialBoundDemoAccountReader
             if($db->getAttribute(PDO::ATTR_DRIVER_NAME)!=='pgsql') {
                 return self::denied('invalid_database_driver');
             }
-            $id=$db->query(
-                'SELECT current_database() AS dbname, '
+            // F100's read-only workbench composes three projections inside
+            // an explicitly READ COMMITTED + READ ONLY transaction. Allow
+            // only that bounded context: each SQL statement gets a fresh
+            // PostgreSQL snapshot, so the post-query identity check below
+            // observes a committed revocation or reassignment. Never read
+            // under REPEATABLE READ/SERIALIZABLE or a write-capable transaction.
+            if($db->inTransaction()) {
+                $isolation=$db->query('SHOW transaction_isolation')->fetchColumn();
+                $readOnly=$db->query('SHOW transaction_read_only')->fetchColumn();
+                if($isolation!=='read committed' || $readOnly!=='on') {
+                    return self::denied('invalid_connection_state');
+                }
+            }
+            $identitySql='SELECT current_database() AS dbname, '
                 .'session_user::text AS db_login, '
-                .'public.perf_f91_tenant_for_login()::text AS bound_tenant'
-            )->fetch(PDO::FETCH_ASSOC);
+                .'public.perf_f91_tenant_for_login()::text AS bound_tenant';
+            $id=$db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
             if (!is_array($id)
                 || $id['dbname']!=='perf_test_campaign_registry'
                 || !in_array($id['db_login'],[
@@ -99,6 +111,19 @@ final class CredentialBoundDemoAccountReader
                     'connection_state'=>'unverified_demo',
                 ];
             }
+
+            // Recheck the authenticated SQL principal after materializing
+            // rows. A revocation or reassignment committed between SELECT
+            // and return invalidates the entire DEMO result set. This is a
+            // CI safeguard, not an atomic production IAM protocol.
+            $after=$db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
+            if(!is_array($after)
+                || $after['dbname']!==$id['dbname']
+                || $after['db_login']!==$id['db_login']
+                || $after['bound_tenant']!==$id['bound_tenant']) {
+                return self::denied('credential_changed_during_read');
+            }
+
             return [
                 'schema_version'=>self::SCHEMA,
                 'status'=>'credential_scoped_demo_preview_only',
