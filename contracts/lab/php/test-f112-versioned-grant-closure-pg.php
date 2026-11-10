@@ -78,9 +78,10 @@ $check($has('perf_f23_writer','performance_campaign_intents','INSERT'),
 $check($has('perf_f28_app_reader','performance_demo_budget_scenarios','SELECT'),
     'unsafe new budget base SELECT reprovisioned');
 
-// Column-grant attack: REVOKE ALL ON TABLE does NOT revoke column grants.
-// The migration must FAIL and roll back ALL revokes until a DBA first clears
-// every column permission, then a clean retry must succeed.
+// PostgreSQL16 REVOKE ALL PRIVILEGES ON TABLE removes this direct column
+// grant as well; a separate inherited role membership still provides SELECT,
+// forcing the migration to fail transactionally rather than falsely reporting
+// successful closure. After removing the inherited membership, retry succeeds.
 $db->exec(
     'GRANT SELECT(scenario_ref) ON public.performance_demo_budget_scenarios '
     .'TO perf_f28_app_reader'
@@ -95,26 +96,27 @@ $col->execute([
 $check(in_array($col->fetchColumn(),[true,'t','1',1],true),
     'explicit column-level SELECT grant exists');
 
+// Malicious inherited grant: direct REVOKE FROM F28 cannot remove rights
+// acquired from this independent role. Migration must detect the effective
+// privilege and revert ALL prior revocations as one PG transaction.
+$db->exec('CREATE ROLE perf_f112_inherited_unsafe NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE');
+$db->exec(
+    'GRANT SELECT ON public.performance_campaign_intents TO perf_f112_inherited_unsafe'
+);
+$db->exec(
+    'GRANT perf_f112_inherited_unsafe TO perf_f28_app_reader WITH INHERIT TRUE'
+);
+$check($has('perf_f28_app_reader','performance_campaign_intents','SELECT'),
+    'F28 inherited SELECT is effective before closure');
+
 $command='php artisan migrate --path=database/lab-migrations '
     .'--force --no-interaction 2>&1';
 $failOutput=[];
 $failCode=-1;
 exec($command,$failOutput,$failCode);
-if ($failCode===0) {
-    $col->execute([
-        'perf_f28_app_reader','public.performance_demo_budget_scenarios',
-        'scenario_ref','SELECT'
-    ]);
-    $still=in_array($col->fetchColumn(),[true,'t','1',1],true);
-    throw new RuntimeException(
-        'FAIL F112 expected column-level grant guard to reject migration; '
-        .'column grant remains='.($still?'yes':'no')
-        .'; artisan output='.implode(' | ',$failOutput)
-    );
-}
-$check($failCode!==0,'migration refuses residual column-level privilege');
-$check(str_contains(implode("\n",$failOutput),'residual column grant'),
-    'migration failure identifies security-specific reason');
+$check($failCode!==0,'migration refuses inherited direct-table privilege');
+$check(str_contains(implode("\n",$failOutput),'residual table grant'),
+    'migration failure identifies inherited grant through effective privileges');
 $check($has('perf_f28_app_reader','performance_campaign_intents','SELECT'),
     'PostgreSQL transactional failure restores earlier direct grant');
 $check($has('perf_f23_writer','performance_campaign_intents','INSERT'),
@@ -124,10 +126,13 @@ $check((int)$db->query(
     ."'2026_11_10_000006_close_legacy_direct_sql_grants'"
 )->fetchColumn()===0,'failed migration is not recorded as successful');
 
+// Undo ONLY the inherited grant. The migration must revoke all remaining
+// unsafe direct table-level and column-level grants itself on the next run.
+$db->exec('REVOKE perf_f112_inherited_unsafe FROM perf_f28_app_reader');
 $db->exec(
-    'REVOKE SELECT(scenario_ref) ON public.performance_demo_budget_scenarios '
-    .'FROM perf_f28_app_reader'
+    'REVOKE SELECT ON public.performance_campaign_intents FROM perf_f112_inherited_unsafe'
 );
+$db->exec('DROP ROLE perf_f112_inherited_unsafe');
 $successOutput=[];
 $successCode=-1;
 exec($command,$successOutput,$successCode);
@@ -151,6 +156,12 @@ $check(!$has('perf_f23_writer','performance_campaign_intents','INSERT'),
     'F23 legacy write capability removed by versioned migration');
 $check(!$has('perf_f28_app_reader','performance_demo_budget_scenarios','SELECT'),
     'F28 budget base table denied after versioned migration');
+$col->execute([
+    'perf_f28_app_reader','public.performance_demo_budget_scenarios',
+    'scenario_ref','SELECT'
+]);
+$check(!in_array($col->fetchColumn(),[true,'t','1',1],true),
+    'PostgreSQL16 REVOKE ALL removes independently granted column SELECT too');
 $deny=static function(PDO $db,string $sql,string $why)use($check):void {
     $blocked=false;
     try{$db->exec($sql);}catch(PDOException){$blocked=true;}
