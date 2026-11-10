@@ -1,3 +1,21 @@
+# Imagine Performance AI — integração cruzada com Portal F1-82–F1-86
+
+**Data-base: 09/11/2026. PRs draft; sem publicação ou merge.**
+
+| Etapa | Evidência | Resultado |
+|---|---|---|
+| F1-82 | [Performance PR #181](https://github.com/rafhael100/imagine-performance-ai/pull/181), [CI SUCCESS #42740984314](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42740984314) | Codec explícito entre `meta` interno e `meta_ads` do enum Portal, sem integração ativa |
+| F1-83 | [Performance PR #182](https://github.com/rafhael100/imagine-performance-ai/pull/182), [CI SUCCESS #42743593167](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42743593167) | Paridade do evento `DemoPerformanceEvent` real do Portal e seu fingerprint canônico SHA-256 |
+| F1-84–F1-86 | [Performance PR #183](https://github.com/rafhael100/imagine-performance-ai/pull/183), [CI SUCCESS #42745250713](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42745250713) | PostgreSQL 16 CI com RLS e dados de campanhas → DTO F84 → consumidor Portal F59 → HTML estático Portal F60, **no mesmo job** |
+| Portal F59 | [Portal PR #193](https://github.com/rafhael100/imagine-portal/pull/193), [CI SUCCESS #42744532608](https://github.com/rafhael100/imagine-portal/actions/runs/42744532608) | Leitor offline que recusa status, identidade e autorizações inconsistentes |
+| Portal F60 | [Portal PR #196](https://github.com/rafhael100/imagine-portal/pull/196), [CI SUCCESS #42745110246](https://github.com/rafhael100/imagine-portal/actions/runs/42745110246) | Tela estática com campanha e revisão DEMO, sem JS, rede, rotas ou operações |
+
+**Ressalva central:** o HTML é alimentado por **dados fictícios de PostgreSQL descartável no CI**, não por clientes nem publicidade. As etapas de campanha/aprovação entre os dois motores ainda não têm correspondência semântica completa; `portal_stage_mapping_ready=false`. Mesmo CI verde não torna o fluxo autenticado ou comercial. Nenhuma conta Google/Meta, PSP, anúncio ou pagamento real foi acionado.
+
+**Bloqueadores operacionais:** identidade e autorização dinâmicas Portal/Performance, MFA/mTLS/S2S reais, consentimento e OAuth do anunciante, proteção monotônica antirollback, idempotência e reconciliação real com fornecedores, AppSec/DBA, LGPD, P0/HT-R01/SEC-R03/T3, VPS homologada, deploy e testes de recuperação e carga. `main`, VPS e produção **inalteradas**.
+
+---
+
 # Imagine Performance AI — consolidação e preparação de homologação F1-80/F1-81
 
 **09/11/2026 — andamento verificável, ainda NÃO implantado:** o [PR #179](https://github.com/rafhael100/imagine-performance-ai/pull/179) integra em um único GitHub Actions PostgreSQL 16/Laravel, migrations RLS, controles de campanhas/SQL F22–F28 e regressões F74–F79. A execução [#42740339290](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42740339290) foi **SUCCESS** incluindo o pré-check F81, enquanto `BLOCKED_AS_EXPECTED_NO_GO` segue sendo a resposta exigida da auditoria de release. Nenhuma rota web/API foi aberta.
