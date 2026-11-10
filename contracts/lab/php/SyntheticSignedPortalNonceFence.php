@@ -63,7 +63,12 @@ final class SyntheticSignedPortalNonceFence
             return $stmt->rowCount()===1
                 ?'nonce_recorded_ci_only'
                 :'nonce_replay_denied';
-        }catch(Throwable){
+        }catch(Throwable $error){
+            // CI-only diagnostics; do not print signed packets or credentials.
+            if(getenv('PERF_F124_SQL_DIAGNOSTICS_LAB')==='1'){
+                fwrite(STDERR,'F124 SQL receipt diagnostic: '
+                    .$error->getCode().' '.$error->getMessage().PHP_EOL);
+            }
             return 'receipt_storage_unavailable';
         }
     }
