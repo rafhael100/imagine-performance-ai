@@ -64,7 +64,7 @@ $f136$;
 -- FDW/table access to this new restricted SQL principal.
 REVOKE EXECUTE ON FUNCTION perf_f134_primary.record_signed(
   text,text,text,bigint,bigint,text) FROM perf_f134_primary_bridge;
-REVOKE ALL ON ALL FOREIGN TABLES IN SCHEMA perf_f136_primary FROM PUBLIC;
+REVOKE ALL ON ALL TABLES IN SCHEMA perf_f136_primary FROM PUBLIC;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA perf_f136_primary FROM PUBLIC;
 GRANT USAGE ON SCHEMA perf_f136_primary TO perf_f136_primary_bridge;
 GRANT EXECUTE ON FUNCTION perf_f136_primary.redeem_and_record(
