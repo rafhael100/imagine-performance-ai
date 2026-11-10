@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Imagine Performance AI — Revisões simuladas (offline)</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#202b47;background:#f6f8fd}
+*{box-sizing:border-box}body{margin:0}button{font:inherit}
+button:focus-visible{outline:3px solid #8b82f2;outline-offset:2px}
+.page{max-width:1150px;margin:0 auto;padding:35px 22px 65px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.brand{font-weight:900;letter-spacing:-.8px;font-size:23px;color:#151f3d}
+.brand span{color:#7360d9}.label{font-weight:800;color:#7661d5;text-transform:uppercase;letter-spacing:1.4px;font-size:11px}
+h1{font-size:clamp(27px,4vw,39px);letter-spacing:-1.25px;margin:8px 0}
+h2{margin:0;font-size:17px}.muted{font-size:13px;color:#707d99;line-height:1.7;margin:0}
+.notice{background:#fff4de;border:1px solid #efdfbc;color:#7b5722;padding:16px 19px;border-radius:14px;margin:26px 0 24px;line-height:1.65;font-size:13px}
+.notice strong{display:block;color:#68451c;margin-bottom:3px}
+.pill{border:1px solid #d6d0ff;background:#eeebff;color:#594bbf;border-radius:50px;padding:9px 13px;font-size:12px;font-weight:800}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:26px}
+.stat,.panel{background:#fff;border:1px solid #e4eaf4;border-radius:17px;box-shadow:0 7px 24px #1f2f5910}
+.stat{padding:20px}.stat strong{font-size:29px;display:block;margin-top:10px;color:#1c2947}
+.stat span{color:#77849b;font-size:12px}.stat small{font-size:11px;color:#8e99ad;display:block;margin-top:8px}
+.panel{padding:24px}.panel-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.filters{display:flex;gap:6px;padding:4px;border-radius:11px;background:#edf0fa}
+.filters button{border:0;border-radius:8px;padding:8px 13px;background:transparent;color:#67748f;font-size:12px;font-weight:750;cursor:pointer}
+.filters button.active{background:#fff;color:#594fbc;box-shadow:0 2px 8px #25326418}
+.card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:15px;align-items:center;border:1px solid #e9edf5;padding:17px 18px;border-radius:12px;margin-top:11px}
+.request{font-size:13px;font-weight:800;color:#273453}
+.info{font-size:12px;color:#78859d;margin-top:8px;line-height:1.7}.tag{border-radius:50px;background:#fff2dd;color:#9a6723;font-size:11px;padding:8px 12px;font-weight:800;white-space:nowrap}
+.tag.approved{background:#eaf4fe;color:#3563a7}.tag.denied{background:#fce9eb;color:#af4b5c}
+.empty{font-size:13px;color:#7a89a1;padding:30px 10px;text-align:center}
+.bottom{font-size:11px;color:#929db0;line-height:1.65;margin-top:20px}
+@media(max-width:750px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.page{padding:23px 13px}.stat{padding:15px}.panel{padding:16px}.filters{width:100%;overflow:auto}.filters button{white-space:nowrap}.card{display:flex;flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top"><div class="brand">imagine<span>.</span> <small style="font-size:13px;font-weight:650;color:#7985a0">Performance AI</small></div><span class="pill">Somente leitura · dados fictícios</span></div>
+  <div style="margin-top:35px"><p class="label">Prévia do Portal Imagine</p><h1>Revisões de campanhas</h1><p class="muted">Acompanhe propostas e decisões internas em um ambiente demonstrativo, sem executar anúncios.</p></div>
+  <div class="notice" role="note"><strong>Ambiente simulado — nenhuma aprovação tem efeito real</strong>Revisões e operadores são fictícios. Nenhum botão publica campanhas, altera orçamentos, gera cobranças ou valida contratos. Os status “aprovado” e “aplicado” descrevem exclusivamente mudanças na simulação.</div>
+  <section aria-label="Indicadores de revisão" id="stats" class="stats"></section>
+  <section class="panel"><div class="panel-head"><div><h2>Fila de revisões</h2><p class="muted">Os itens exibidos pertencem somente à empresa fictícia do exemplo.</p></div><div class="filters" role="group" aria-label="Filtrar revisões"><button type="button" data-filter="all" class="active">Todas</button><button type="button" data-filter="pending">Pendentes</button><button type="button" data-filter="approved_mock_no_action">Aprovadas (mock)</button><button type="button" data-filter="applied_mock">Aplicadas (mock)</button></div></div><div id="items" aria-live="polite"></div></section>
+  <p class="bottom">Imagine Performance AI · perf.portal.review-queue.synthetic.v1 · Nenhum usuário autenticado · Sem Google Ads, Meta, CRM, cobrança, cookie ou API.</p>
+</div>
+<script id="review-data" type="application/json">
+{"schema_version":"perf.portal.review-queue.synthetic.v1","source":"in_memory_review_fixture_only","tenant_ref":"perf-demo-aurora","read_only":true,"contracted":false,"human_identity_verified":false,"authorization_eligible":false,"ready_for_production":false,"dispatch_enabled":false,"billing_enabled":false,"scope_changes_permitted":false,"reviewed_by":"fixture_only","counts":{"pending":1,"approved_mock_no_action":1,"rejected_mock":0,"applied_mock":0,"stale_denied":0},"audit_events_demo":3,"items":[{"request_ref":"req-demo-review-one","state":"pending_review_synthetic","category":"pending","old_campaign_ref":"cam-aurora-one","new_campaign_ref":"cam-aurora-new-one","approval_real":false,"provider_action":"none_synthetic"},{"request_ref":"req-demo-review-two","state":"approved_scope_demo_not_executed","category":"approved_mock_no_action","old_campaign_ref":null,"new_campaign_ref":null,"approval_real":false,"provider_action":"none_synthetic"}]}
+</script>
+<script>
+'use strict';
+const data=JSON.parse(document.getElementById('review-data').textContent);
+if(data.schema_version!=='perf.portal.review-queue.synthetic.v1'
+  ||data.source!=='in_memory_review_fixture_only'
+  ||data.contracted!==false||data.authorization_eligible!==false
+  ||data.human_identity_verified!==false||data.dispatch_enabled!==false
+  ||data.billing_enabled!==false||data.scope_changes_permitted!==false
+  ||data.ready_for_production!==false){throw new Error('Contrato de revisão não permitido.');}
+const $=id=>document.getElementById(id);
+const node=(tag,cls,s)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(s!==undefined)e.textContent=String(s);return e;};
+const labels={
+  pending:['Pendente',''],
+  approved_mock_no_action:['Aprovada na simulação, sem execução','approved'],
+  rejected_mock:['Rejeitada na simulação','denied'],
+  applied_mock:['Aplicada apenas na simulação','approved'],
+  stale_denied:['Negada: escopo mudou','denied']
+};
+let filter='all';
+function renderStats(){
+  const cards=[
+    ['Pendentes',data.counts.pending,'Sem aprovação real'],
+    ['Aprovadas (mock)',data.counts.approved_mock_no_action,'Nenhuma campanha publicada'],
+    ['Aplicadas (mock)',data.counts.applied_mock,'Somente alteração fictícia'],
+    ['Rejeitadas/obsoletas',data.counts.rejected_mock+data.counts.stale_denied,'Sem execução ou cobrança']
+  ];
+  $('stats').replaceChildren();
+  cards.forEach(x=>{
+    const card=node('div','stat');
+    card.append(node('span','',x[0]),node('strong','',x[1]),node('small','',x[2]));
+    $('stats').append(card);
+  });
+}
+function renderItems(){
+  $('items').replaceChildren();
+  const visible=data.items.filter(x=>filter==='all'||x.category===filter);
+  if(!visible.length){$('items').append(node('div','empty','Nenhum pedido fictício neste filtro.'));return;}
+  visible.forEach(x=>{
+    const item=node('article','card');
+    const left=node('div');
+    left.append(node('div','request',x.request_ref));
+    const details=x.category==='pending'
+      ?'Substituição proposta: '+x.old_campaign_ref+' → '+x.new_campaign_ref+' · Sem execução'
+      :'Estado interno: '+x.state+' · Sem execução externa';
+    left.append(node('div','info',details));
+    item.append(left,node('span','tag '+labels[x.category][1],labels[x.category][0]));
+    $('items').append(item);
+  });
+}
+document.querySelectorAll('[data-filter]').forEach(button=>{
+  button.addEventListener('click',()=>{
+    filter=button.dataset.filter;
+    document.querySelectorAll('[data-filter]').forEach(x=>{
+      const selected=x===button;
+      x.classList.toggle('active',selected);
+      x.setAttribute('aria-pressed',String(selected));
+    });
+    renderItems();
+  });
+});
+renderStats();renderItems();
+</script>
+</body>
+</html>

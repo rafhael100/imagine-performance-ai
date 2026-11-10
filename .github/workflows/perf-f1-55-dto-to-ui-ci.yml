@@ -1,0 +1,73 @@
+name: Performance F1-55 - render offline UI from actual synthetic PHP DTO
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-55-dto-to-ui-build-2026-11-09
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f155-dto-to-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-source-of-truth:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+    steps:
+      - name: Checkout isolated Performance UI
+        uses: actions/checkout@v5
+      - name: PHP 8.4 without external providers or Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - name: Check syntax and inherited business/DTO/UI regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/demo/f55-render-offline-preview.php
+          php tests/Unit/SyntheticManagedScopeLedgerStandalone.php
+          php tests/Unit/SyntheticScopeDashboardProjectorStandalone.php
+          node tests/ui/test-offline-preview.mjs
+      - name: Create ephemeral HTML and JSON from same fictional PHP fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          export F55_RENDERED_PREVIEW_FILE="$(mktemp --suffix=.html)"
+          export F55_PROJECTED_JSON_FILE="$(mktemp --suffix=.json)"
+          trap 'rm -f "$F55_RENDERED_PREVIEW_FILE" "$F55_PROJECTED_JSON_FILE"' EXIT
+          php contracts/demo/f53-generate-scope-preview.php > "$F55_PROJECTED_JSON_FILE"
+          php contracts/demo/f55-render-offline-preview.php > "$F55_RENDERED_PREVIEW_FILE"
+          node tests/ui/test-f55-dto-parity.mjs
+          jq -e '.schema_version == "perf.portal.scope-preview.synthetic.v1" and .dispatch_enabled == false and .billing_enabled == false and .contracted == false' "$F55_PROJECTED_JSON_FILE"
+          if APP_ENV=production php contracts/demo/f55-render-offline-preview.php >/dev/null 2>&1; then
+            echo 'FAIL F55 renderer must refuse production'
+            exit 1
+          fi
+          if PERF_F55_RENDER_LAB=0 php contracts/demo/f55-render-offline-preview.php >/dev/null 2>&1; then
+            echo 'FAIL F55 renderer must require explicit test flag'
+            exit 1
+          fi
+      - name: Assert no real customers, API routes, spend or deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e routes/api.php
+          test ! -e routes/web.php
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json
+          if grep -R -n -E 'f55-render-offline-preview|PERF_F55_RENDER_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F55 offline build must not be used in operational code'
+            exit 1
+          fi
+          test -z "$(git status --porcelain)"

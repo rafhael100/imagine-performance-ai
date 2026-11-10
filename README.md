@@ -1,8 +1,22 @@
+> **Estado desta branch de desenvolvimento (09/11/2026):** existe implementação PHP/Laravel isolada com mocks e um pacote de demonstração offline, incluindo campanhas, revisões, relatórios e marcas/contas fictícias; ver [STATUS-ATUAL.md](STATUS-ATUAL.md). O texto histórico abaixo descreve o planejamento original da `main` e não deve ser usado para inferir ausência de código nesta branch. **P0/HT-R01/SEC-R03/T3 e produção continuam bloqueados.** Nenhuma integração Google Ads/Meta, contrato real, publicação, faturamento, cliente ou VPS foi ativada.
+
 # Imagine Performance AI
 
-Repositório dedicado ao **planejamento funcional, arquitetura, governança, decisões e futuras especificações técnicas** do Imagine Performance AI.
+Repositório dedicado ao **planejamento, arquitetura, governança e desenvolvimento isolado do MVP** Imagine Performance AI, com dados sintéticos e contratos de integração ainda não homologados.
 
-> **Estado:** planejamento em andamento; aprovações funcionais não equivalem a homologação técnica nem autorizam programação, operação real, anúncios, contratação de fornecedores ou gastos.
+> **Estado atualizado em 09/11/2026:** FAST-PERF-01 autorizou a codificação controlada do protótipo com dados fictícios. Testes verdes e aprovações funcionais **não equivalem à homologação**, nem autorizam publicação, operações reais, anúncios, uso de clientes, fornecedores, gastos ou merge em `main`.
+
+## Demonstração funcional offline — F1-52 a F1-56 (09/11/2026)
+
+As branches filhas de fast-track agora incluem núcleo de capacidade de campanhas/grupos por empresa e canal, projeção somente leitura para Portal, interface responsiva offline gerada do DTO PHP e CSV fictício. **O programa comercial, APIs reais, login, billing e deploy continuam bloqueados.**
+
+- [Abrir o arquivo HTML da demonstração offline](contracts/demo/performance-scope-preview-v1.html) — visualização sem rede, com filtros Google Ads/Meta e dados fictícios
+- [Gerador CLI do HTML a partir do DTO PHP](contracts/demo/f55-render-offline-preview.php) — sem backend público
+- [Gerador CLI do CSV de capacidade](contracts/demo/f56-export-capacity-csv.php) — não contém contas ou preços
+- [Relatório F1-52 a F1-56 — entregas, 273 testes e gates pendentes](docs/execucao/FAST-PERF-F1-52-A-F1-56-ENTREGAS-GATES-2026-11-09.md)
+- [Estado consolidado do desenvolvimento](STATUS-ATUAL.md)
+
+Os comandos ficam no relatório; requerem PHP CLI em `APP_ENV=testing` e flags de laboratório. Nenhum desses arquivos cria rota, SSO, chamada a Google/Meta, cobrança ou aprovação real. Os PRs permanecem em rascunho e a `main` não foi alterada.
 
 ## Documentação
 

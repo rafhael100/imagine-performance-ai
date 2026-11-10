@@ -1,0 +1,57 @@
+name: Performance F1-52 - managed campaign/group scope in-memory CI
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-52-managed-scope-capacity-2026-11-09
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f152-managed-scope-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  standalone-synthetic-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+    steps:
+      - name: Checkout isolated Performance branch
+        uses: actions/checkout@v5
+
+      - name: Install PHP interpreter only (no Composer, DB or provider)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+
+      - name: Syntax and F52 adversarial unit assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F52_SCOPE_LAB" = 1
+          php -l src/Domain/Performance/SyntheticManagedScopeLedger.php
+          php -l tests/Unit/SyntheticManagedScopeLedgerStandalone.php
+          php tests/Unit/SyntheticManagedScopeLedgerStandalone.php
+
+      - name: Assert no production code wiring and no modified production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- app/ routes/ bootstrap/ database/migrations/ composer.json composer.lock
+          test ! -e routes/api.php
+          test ! -e routes/web.php
+          if grep -R -n -E 'SyntheticManagedScopeLedger|PERF_F52_SCOPE_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F52 scope must not be wired to operational framework'
+            exit 1
+          fi
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json
+          test -z "$(git status --porcelain)"

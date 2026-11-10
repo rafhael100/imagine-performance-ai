@@ -1,0 +1,51 @@
+name: Performance F1-82 - Portal channel enum parity (no endpoint)
+on:
+  push:
+    branches:
+      - dev/perf-f1-82-portal-channel-contract-parity-2026-11-09
+  pull_request:
+    paths:
+      - 'app/Performance/Contracts/PortalPerformanceChannelContract.php'
+      - 'tests/Unit/PortalPerformanceChannelContractStandalone.php'
+      - '.github/workflows/perf-f1-82-portal-channel-parity-ci.yml'
+permissions:
+  contents: read
+jobs:
+  portal-perf-channel-contract:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 3176e4e5acaeb1268ade656fef8ce753d65299c0
+          path: portal-contract-reference
+          persist-credentials: false
+          sparse-checkout: |
+            apps/portal/app/Domain/Catalog/PerformanceChannel.php
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - name: Compare mapped values against the pinned Portal PHP enum
+        env:
+          PORTAL_PERFORMANCE_ENUM_PATH: portal-contract-reference/apps/portal/app/Domain/Catalog/PerformanceChannel.php
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Contracts/PortalPerformanceChannelContract.php
+          php -l tests/Unit/PortalPerformanceChannelContractStandalone.php
+          php tests/Unit/PortalPerformanceChannelContractStandalone.php
+          test ! -f routes/api.php
+          test ! -f routes/web.php
+          grep -q 'withRouting(commands:' bootstrap/app.php
+          if grep -R -n 'PortalPerformanceChannelContract' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F82 codec wired into operational HTTP'
+            exit 1
+          fi
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json

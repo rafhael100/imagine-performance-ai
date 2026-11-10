@@ -1,0 +1,37 @@
+name: Performance F1-76 - offline provider reconciliation (synthetic)
+on:
+  push:
+    branches:
+      - dev/perf-f1-76-offline-provider-reconciliation-2026-11-09
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/SyntheticOfflineProviderReconciler.php'
+      - 'tests/Unit/SyntheticOfflineProviderReconcilerStandalone.php'
+      - '.github/workflows/perf-f1-76-offline-reconciliation-ci.yml'
+permissions:
+  contents: read
+jobs:
+  offline-reconciliation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - name: F76 standalone tests and F74/F75 regression
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/SyntheticOfflineProviderReconciler.php
+          php -l tests/Unit/SyntheticOfflineProviderReconcilerStandalone.php
+          php tests/Unit/SyntheticOfflineProviderReconcilerStandalone.php
+          php tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          php tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php
+          if grep -R -n -E 'SyntheticOfflineProviderReconciler|PERF_F76_RECONCILIATION_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F76 offline reconciler wired into operational paths'
+            exit 1
+          fi
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json

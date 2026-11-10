@@ -1,0 +1,31 @@
+name: Performance F1-74 - fail closed for untrusted recovery evidence
+on:
+  push:
+    branches:
+      - dev/perf-f1-74-recovery-admission-contract-2026-11-09
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/SyntheticRecoveryAdmissionPolicy.php'
+      - 'tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php'
+      - '.github/workflows/perf-f1-74-recovery-admission-ci.yml'
+permissions:
+  contents: read
+jobs:
+  recovery-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - name: Fail-closed offline recovery evidence checks
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/SyntheticRecoveryAdmissionPolicy.php
+          php -l tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          php tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json

@@ -1,0 +1,30 @@
+name: Imagine Performance AI - F1-04 synthetic campaign checks
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-04-managed-campaigns-demo-2026-11-08
+
+permissions:
+  contents: read
+
+concurrency:
+  group: imagine-performance-f104-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-synthetic-domain:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: PHP syntax and isolated tests
+        shell: bash
+        run: |
+          php -v
+          php -l src/Domain/Performance/SyntheticCampaignRegistry.php
+          php -l tests/Unit/SyntheticCampaignRegistryStandalone.php
+          php tests/Unit/SyntheticCampaignRegistryStandalone.php

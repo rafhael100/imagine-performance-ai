@@ -1,0 +1,140 @@
+name: Performance F1-23 - PostgreSQL approval ledger, atomic audit and tenant isolation
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-23-campaign-approval-ledger-2026-11-09
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f123-approval-ledger-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  disposable-campaign-storage:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f22-db-only
+          POSTGRES_DB: perf_test_campaign_registry
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_test_campaign_registry"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: perf_test_campaign_registry
+      DB_USERNAME: postgres
+      DB_PASSWORD: ci-f22-db-only
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_test_campaign_registry
+      PGUSER: postgres
+      PGPASSWORD: ci-f22-db-only
+      RUN_PERF_F22_PG_LAB: '1'
+      LOG_CHANNEL: stderr
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: PHP 8.4, Composer locked dependencies and PostgreSQL
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo,pdo_pgsql,mbstring,dom,xml,curl,fileinfo,intl,bcmath,zip
+      - name: Validate migrations, deny deployment wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000005_create_performance_campaigns_and_intents.php
+          php -l database/migrations/2026_11_09_000006_enable_campaign_intent_rls.php
+          php -l contracts/lab/php/test-campaign-intents-pg.php
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres -d perf_test_campaign_registry
+          if grep -R -E 'performance_campaign_intents|performance_managed_campaigns' routes/ app/; then
+            echo 'FAIL new persistence accidentally exposed as operational Laravel app'
+            exit 1
+          fi
+      - name: Install exact Composer.lock with no scripts/plugins
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer validate --strict --no-check-publish
+          composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
+          composer dump-autoload --no-interaction --no-scripts --no-plugins
+          cp .env.example .env
+          php artisan key:generate --force --no-interaction
+          git diff --exit-code -- composer.lock
+      - name: Apply Laravel migrations only to disposable perf_test_campaign_registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$DB_DATABASE" = perf_test_campaign_registry
+          php artisan migrate --force --no-interaction
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "CREATE ROLE perf_campaign_test_user LOGIN PASSWORD 'ci-f22-role-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_campaign_test_user"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT USAGE ON SCHEMA public TO perf_campaign_test_user"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT,INSERT,UPDATE,DELETE ON performance_managed_campaigns, performance_campaign_intents TO perf_campaign_test_user"
+      - name: Test tenant isolation, SQL constraints and disabled Ads dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-campaign-intents-pg.php
+      - name: Create least-privilege F23 ledger role only on disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/SyntheticCampaignApprovalLedger.php
+          php -l contracts/lab/php/test-campaign-approval-ledger-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "CREATE ROLE perf_f23_writer LOGIN PASSWORD 'ci-f23-ledger-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT USAGE ON SCHEMA public TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT ON performance_managed_campaigns, operational_memberships TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT,INSERT,UPDATE ON performance_campaign_intents TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT,INSERT ON audit_events TO perf_f23_writer"
+      - name: Run 56 atomic proposal, independent review, rollback and audit checks
+        shell: bash
+        env:
+          PERF_F23_LEDGER_LAB: '1'
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-campaign-approval-ledger-pg.php
+          if grep -R 'SyntheticCampaignApprovalLedger' app/ routes/ bootstrap/; then
+            echo 'FAIL F23 laboratory ledger accidentally wired into operational Laravel'
+            exit 1
+          fi
+      - name: No public Laravel endpoints, plugins, or deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          php vendor/bin/phpunit --filter NoPublicEndpointsTest --no-progress
+          git diff --exit-code -- composer.lock bootstrap/app.php app/ routes/

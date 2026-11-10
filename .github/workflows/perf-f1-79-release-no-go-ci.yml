@@ -1,0 +1,60 @@
+name: Performance F1-79 - NO-GO release audit and regression
+on:
+  push:
+    branches:
+      - dev/perf-f1-79-no-go-release-audit-2026-11-09
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/SyntheticReleaseNoGoAuditor.php'
+      - 'tests/Unit/SyntheticReleaseNoGoAuditorStandalone.php'
+      - 'contracts/lab/php/f79-release-no-go-audit.php'
+      - '.github/workflows/perf-f1-79-release-no-go-ci.yml'
+permissions:
+  contents: read
+jobs:
+  release-blockers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sodium
+          coverage: none
+          tools: none
+      - name: F79 confirm release blocked, not production-ready
+        env:
+          APP_ENV: testing
+          PERF_F75_SIGNED_WITNESS_LAB: '1'
+          PERF_F76_RECONCILIATION_LAB: '1'
+          PERF_F77_INCIDENT_LAB: '1'
+          PERF_F78_HTML_PREVIEW_LAB: '1'
+          PERF_F79_RELEASE_AUDIT_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/SyntheticReleaseNoGoAuditor.php
+          php -l contracts/lab/php/f79-release-no-go-audit.php
+          php tests/Unit/SyntheticReleaseNoGoAuditorStandalone.php
+          php tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          php tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php
+          php tests/Unit/SyntheticOfflineProviderReconcilerStandalone.php
+          php tests/Unit/SyntheticRecoveryIncidentReadModelStandalone.php
+          node tests/ui/test-f78-offline-incident-ui.mjs
+          tmp="$(mktemp)"
+          trap 'rm -f "$tmp"' EXIT
+          set +e
+          php contracts/lab/php/f79-release-no-go-audit.php > "$tmp"
+          code=$?
+          set -e
+          test "$code" -eq 3
+          jq -e '.decision == "BLOCKED_AS_EXPECTED_NO_GO" and
+            .review_required == true and
+            .eligible_to_merge_main == false and
+            .eligible_to_deploy == false and
+            .eligible_to_dispatch == false and
+            .eligible_to_bill == false and
+            .ready_for_production == false' "$tmp"
+          if grep -R -n -E 'SyntheticReleaseNoGoAuditor|f79-release-no-go-audit' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F79 audit wired into operational routes';exit 1
+          fi

@@ -1,0 +1,73 @@
+name: Performance F1-10 - restore older PG backup with external mock revocation fence
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-10-restore-external-fence-pg-lab-2026-11-08
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f110-restore-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-restore-lab:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: perf_test_restore_main
+          POSTGRES_PASSWORD: local-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_test_restore_main"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_test_restore_main
+      PERF_FENCE_DB: perf_test_fence_authority
+      PGUSER: postgres
+      PGPASSWORD: local-ci-only
+      PERF_SNAPSHOT_FIXTURE: contracts/demo/performance-dashboard-v1.json
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: PHP 8.4 with PostgreSQL PDO only
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo, pdo_pgsql
+      - name: Verify lab bounds and source syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGDATABASE" = perf_test_restore_main
+          test "$PERF_FENCE_DB" = perf_test_fence_authority
+          php -m | grep -i '^pdo_pgsql$'
+          php -l contracts/lab/php/SyntheticExternalRestoreFence.php
+          php -l contracts/lab/php/test-external-restore-fence.php
+          bash -n contracts/lab/sql/run-external-restore-fence-lab.sh
+          pg_dump --version
+          pg_restore --version
+          pg_isready -h 127.0.0.1 -U postgres -d "$PGDATABASE"
+      - name: Execute actual historical pg_dump and pg_restore test
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash contracts/lab/sql/run-external-restore-fence-lab.sh
+      - name: Verify no Laravel/production migrations or service routes added
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- database/migrations routes composer.json composer.lock

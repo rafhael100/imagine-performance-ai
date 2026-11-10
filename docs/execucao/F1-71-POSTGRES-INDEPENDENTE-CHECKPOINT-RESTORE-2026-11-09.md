@@ -1,0 +1,23 @@
+# FAST-PERF F1-71 — Detecção de restore obsoleto por checkpoints em PostgreSQL independente
+
+**Data:** 09/11/2026. Continuação F1-70 PR #166. Laboratório de segurança **não operacional**, executado exclusivamente no GitHub Actions com duas instâncias PostgreSQL 16 descartáveis.
+
+## Contexto e decisão técnica
+
+A F1-70 demonstrou que restaurar quatro tabelas de negócio a partir de um backup real `pg_dump --data-only` permite ao banco principal esquecer uma reserva já confirmada e um recibo de troca idempotente. Quando o mesmo ID é repetido, as funções F1-66 o aceitam novamente, mesmo mantendo RLS e limites de capacidade.
+
+A F1-71 implementa um **verificador de divergência** entre o banco principal (porta CI 5436) e um **segundo PostgreSQL isolado** (porta CI 5437). O segundo serviço não participa da restauração do primeiro. Este desenho permite detectar que registros confirmados após um backup não estão mais no banco restaurado — desde que o checkpoint do segundo banco tenha sido registrado corretamente e permaneça disponível.
+
+## Implementação e provas
+
+1. `contracts/lab/sql/027-f71-independent-recovery-reader-ci.sql`: esquema `perf_f71_guard.checkpoints` com registros distintos para `reserve` e `swap`, restrições de formato, unicidade `(tenant_role,kind,ref)` e **FORCE RLS**. Duas contas independentes de leitura `perf_f71_tenant_a` e `perf_f71_tenant_b` veem somente os fatos de sua empresa fixture. Nenhuma recebe INSERT, UPDATE ou DELETE; **somente o administrador do próprio CI** insere checkpoints fictícios após confirmar as operações da base primária.
+2. `SyntheticPgIndependentRecoveryGuard::inspect(PDO $primary, PDO $checkpoint)`: exige identidades da sessão PostgreSQL dos dois serviços consistentes com a mesma empresa, ambas sem `row_security=off`, banco de teste e conexão fora de transação preexistente. Lê no máximo 50 checkpoints sob transações `REPEATABLE READ READ ONLY` separadas e verifica referências, estados e resultados das reservas/trocas no banco principal. **Zero checkpoints, serviço indisponível, erro SQL, falta de SELECT, identidade incompatível ou registro ausente resultam em recusa**.
+3. `contracts/lab/php/f71-check-independent-recovery.php` oferece apenas CLI fake de CI, sem aceitar identificador de empresa real. Emite `perf.recovery.guard.synthetic.v1`, mantendo **sempre** `authorization_eligible=false`, `ready_for_production=false`, `dispatch_enabled=false` e `billing_enabled=false`. `read_preview_eligible=true` só significa que duas fontes do laboratório concordam; não autoriza nenhuma escrita, anúncio ou cliente.
+4. `tests/ui/test-f71-independent-pg-restore-guard.sh`: após as regressões F52–F70, salva backup real das quatro tabelas principais, efetua nova reserva e troca sintéticas, confirma os commits, insere os dois checkpoints **somente no PostgreSQL independente**, confere leitura A/B e compara as duas fontes. Em seguida faz `TRUNCATE` e importa o backup antigo somente no primário; a autoridade independente mantém os dois fatos, e o verificador retorna `missing_or_changed_committed_reservation`, bloqueando a visualização fictícia.
+5. O ensaio retira SELECT do papel de leitura independente e exige recusa, depois restaura o privilégio. Para reduzir o risco de **bypass pelas funções legadas F1-66**, após completar as regressões, revoga o EXECUTE de `reserve_campaign` e `replace_campaign` das roles A/B. As chamadas diretas precisam passar a falhar. **A F1-71 não oferece nenhum substituto autorizado de escrita** — apenas detecção, não execução.
+
+## Limites e NO-GO
+
+Este laboratório **não estabelece proteção antirollback de produção**: os dois bancos poderiam ser restaurados juntos, o administrador poderia editar os dois, o checkpoint poderia ser registrado depois de uma falha no meio de uma operação ou ser omitido, e as leituras dos dois bancos **não formam uma transação atômica distribuída**. Também falta mecanismo seguro de monotonicidade, comprovação criptográfica de origem, garantia de entrega e consulta das confirmações de mídia, fencing, IAM, autenticação Portal real, autorização do anunciante, LGPD, contrato comercial, integração com Google Ads/Meta e política de recuperação auditável. As funções F66 de outras branches são **código de laboratório sem selo de produção**; revogar suas permissões dentro da fixture não atesta que outros caminhos operacionais estão seguros.
+
+**Release explicitamente bloqueado:** P0/HT-R01/SEC-R03/T3, AppSec/DBA, segurança dos backups, operações/identidade S2S e autorização humana ainda pendentes. Sem merge, `main`, deploy, VPS, CRM, n8n, Google/Meta, PSP, clientes reais, mídia, cobrança ou novos gastos.

@@ -1,0 +1,29 @@
+name: Imagine Performance AI - F1-07 S2S laboratory protocol
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-07-s2s-protocol-lab-2026-11-08
+
+permissions:
+  contents: read
+
+jobs:
+  laboratory-contract:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      PERF_SNAPSHOT_FIXTURE: contracts/demo/performance-dashboard-v1.json
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: PHP and protocol test without HTTP, Composer or DB
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -v
+          php -l contracts/lab/SyntheticS2SProtocol.php
+          php -l contracts/lab/SyntheticS2SProtocolTest.php
+          php contracts/lab/SyntheticS2SProtocolTest.php

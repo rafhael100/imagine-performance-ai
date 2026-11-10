@@ -1,0 +1,11 @@
+# FAST-PERF F1-37 — Leases de processamento e recuperação apenas em simulação
+
+**Escopo restrito:** PostgreSQL 16 descartável no GitHub Actions, PHP CLI, dados fictícios, outbox criada pela F1-35 e validada sob concorrência na F1-36. Não existe worker ou envio real.
+
+A tabela `perf_f37_dry_run.leases` é isolada das intenções e da outbox desativada. A função SQL `claim(owner, now)` usa `FOR UPDATE OF o SKIP LOCKED` e seleciona um evento cujo `dispatch_enabled` continua **false** apenas para ensaio. Um lease tem validade fictícia de 30 segundos. A função `ack(id,owner,now)` grava exclusivamente `acknowledged_mock`, sem consumir o evento comercial, enviar mensagem, executar anúncios ou ativar a outbox.
+
+O CI demonstra que dois consumidores independentes recebem IDs diferentes; se o primeiro perder o lease, um segundo pode retomá-lo, e o anterior não consegue mais confirmar a tarefa. O teste marca quatro eventos fictícios como `acknowledged_mock`, recusa ACK repetido, nome de worker inválido, relógio inválido, role incorreta e acessos SQL diretos às tabelas privadas. Também comprova a permanência de `dispatch_enabled=false` e dos estados `pending_synthetic`.
+
+**Riscos expressamente mantidos:** como dono/relógio são argumentos apresentados pelo chamador, não há identidade/tempo de workload confiável nem lease robusto para produção. A role de testes não está vinculada à autorização Ed25519 do Portal; a outbox poderá ser restaurada a um backup anterior e não há monotonicidade garantida. Este ensaio não cobre crash depois de efeito externo, retries em provedores, idempotência de API, aprovação humana real, múltiplos datacenters, monitoramento ou auditoria de negócio. Não existe garantia exactly-once.
+
+É necessário revisar AppSec/DBA, autenticação S2S mTLS/PKI, autorização por tenant e vínculo comercial, TTL monotônico e recuperação, fencing pós-restore, limites de fila e LGPD antes de qualquer integração. **P0, HT-R01, SEC-R03/T3 permanecem abertos.** Sem `main`, fast-track, VPS, n8n real, Google Ads, Meta Ads, CRM, cobrança, clientes ou gastos.

@@ -1,0 +1,80 @@
+name: Performance F1-53 - read-only Portal synthetic scope snapshot
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-53-portal-readonly-snapshot-2026-11-09
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f153-portal-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-dto-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+    steps:
+      - name: Checkout isolated Performance preview
+        uses: actions/checkout@v5
+      - name: PHP 8.4 test runtime only
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - name: Regress F52 plus F53 read-only DTO isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/SyntheticManagedScopeLedger.php
+          php -l src/Domain/Performance/SyntheticScopeDashboardProjector.php
+          php -l tests/Unit/SyntheticManagedScopeLedgerStandalone.php
+          php -l tests/Unit/SyntheticScopeDashboardProjectorStandalone.php
+          php -l contracts/demo/f53-generate-scope-preview.php
+          php tests/Unit/SyntheticManagedScopeLedgerStandalone.php
+          php tests/Unit/SyntheticScopeDashboardProjectorStandalone.php
+      - name: Verify example is valid JSON with no provider or billing grant
+        shell: bash
+        run: |
+          set -euo pipefail
+          php contracts/demo/f53-generate-scope-preview.php > /tmp/f53-read-only-preview.json
+          jq -e '
+            .schema_version == "perf.portal.scope-preview.synthetic.v1" and
+            .source == "in_memory_fixture_only" and
+            .tenant_ref == "perf-demo-aurora" and
+            .read_only == true and
+            .contracted == false and
+            .ready_for_production == false and
+            .authorization_eligible == false and
+            .dispatch_enabled == false and
+            .billing_enabled == false and
+            .prices_homologated == false and
+            (.channels | length == 2) and
+            (.campaigns | length == 3) and
+            (.groups | length == 3)
+          ' /tmp/f53-read-only-preview.json
+          if grep -Eiq 'access_token|provider_account_id|price_brl|billing_effect|media_spend' /tmp/f53-read-only-preview.json; then
+            echo 'FAIL F53 synthetic response included a secret, budget or pricing field'
+            exit 1
+          fi
+      - name: Keep NO-GO contract and deny Laravel/live API wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e routes/api.php
+          test ! -e routes/web.php
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json
+          if grep -R -n -E 'SyntheticScopeDashboardProjector|PERF_F53_PORTAL_PREVIEW_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F53 DTO linked to operational code without authentication'
+            exit 1
+          fi
+          test -z "$(git status --porcelain)"

@@ -1,0 +1,26 @@
+name: Imagine Performance AI - F1-05 synthetic approvals and reports
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-05-approvals-reports-demo-2026-11-08
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-synthetic-checks:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Syntax and isolated tests
+        shell: bash
+        run: |
+          php -v
+          php -l src/Domain/Performance/SyntheticApprovalsAndReports.php
+          php -l tests/Unit/SyntheticApprovalsAndReportsStandalone.php
+          php tests/Unit/SyntheticApprovalsAndReportsStandalone.php

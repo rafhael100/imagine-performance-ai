@@ -1,0 +1,11 @@
+# FAST-PERF F1-36 — Corrida entre processos e recuperação de transação sem commit
+
+**Escopo:** testes reais em PostgreSQL 16 descartável e PHP CLI no GitHub Actions, sobre a outbox sintética desativada de F1-35 PR #91.
+
+Depois das regressões F1-30–35, o workflow primeiro verifica o baseline de 2 solicitações / 2 eventos fictícios. Inicia um processo PHP que chama a função SQL de reserva de intenção dentro de `BEGIN`, mas sai sem `COMMIT`: o PostgreSQL desfaz a transação, e ambas as tabelas permanecem com as contagens originais. Em nova conexão, o mesmo pedido ainda pode ser registrado, criando apenas um evento de outbox; repetição posterior retorna `already_reserved_synthetic`.
+
+Em seguida, o CI inicia **16 processos PHP independentes simultâneos**, todos usando a mesma chave idempotente, tenant, serviço e manifesto de demonstração. O esperado é **1 `reserved_synthetic` e 15 `already_reserved_synthetic`**, com apenas uma linha de intenção e uma linha de outbox adicionais. O teste também recusa mudança de manifesto após a corrida, confirma que nenhum evento foi habilitado para despacho e que todos os estados permanecem `pending_synthetic`.
+
+**Limitações:** o ensaio cobre apenas a concorrência em uma instância PostgreSQL e uma única chave, não prova desempenho em produção, worker distribuído, operação exatamente uma vez, broker de mensagens, conexão com n8n ou APIs Google/Meta. Uma falha antes do commit permite nova reserva, o que é normal; uma falha depois do commit requer reconsulta, reconciliação e idempotência no eventual destino. Backups antigos do banco Portal podem apagar o estado, e não há mecanismo produtivo de recuperação não restaurável. As roles são fictícias e a função SQL não autentica identidade Portal via Ed25519.
+
+Permanecem abertos AppSec/DBA, P0, HT-R01, SEC-R03/T3, autoridade de vínculo comercial, RLS operacional, mTLS, auditoria, retenção LGPD e homologação de infraestrutura. Nenhuma alteração na main, fast-track, VPS, integração Ads/CRM, dados reais, valores, clientes ou despesas externas.

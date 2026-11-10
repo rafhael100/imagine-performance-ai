@@ -1,0 +1,425 @@
+name: Performance F1-69 - PostgreSQL role privilege and existing session revocation laboratory
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-69-pg-role-revocation-ci-2026-11-09
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f169-pg-revocation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  csv-offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      perf-f66-postgresql:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f66-db-only
+          POSTGRES_DB: perf_f66_ci
+        ports:
+          - '127.0.0.1:5436:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f66_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+      PERF_F56_CSV_LAB: '1'
+      PERF_F57_REVIEW_LAB: '1'
+    steps:
+      - name: Checkout restricted Performance source
+        uses: actions/checkout@v5
+      - name: PHP 8.4 for domain unit tests
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, sqlite3, pdo_pgsql
+          coverage: none
+          tools: none
+      - name: Run synthetic scope, UI, DTO, CSV regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/SyntheticScopeCsvExporter.php
+          php -l tests/Unit/SyntheticScopeCsvExporterStandalone.php
+          php -l contracts/demo/f56-export-capacity-csv.php
+          php tests/Unit/SyntheticManagedScopeLedgerStandalone.php
+          php tests/Unit/SyntheticScopeDashboardProjectorStandalone.php
+          node tests/ui/test-offline-preview.mjs
+          export F55_RENDERED_PREVIEW_FILE="$(mktemp --suffix=.html)"
+          export F55_PROJECTED_JSON_FILE="$(mktemp --suffix=.json)"
+          trap 'rm -f "$F55_RENDERED_PREVIEW_FILE" "$F55_PROJECTED_JSON_FILE"' EXIT
+          php contracts/demo/f53-generate-scope-preview.php > "$F55_PROJECTED_JSON_FILE"
+          php contracts/demo/f55-render-offline-preview.php > "$F55_RENDERED_PREVIEW_FILE"
+          node tests/ui/test-f55-dto-parity.mjs
+          php tests/Unit/SyntheticScopeCsvExporterStandalone.php
+      - name: Validate generated CSV encoding, no financial or provider data
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp --suffix=.csv)"
+          trap 'rm -f "$tmp"' EXIT
+          php contracts/demo/f56-export-capacity-csv.php > "$tmp"
+          test "$(head -c 3 "$tmp" | od -An -tx1 | tr -d ' \n')" = efbbbf
+          test "$(wc -l < "$tmp")" -eq 3
+          grep -q 'NAO CONTRATADO' "$tmp"
+          grep -q 'HIPOTESE NAO HOMOLOGADA' "$tmp"
+          grep -q 'SEM FATURAMENTO OU EXECUCAO' "$tmp"
+          if grep -Eiq 'access_token|provider_account_id|media_spend|price_brl' "$tmp"; then
+            echo 'FAIL F56 CSV leaked a provider account or financial field'
+            exit 1
+          fi
+          if APP_ENV=production php contracts/demo/f56-export-capacity-csv.php >/dev/null 2>&1; then
+            echo 'FAIL F56 CSV exporter cannot run in production'
+            exit 1
+          fi
+          if PERF_F56_CSV_LAB=0 php contracts/demo/f56-export-capacity-csv.php >/dev/null 2>&1; then
+            echo 'FAIL F56 CSV exporter must require synthetic flag'
+            exit 1
+          fi
+      - name: F57 review separation, expiry, revision and isolated no-fee scope apply
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F57_REVIEW_LAB" = 1
+          php -l src/Domain/Performance/SyntheticScopeReviewWorkflow.php
+          php -l tests/Unit/SyntheticScopeReviewWorkflowStandalone.php
+          php tests/Unit/SyntheticScopeReviewWorkflowStandalone.php
+          if grep -R -n -E 'SyntheticScopeReviewWorkflow|PERF_F57_REVIEW_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F57 fake review grants may not be wired to live Laravel routes'
+            exit 1
+          fi
+      - name: F58 standalone read-only review queue fixtures and scoped JSON
+        shell: bash
+        env:
+          PERF_F58_REVIEW_QUEUE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -l src/Domain/Performance/SyntheticReviewQueueProjector.php
+          php -l tests/Unit/SyntheticReviewQueueProjectorStandalone.php
+          php -l contracts/demo/f58-generate-review-queue.php
+          php tests/Unit/SyntheticReviewQueueProjectorStandalone.php
+          tmp="$(mktemp --suffix=.json)"
+          trap 'rm -f "$tmp"' EXIT
+          php contracts/demo/f58-generate-review-queue.php > "$tmp"
+          jq -e '
+            .schema_version == "perf.portal.review-queue.synthetic.v1" and
+            .tenant_ref == "perf-demo-aurora" and
+            .read_only == true and
+            .contracted == false and
+            .human_identity_verified == false and
+            .authorization_eligible == false and
+            .ready_for_production == false and
+            .dispatch_enabled == false and
+            .billing_enabled == false and
+            .scope_changes_permitted == false and
+            .counts.pending == 1 and
+            .counts.approved_mock_no_action == 1 and
+            (.items | length == 2)
+          ' "$tmp"
+          if APP_ENV=production php contracts/demo/f58-generate-review-queue.php >/dev/null 2>&1; then
+            echo 'FAIL F58 demo queue must deny production'
+            exit 1
+          fi
+          if PERF_F58_REVIEW_QUEUE_LAB=0 php contracts/demo/f58-generate-review-queue.php >/dev/null 2>&1; then
+            echo 'FAIL F58 synthetic queue requires explicit flag'
+            exit 1
+          fi
+          if grep -R -n -E 'SyntheticReviewQueueProjector|PERF_F58_REVIEW_QUEUE_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F58 fake review queue wired to operational HTTP'
+            exit 1
+          fi
+      - name: F59 render PHP read-only review DTO into standalone HTML and test filters
+        shell: bash
+        env:
+          PERF_F58_REVIEW_QUEUE_LAB: '1'
+          PERF_F59_UI_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -l contracts/demo/f59-render-review-queue.php
+          node --check tests/ui/test-f59-offline-review-ui.mjs
+          export F59_RENDERED_FILE="$(mktemp --suffix=.html)"
+          export F59_DTO_FILE="$(mktemp --suffix=.json)"
+          trap 'rm -f "$F59_RENDERED_FILE" "$F59_DTO_FILE"' EXIT
+          php contracts/demo/f58-generate-review-queue.php > "$F59_DTO_FILE"
+          php contracts/demo/f59-render-review-queue.php > "$F59_RENDERED_FILE"
+          node tests/ui/test-f59-offline-review-ui.mjs
+          if APP_ENV=production php contracts/demo/f59-render-review-queue.php >/dev/null 2>&1; then
+            echo 'FAIL F59 HTML builder must deny production'
+            exit 1
+          fi
+          if PERF_F59_UI_LAB=0 php contracts/demo/f59-render-review-queue.php >/dev/null 2>&1; then
+            echo 'FAIL F59 HTML builder requires lab flag'
+            exit 1
+          fi
+          if grep -R -n -E 'f59-render-review-queue|PERF_F59_UI_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F59 offline review UI accidentally wired to operational routes'
+            exit 1
+          fi
+      - name: F60 brand/account/channel scope and tenancy tests with no provider identities
+        shell: bash
+        env:
+          PERF_F60_ACCOUNT_SCOPE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -l src/Domain/Performance/SyntheticManagedScopeLedger.php
+          php -l src/Domain/Performance/SyntheticBrandAccountScopeIndex.php
+          php -l tests/Unit/SyntheticBrandAccountScopeIndexStandalone.php
+          php tests/Unit/SyntheticBrandAccountScopeIndexStandalone.php
+          if grep -R -n -E 'SyntheticBrandAccountScopeIndex|PERF_F60_ACCOUNT_SCOPE_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F60 fake brand/account scope included in operational routes'
+            exit 1
+          fi
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json
+      - name: F61 cross-source synthetic campaign/account link reconciliation and isolation
+        shell: bash
+        env:
+          PERF_F60_ACCOUNT_SCOPE_LAB: '1'
+          PERF_F61_COMBINED_READ_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -l src/Domain/Performance/SyntheticAccountScopedDashboardProjector.php
+          php -l tests/Unit/SyntheticAccountScopedDashboardProjectorStandalone.php
+          php tests/Unit/SyntheticAccountScopedDashboardProjectorStandalone.php
+          if grep -R -n -E 'SyntheticAccountScopedDashboardProjector|PERF_F61_COMBINED_READ_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F61 read model may not be wired to live user routes'
+            exit 1
+          fi
+      - name: F62 build twice and inspect deterministic offline MVP package
+        shell: bash
+        env:
+          PERF_F55_RENDER_LAB: '1'
+          PERF_F56_CSV_LAB: '1'
+          PERF_F57_REVIEW_LAB: '1'
+          PERF_F58_REVIEW_QUEUE_LAB: '1'
+          PERF_F59_UI_LAB: '1'
+          PERF_F60_ACCOUNT_SCOPE_LAB: '1'
+          PERF_F61_COMBINED_READ_LAB: '1'
+          PERF_F62_SHOWCASE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -l contracts/demo/f62-generate-account-overview.php
+          php -l contracts/demo/f62-build-offline-showcase.php
+          node --check tests/ui/test-f62-showcase-bundle.mjs
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          export F62_SHOWCASE_DIR="$tmp/perf-showcase-first"
+          php contracts/demo/f62-build-offline-showcase.php "$F62_SHOWCASE_DIR"
+          node tests/ui/test-f62-showcase-bundle.mjs
+          second="$tmp/perf-showcase-second"
+          php contracts/demo/f62-build-offline-showcase.php "$second"
+          diff -qr "$F62_SHOWCASE_DIR" "$second"
+          if php contracts/demo/f62-build-offline-showcase.php "$F62_SHOWCASE_DIR" >/dev/null 2>&1; then
+            echo 'FAIL F62 must refuse overwriting an existing folder'
+            exit 1
+          fi
+          if APP_ENV=production php contracts/demo/f62-build-offline-showcase.php "$tmp/perf-showcase-production" >/dev/null 2>&1; then
+            echo 'FAIL F62 must refuse production'
+            exit 1
+          fi
+          if PERF_F62_SHOWCASE_LAB=0 php contracts/demo/f62-build-offline-showcase.php "$tmp/perf-showcase-disabled" >/dev/null 2>&1; then
+            echo 'FAIL F62 must require explicit lab flag'
+            exit 1
+          fi
+          test ! -e "$tmp/perf-showcase-production"
+          test ! -e "$tmp/perf-showcase-disabled"
+          if grep -R -n -E 'f62-build-offline-showcase|PERF_F62_SHOWCASE_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F62 offline bundle linked to an operational app path'
+            exit 1
+          fi
+      - name: F63 verify deterministic SHA256 and reject corrupted or policy-tampered demo bundles
+        shell: bash
+        env:
+          PERF_F55_RENDER_LAB: '1'
+          PERF_F56_CSV_LAB: '1'
+          PERF_F57_REVIEW_LAB: '1'
+          PERF_F58_REVIEW_QUEUE_LAB: '1'
+          PERF_F59_UI_LAB: '1'
+          PERF_F60_ACCOUNT_SCOPE_LAB: '1'
+          PERF_F61_COMBINED_READ_LAB: '1'
+          PERF_F62_SHOWCASE_LAB: '1'
+          PERF_F63_INTEGRITY_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -l contracts/demo/f63-build-integrity-showcase.php
+          php -l contracts/demo/f63-verify-integrity-showcase.php
+          bash tests/ui/test-f63-integrity-adversarial.sh
+          if grep -R -n -E 'f63-verify-integrity-showcase|PERF_F63_INTEGRITY_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F63 offline-only test wired to a live API'
+            exit 1
+          fi
+      - name: F64 transactional SQLite quota, FK tenant isolation and sixteen-process race
+        shell: bash
+        env:
+          PERF_F64_SQLITE_SCOPE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -m | grep -qi 'pdo_sqlite'
+          php -l src/Domain/Performance/SyntheticSqliteManagedScopeStore.php
+          php -l tests/Unit/SyntheticSqliteManagedScopeStandalone.php
+          php -l contracts/lab/php/f64-sqlite-concurrent-worker.php
+          php tests/Unit/SyntheticSqliteManagedScopeStandalone.php
+          bash tests/ui/test-f64-concurrent-sqlite.sh
+          if grep -R -n -E 'SyntheticSqliteManagedScopeStore|PERF_F64_SQLITE_SCOPE_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F64 SQLite test ledger wired to operational service'
+            exit 1
+          fi
+      - name: F65 persisted read-only Portal DTO and restart parity
+        shell: bash
+        env:
+          PERF_F64_SQLITE_SCOPE_LAB: '1'
+          PERF_F65_DURABLE_PREVIEW_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -m | grep -qi pdo_sqlite
+          php -l src/Domain/Performance/SyntheticSqliteManagedScopeStore.php
+          php -l src/Domain/Performance/SyntheticSqliteScopeDashboardProjector.php
+          php -l tests/Unit/SyntheticSqliteScopeDashboardProjectorStandalone.php
+          php tests/Unit/SyntheticSqliteScopeDashboardProjectorStandalone.php
+          if grep -R -n -E 'SyntheticSqliteScopeDashboardProjector|PERF_F65_DURABLE_PREVIEW_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F65 SQLite read model used as unauthenticated operational service'
+            exit 1
+          fi
+      - name: F66 PostgreSQL 16 RLS login roles, tenant constraints, SQL mock quota and 16-worker race
+        shell: bash
+        env:
+          PERF_F66_POSTGRES_RLS_LAB: '1'
+          PGPASSWORD: ci-f66-db-only
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$GITHUB_ACTIONS" = true
+          php -m | grep -qi 'pdo_pgsql'
+          pg_isready -h 127.0.0.1 -p 5436 -U postgres -d perf_f66_ci
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5436 -U postgres -d perf_f66_ci -f contracts/lab/sql/026-f66-postgres-tenant-rls-ci.sql
+          php -l tests/Unit/SyntheticPgTenantScopeStandalone.php
+          php -l contracts/lab/php/f66-pg-concurrent-worker.php
+          php tests/Unit/SyntheticPgTenantScopeStandalone.php
+          bash tests/ui/test-f66-postgres-race.sh
+          if grep -R -n -E 'perf_f66_scope|PERF_F66_POSTGRES_RLS_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F66 PostgreSQL synthetic role policy wired to operational framework'
+            exit 1
+          fi
+      - name: F67 PostgreSQL RLS read-only preview, no caller-selected tenant and repeatable-read consistency
+        shell: bash
+        env:
+          PERF_F66_POSTGRES_RLS_LAB: '1'
+          PERF_F67_PG_READ_MODEL_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -m | grep -qi pdo_pgsql
+          php -l src/Domain/Performance/SyntheticPgTenantScopeProjector.php
+          php -l tests/Unit/SyntheticPgTenantScopeProjectorStandalone.php
+          php tests/Unit/SyntheticPgTenantScopeProjectorStandalone.php
+          if grep -R -n -E 'SyntheticPgTenantScopeProjector|PERF_F67_PG_READ_MODEL_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F67 read-only fixture introduced an operational API'
+            exit 1
+          fi
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"external_provider_dispatch_allowed": false' contracts/lab/ci/performance-release-no-go.json
+      - name: F68 tenant-bound PostgreSQL RLS JSON/CSV report isolation and no financial metrics
+        shell: bash
+        env:
+          PERF_F66_POSTGRES_RLS_LAB: '1'
+          PERF_F67_PG_READ_MODEL_LAB: '1'
+          PERF_F68_PG_REPORT_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          php -m | grep -qi pdo_pgsql
+          php -l src/Domain/Performance/SyntheticPgTenantReportExporter.php
+          php -l tests/Unit/SyntheticPgTenantReportExporterStandalone.php
+          php -l contracts/demo/f68-print-pg-tenant-a-report.php
+          php tests/Unit/SyntheticPgTenantReportExporterStandalone.php
+          tempdir="$(mktemp -d)"
+          trap 'rm -rf "$tempdir"' EXIT
+          php contracts/demo/f68-print-pg-tenant-a-report.php json > "$tempdir/pg-report.json"
+          php contracts/demo/f68-print-pg-tenant-a-report.php csv > "$tempdir/pg-report.csv"
+          jq -e '
+            .schema_version == "perf.report.pg-scope.synthetic.v1" and
+            .source == "pg_role_bound_fixture_only" and
+            .tenant_role == "perf_f66_tenant_a" and
+            .contracted == false and
+            .authorization_eligible == false and
+            .provider_connected == false and
+            .dispatch_enabled == false and
+            .billing_enabled == false and
+            .ready_for_production == false and
+            .actual_ads_metrics_available == false and
+            .media_spend == null and .revenue == null and
+            (.channels | length == 2) and
+            (.campaigns | length == 3) and
+            (.groups | length == 0)
+          ' "$tempdir/pg-report.json" >/dev/null
+          test "$(wc -l < "$tempdir/pg-report.csv")" -eq 9
+          head -1 "$tempdir/pg-report.csv" | grep -q '^record_type,tenant_fixture_role,channel,reference,status'
+          if grep -Eiq 'provider_account_id|access_token|media_spend|price_brl|customer_email' "$tempdir/pg-report.csv"; then
+            echo 'FAIL F68 sample CSV included provider or customer fields'
+            exit 1
+          fi
+          if APP_ENV=production php contracts/demo/f68-print-pg-tenant-a-report.php json >/dev/null 2>&1; then
+            echo 'FAIL F68 report cannot be used in production'
+            exit 1
+          fi
+          if PERF_F68_PG_REPORT_LAB=0 php contracts/demo/f68-print-pg-tenant-a-report.php csv >/dev/null 2>&1; then
+            echo 'FAIL F68 report must require explicit CLI test flag'
+            exit 1
+          fi
+          if grep -R -n -E 'SyntheticPgTenantReportExporter|PERF_F68_PG_REPORT_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F68 test report must not be exposed as a production HTTP endpoint'
+            exit 1
+          fi
+      - name: F69 PostgreSQL tenant spoofing, SQL privilege revocation and old session survival lab
+        shell: bash
+        env:
+          PERF_F66_POSTGRES_RLS_LAB: '1'
+          PERF_F67_PG_READ_MODEL_LAB: '1'
+          PERF_F68_PG_REPORT_LAB: '1'
+          PERF_F69_PG_REVOCATION_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$GITHUB_ACTIONS" = true
+          php -m | grep -qi pdo_pgsql
+          php -l tests/Unit/SyntheticPgRoleRevocationStandalone.php
+          php tests/Unit/SyntheticPgRoleRevocationStandalone.php
+          if grep -R -n -E 'SyntheticPgRoleRevocation|PERF_F69_PG_REVOCATION_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F69 lab-only role revocation accidentally wired into operational code'
+            exit 1
+          fi
+      - name: Preserve NO-GO and no customer routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
+          grep -q '"billing_allowed": false' contracts/lab/ci/performance-release-no-go.json
+          test ! -e routes/web.php
+          test ! -e routes/api.php
+          if grep -R -n -E 'SyntheticScopeCsvExporter|PERF_F56_CSV_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F56 synthetic CSV must not become a public or authenticated endpoint'
+            exit 1
+          fi
+          test -z "$(git status --porcelain)"

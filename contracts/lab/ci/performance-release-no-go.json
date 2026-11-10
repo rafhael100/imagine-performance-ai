@@ -1,0 +1,24 @@
+{
+  "schema_version": "perf.release.no_go.lab.v1",
+  "mode": "synthetic_ci_only",
+  "release_state": "blocked",
+  "operational_activation_allowed": false,
+  "external_provider_dispatch_allowed": false,
+  "billing_allowed": false,
+  "automatic_merge_allowed": false,
+  "real_portal_or_crm_authority_connected": false,
+  "blocking_gates": {
+    "P0": "open",
+    "HT-R01": "open",
+    "SEC-R03/T3": "open",
+    "AppSec-DBA": "not_approved",
+    "restore_epoch_antirollback": "unresolved",
+    "provider_idempotency": "unproven",
+    "human_approval": "mock_only"
+  },
+  "evidence": [
+    "F1-47 PR #116: atomic external read-only observation only",
+    "F1-48 PR #118: real authority restore reopens previously consumed/revoked tokens",
+    "CI green is not production readiness"
+  ]
+}
