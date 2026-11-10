@@ -6,7 +6,7 @@ CREATE SCHEMA perf_f136_primary;
 REVOKE ALL ON SCHEMA perf_f136_primary FROM PUBLIC;
 
 CREATE SERVER perf_f136_witness_ci FOREIGN DATA WRAPPER postgres_fdw
-OPTIONS(host '127.0.0.1',port '5433',dbname 'perf_f132_witness_ci');
+OPTIONS(host 'witness',port '5432',dbname 'perf_f132_witness_ci');
 -- Only the superuser/function owner has this mapping, not the F136 login.
 CREATE USER MAPPING FOR postgres SERVER perf_f136_witness_ci
   OPTIONS(user 'perf_f136_redeemer', password :'redeemer_password');
