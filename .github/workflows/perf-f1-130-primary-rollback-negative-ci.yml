@@ -1,0 +1,93 @@
+name: Performance F1-130 - primary restore replay expected negative
+on:
+  push:
+    branches:
+      - dev/perf-f1-130-primary-restore-replay-negative-ci-2026-11-10
+  pull_request:
+    paths:
+      - 'database/lab-migrations/f130_disposable_external_witness.sql'
+      - 'tests/lab/f130-primary-restore-replay.sh'
+      - '.github/workflows/perf-f1-130-primary-rollback-negative-ci.yml'
+permissions:
+  contents: read
+jobs:
+  restore-negative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      primary:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f130-admin-only
+          POSTGRES_DB: perf_f130_ci
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f130_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+      witness:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f130-witness-admin-only
+          POSTGRES_DB: perf_f130_witness_ci
+        ports:
+          - '127.0.0.1:5433:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f130_witness_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F130_LAB: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_f130_ci
+      PGUSER: postgres
+      PGPASSWORD: ci-f130-admin-only
+      WITNESS_DB: perf_f130_witness_ci
+      WITNESS_PASSWORD: ci-f130-witness-admin-only
+      PERF_F129_WRITER_PASSWORD: ci-f129-writer-only
+      PERF_F129_SIM_PASSWORD: ci-f129-simulator-only
+      PERF_F130_WRITER_PASSWORD: ci-f130-writer-only
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Validate sandbox-only constraints and earlier PHP cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F130_LAB" = 1
+          test "$PGDATABASE" = perf_f130_ci
+          bash -n tests/lab/f130-primary-restore-replay.sh
+          php tests/Standalone/F127AmbiguousWitnessQuarantineTest.php
+          php tests/Standalone/F128SyntheticWitnessReconciliationTest.php
+          if grep -R -E 'perf_f130_witness|f130-primary-restore' routes/ app/ bootstrap/; then
+            echo 'FAIL: F130 lab artifact reached runtime routing'
+            exit 1
+          fi
+      - name: Create principals, F129 primary and F130 witness in separate disposable DBs
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_isready -h "$PGHOST" -p 5432 -U postgres -d perf_f130_ci
+          PGPASSWORD="$WITNESS_PASSWORD" pg_isready -h "$PGHOST" -p 5433 -U postgres -d perf_f130_witness_ci
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f129_writer LOGIN PASSWORD 'ci-f129-writer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f129_failure_simulator LOGIN PASSWORD 'ci-f129-simulator-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f129_disposable_quarantine_journal.sql
+          PGPORT=5433 PGDATABASE=perf_f130_witness_ci PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE perf_f130_writer LOGIN PASSWORD 'ci-f130-writer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5433 PGDATABASE=perf_f130_witness_ci PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 \
+            -f database/lab-migrations/f130_disposable_external_witness.sql
+      - name: Real pg_dump/restore proves expected rollback vulnerability
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v pg_dump
+          bash tests/lab/f130-primary-restore-replay.sh
