@@ -41,7 +41,10 @@ $check($a->query('SELECT session_user')->fetchColumn()==='perf_f91_reader_a','au
 $check($b->query('SELECT session_user')->fetchColumn()==='perf_f91_reader_b','authenticated B login');
 foreach ([[$a,$tenantA,'A'],[$b,$tenantB,'B']] as [$db,$tenant,$label]) {
     $rows=$read($db);
-    $check(count($rows)===1,"$label gets one scoped candidate");
+    $check(count($rows)===1,"$label gets one scoped candidate (rows=".count($rows)
+        .", bound=".($db->query("SELECT public.perf_f91_tenant_for_login()")->fetchColumn()?:'NULL')
+        .", session=".$db->query('SELECT session_user')->fetchColumn()
+        .", total=".$admin->query('SELECT count(*) FROM performance_ad_account_candidates')->fetchColumn().")");
     $check($rows[0]['tenant_id']===$tenant,"$label cannot read foreign tenant");
     $check($rows[0]['portal_service_ref']==='svc-demo-f88',"$label service");
     $check($rows[0]['channel']==='meta',"$label channel");
