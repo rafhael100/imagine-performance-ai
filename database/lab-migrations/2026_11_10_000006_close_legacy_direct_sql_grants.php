@@ -86,9 +86,11 @@ return new class extends Migration
             );
         }
 
-        // REVOKE table-level rights alone does not remove a separately
-        // granted column-level SELECT/UPDATE/REFERENCES. Detect such grants
-        // rather than falsely recording a completed security migration.
+        // Verify *effective* grants, including role inheritance, PUBLIC
+        // and column-level SELECT/UPDATE/REFERENCES. PostgreSQL16 REVOKE
+        // ALL PRIVILEGES ON TABLE removed direct column-level grants in CI,
+        // but inherited permissions can survive direct-role REVOKE.
+        // Refuse to record a completed migration if any capability survives.
         $privileges=['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'];
         foreach (self::TABLES as $table) {
             $columns=DB::select(
