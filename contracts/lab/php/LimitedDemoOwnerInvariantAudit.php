@@ -154,7 +154,7 @@ final class LimitedDemoOwnerInvariantAudit
             $viewQuery=$db->prepare(
                 'SELECT pg_catalog.pg_get_userbyid(relowner) AS owner,'
                 .'relkind,reloptions FROM pg_catalog.pg_class '
-                'WHERE oid=?::regclass'
+                .'WHERE oid=?::regclass'
             );
             foreach(self::VIEWS as $view){
                 $viewQuery->execute(['public.'.$view]);
