@@ -16,6 +16,7 @@ if(PHP_SAPI!=='cli'
     throw new RuntimeException('F113 requires ephemeral localhost PostgreSQL16 CI');
 }
 require_once dirname(__DIR__,3).'/vendor/autoload.php';
+require_once __DIR__.'/LegacySqlGrantDriftAudit.php';
 use App\Performance\Security\LegacySqlGrantDriftAudit;
 
 $dsn='pgsql:host=127.0.0.1;port=5432;dbname=perf_test_campaign_registry;connect_timeout=3';
