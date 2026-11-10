@@ -142,7 +142,8 @@ final class OfflineBudgetScenarioPreview
     private static function date(mixed $raw, string $name): DateTimeImmutable
     {
         if (!is_string($raw)
-            || preg_match('/^\d{4}-\d{2}-\d{2}$/D', $raw) !== 1) {
+            || preg_match('/^\d{4}-\d{2}-\d{2}$/D', $raw) !== 1
+            || substr($raw, 0, 4) === '0000') {
             throw new DomainException("Invalid $name");
         }
         $date = DateTimeImmutable::createFromFormat(
