@@ -1,3 +1,32 @@
+# Imagine Performance AI — orçamento seguro F1-105–F1-111 / Portal F64–F66 (10/11/2026)
+
+**Estado:** base de produto e integração offline concluídas nesta rodada; **sem prontidão de produção (NO-GO)**. Não há login/conta de cliente real, OAuth Ads, pagamento, aprovação operacional nem deploy.
+
+| Etapa | Desenvolvimento verificado | Evidência |
+|---|---|---|
+| F105 | Motor **real em PHP** de cenários BRL com centavos inteiros, basis points Google/Meta, calendário bissexto, reconciliação diária e limites de entrada | [PR #207](https://github.com/rafhael100/imagine-performance-ai/pull/207); [CI #42835678911 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42835678911), **29.366 assertivas** |
+| F106 | Tabela de cenários PostgreSQL com CHECKs de gasto/cobrança = false, FK empresa/serviço, FORCE RLS default-deny e VIEW segregada por login SQL | [PR #208](https://github.com/rafhael100/imagine-performance-ai/pull/208); [CI #42836899577 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42836899577), **78 assertivas PG** |
+| F107 | Leitor Laravel da VIEW de orçamento isolada pelo tenant do login SQL, reproduzindo o calendário F105 e negando autorização | [PR #209](https://github.com/rafhael100/imagine-performance-ai/pull/209); [CI #42837704250 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42837704250), **94 assertivas PG** |
+| Portal F64 | Validador independente de centavos/datas/percentuais e flags NO-GO | [PR Portal #227](https://github.com/rafhael100/imagine-portal/pull/227); [CI #42838088432 SUCCESS](https://github.com/rafhael100/imagine-portal/actions/runs/42838088432), **60 assertivas** |
+| F108 | Teste real PostgreSQL/Laravel F107→PHP Portal F64 com JSON extraído do banco | [PR #210](https://github.com/rafhael100/imagine-performance-ai/pull/210); [CI #42838668279 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42838668279) |
+| Portal F65 | HTML estático responsivo de orçamento diário em BRL, Google/Meta e aviso DEMO, sem link, formulário, script ou conexão externa | [PR Portal #231](https://github.com/rafhael100/imagine-portal/pull/231); [CI #42839352549 SUCCESS](https://github.com/rafhael100/imagine-portal/actions/runs/42839352549), **42 assertivas** |
+| F109 | PostgreSQL→Laravel F107→HTML real Portal F65 com dados do banco | [PR #211](https://github.com/rafhael100/imagine-performance-ai/pull/211); [CI #42841299682 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42841299682) |
+| Portal F66 | CSV para planilhas brasileiras com BOM UTF-8, `;`, CRLF, datas UTC e centavos inteiros, bloqueio de fórmulas/identidades reais | [PR Portal #232](https://github.com/rafhael100/imagine-portal/pull/232); [CI #42841878491 SUCCESS](https://github.com/rafhael100/imagine-portal/actions/runs/42841878491), **52 assertivas** |
+| F110 | PostgreSQL→Laravel F107→CSV real Portal F66; verifica por Python 3 datas e todos os centavos do CSV gerado | [PR #212](https://github.com/rafhael100/imagine-performance-ai/pull/212); [CI #42842964397 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42842964397) |
+| F111 | Hardening real do leitor de orçamento: recusa transação externa REPEATABLE READ e **descarta resultado após revogação/reatribuição concorrente de tenant SQL** | [PR #213](https://github.com/rafhael100/imagine-performance-ai/pull/213); [CI #42843861771 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42843861771), **43 assertivas**, testadas com duas conexões PostgreSQL |
+
+## O que existe vs. o que falta para concluir o produto
+
+O motor F105 é **implementação efetiva de cálculo** e o F106 cria **estrutura PostgreSQL real**, mas tudo está rodando **apenas com dados sintéticos em CI**, sem identidade de anunciante. F107/F111 usam `session_user` associado a um login fictício, **não IAM do usuário Portal**. F64–F66 são apresentação/CSV **offline**, não páginas publicadas, APIs ou serviços de cliente.
+
+O **risco GUC legado** demonstrado em F95 continua aberto para roles/consumidores antigos; F99 retirou grants somente do PostgreSQL efêmero do CI. O mecanismo alternativo com VIEWs/funções SECURITY DEFINER exige revisão independente DBA/AppSec; a dupla leitura F111 não impede revogação que ocorra **depois** da última checagem. Não dar SQL direto a clientes.
+
+**Gates NO-GO:** identidade e autorização IAM/MFA/S2S do Portal, escopo e elegibilidade por organização/serviço, SQL roles/proprietários/grants revisados e credenciais gerenciadas, OAuth/permissões reais Google Ads/Meta, consentimento LGPD, aprovações humanas e limites de mídia, idempotência/reconciliação e incidentes, rollback/restore e backups, P0/HT-R01/SEC-R03/T3, VPS Leaseweb liberada, homologação e QA final.
+
+**Nenhuma mudança na `main`, VPS, clientes, fornecedores, anúncios, cobranças ou gastos. PRs da rodada permanecem draft; CI verde não significa autorização para release.**
+
+---
+
 # Imagine Performance AI — integração demonstrativa F1-100 a F1-104 (10/11/2026)
 
 **Estado:** PostgreSQL/Laravel/Portal com prévia visual offline aprovada em CI. **Release e produção: NO-GO.** O desenvolvimento continua sob PRs draft, sem merge.

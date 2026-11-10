@@ -50,11 +50,16 @@ final class CredentialBoundDemoBudgetReader
             if ($db->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'pgsql') {
                 return self::denied('invalid_database_driver');
             }
-            $identity = $db->query(
-                'SELECT current_database() AS dbname, '
+            // A caller-managed REPEATABLE READ snapshot could retain a
+            // revoked F91 tenant mapping. Never use this lab reader inside
+            // an existing transaction whose isolation level we do not own.
+            if ($db->inTransaction()) {
+                return self::denied('invalid_connection_state');
+            }
+            $identitySql = 'SELECT current_database() AS dbname, '
                 .'session_user::text AS db_login, '
-                .'public.perf_f91_tenant_for_login()::text AS bound_tenant'
-            )->fetch(PDO::FETCH_ASSOC);
+                .'public.perf_f91_tenant_for_login()::text AS bound_tenant';
+            $identity = $db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
             if (!is_array($identity)
                 || $identity['dbname'] !== 'perf_test_campaign_registry'
                 || !in_array($identity['db_login'], [
@@ -146,6 +151,18 @@ final class CredentialBoundDemoBudgetReader
                 }
                 $scenarios[] = $scenario;
                 $seen[$row['scenario_ref']] = true;
+            }
+
+            // No transaction is held: the second SELECT observes a freshly
+            // committed revocation/rebinding and discards all retrieved rows
+            // if the authenticated principal or its tenant has changed.
+            // This is a CI safeguard, not atomic production authorization.
+            $postIdentity = $db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($postIdentity)
+                || $postIdentity['dbname'] !== $identity['dbname']
+                || $postIdentity['db_login'] !== $identity['db_login']
+                || $postIdentity['bound_tenant'] !== $tenant) {
+                return self::denied('credential_changed_during_read');
             }
 
             return [
