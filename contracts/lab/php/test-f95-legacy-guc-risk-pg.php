@@ -45,7 +45,7 @@ $check($manifest['release_allowed']===false
 $check($manifest['role_under_test']==='perf_f90_projection_reader',
     'test role named in manifest');
 
-$asLegacy=static function():array use ($legacy) {
+$asLegacy=static function() use ($legacy): array {
     $accounts=(int)$legacy->query(
         'SELECT count(*) FROM performance_ad_account_candidates'
     )->fetchColumn();
