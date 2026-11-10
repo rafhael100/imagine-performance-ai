@@ -55,11 +55,20 @@ final class CredentialBoundDemoReviewReader
             if($db->getAttribute(PDO::ATTR_DRIVER_NAME)!=='pgsql') {
                 return self::denied('unsupported_driver');
             }
-            $identity=$db->query(
-                'SELECT current_database() AS dbname, '
+            // Workbench F100 composes a bounded READ COMMITTED / READ ONLY
+            // transaction. Disallow other transactions that can preserve
+            // stale RLS snapshots or include writes.
+            if ($db->inTransaction()) {
+                $isolation=$db->query('SHOW transaction_isolation')->fetchColumn();
+                $readOnly=$db->query('SHOW transaction_read_only')->fetchColumn();
+                if ($isolation!=='read committed' || $readOnly!=='on') {
+                    return self::denied('invalid_connection_state');
+                }
+            }
+            $identitySql='SELECT current_database() AS dbname, '
                 .'session_user::text AS db_login, '
-                .'public.perf_f91_tenant_for_login()::text AS bound_tenant'
-            )->fetch(PDO::FETCH_ASSOC);
+                .'public.perf_f91_tenant_for_login()::text AS bound_tenant';
+            $identity=$db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
             if (!is_array($identity)
                 || $identity['dbname']!=='perf_test_campaign_registry'
                 || !in_array($identity['db_login'],
@@ -127,6 +136,17 @@ final class CredentialBoundDemoReviewReader
                     'journaled'=>$journaled,
                     'portal_stage'=>null,
                 ];
+            }
+
+            // Synthetic review states do not authorize a real campaign.
+            // Revalidate principal/tenant after SELECT, including journals,
+            // before producing any read-model response.
+            $after=$db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($after)
+                || $after['dbname']!==$identity['dbname']
+                || $after['db_login']!==$identity['db_login']
+                || $after['bound_tenant']!==$tenant) {
+                return self::denied('credential_changed_during_read');
             }
 
             return [
