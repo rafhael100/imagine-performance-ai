@@ -1,3 +1,20 @@
+# Imagine Performance AI — segurança SQL F1-93 a F1-96 (10/11/2026)
+
+**Nível atual: laboratório aprovado, release NO-GO.** A branch mantém os trabalhos prévios até F1-92 e avança quatro etapas adicionais:
+
+| Etapa | O que foi realmente testado | Evidência |
+|---|---|---|
+| F1-93 | Nova VIEW PostgreSQL `perf_f93_demo_campaign_account_read` ancorada em `session_user`, FK de tenant/serviço/canal e revogação; resiste à GUC forjada | [PR #192](https://github.com/rafhael100/imagine-performance-ai/pull/192), [CI #42752813075 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42752813075) |
+| F1-94 | Leitor Laravel da VIEW de campanhas, conversão para canais e enums de observação **reais do Portal**, sem tenant passado pela requisição ou autorização de mídia | [PR #193](https://github.com/rafhael100/imagine-performance-ai/pull/193), [CI #42753157456 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42753157456) |
+| F1-95 | Prova adversarial em SQL com uma role legada com SELECT direto: trocar `app.performance_tenant_id` faz A/B ficarem visíveis ao mesmo login; risco explicitamente marcado `open_no_go` | [PR #194](https://github.com/rafhael100/imagine-performance-ai/pull/194), [CI #42753531660 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42753531660) |
+| F1-96 | Ensaio de `REVOKE SELECT` **apenas em role do banco descartável**, impedindo a troca por GUC sem prejudicar a nova VIEW; outras roles legadas continuam necessitando migração | [CI #42753834807 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42753834807) |
+
+**Atenção:** CI verde na F95 confirma que a **vulnerabilidade de arquitetura foi reproduzida**, e CI verde na F96 comprova apenas que a mitigação funciona na role descartável escolhida. O risco geral continua **aberto**, porque F22–F28 mantêm papéis e SQL legados. O mecanismo alternativo F91/F93 usa `SECURITY DEFINER` e proprietário da VIEW com privilégios elevados que precisam de revisão DBA independente. **Não conceder credenciais SQL a clientes/conectores externos.**
+
+**Impedimentos de produção:** P0, HT-R01, SEC-R03/T3, AppSec/DBA, Portal IAM/MFA/S2S e origem confiável de tenant, OAuth/permissão Google/Meta/consentimento e LGPD, idempotência/reconciliação real, antirollback confiável, VPS/homologação, segurança de dados e cobrança. Nenhum `main`, deploy, anúncio, usuário real, faturamento ou despesa ativado.
+
+---
+
 # Imagine Performance AI — F1-91/F1-92: segurança de leitura por login SQL (10/11/2026)
 
 **Status:** código de laboratório implementado e CI de PostgreSQL real descartável aprovado. **NÃO concluído para operação nem pronto para produção**.
