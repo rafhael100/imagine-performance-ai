@@ -1,0 +1,9 @@
+# FAST-PERF F1-84 — projeção somente leitura do PostgreSQL para contrato candidato Portal
+
+Data 09/11/2026. O componente `App\\Performance\\Contracts\\PortalWorkbenchOfflineProjection` recebe o retorno real da classe Laravel F28, com acesso ao PostgreSQL 16 **descartável** via role `perf_f28_app_reader`, e converte os canais internos `google_ads` e `meta` usando o codec da F1-82. Nenhuma linha é gravada nem exposta por HTTP.
+
+O resultado `perf.portal.workbench.offline.synthetic.v1` devolve refs de campanhas e solicitações, contagens verificadas, canais normalizados e rótulos de estado *sem inventar equivalência de workflow*. O Portal atual define `DemoCampaignStage` apenas como `mock_draft/mock_review`, enquanto o motor já conhece `draft_demo/paused_demo/archived_demo`. O Portal define `DemoRequestStage` como `requested_mock/awaiting_mock_review`, enquanto o motor tem `pending_human_demo/approved_demo_no_execution/rejected_demo`. Não há equivalência completa. **Todos os campos `portal_stage` permanecem `null`**, e `portal_stage_mapping_ready=false`; os futuros mapeamentos exigirão contrato explícito para não mostrar aprovações falsas no Portal.
+
+Os testes utilizam o ledger real do F28 depois das migrations e verificações F22–F28 no mesmo job do GitHub Actions: 2 campanhas e 6 decisões no dataset de CI, isolamento tenant, contagens, rejeição de DTO manipulado, tentativa de exibir status sem journal e ausência de UUID de tenant/identidade de revisor/dados financeiros. O uso de DTO de teste não fornece autenticação real, identidade, consentimento ou autorização.
+
+Bloqueios de lançamento continuam: Portal autenticação real/MFA, S2S, mTLS, revogação, antirollback monotônico, OAuth de anunciantes, idempotência de API, AppSec/DBA, LGPD, P0/HT-R01/SEC-R03/T3, VPS e pagamentos. Não há mudança na `main`, VPS, produção, contas Google/Meta, cobranças ou gastos.
