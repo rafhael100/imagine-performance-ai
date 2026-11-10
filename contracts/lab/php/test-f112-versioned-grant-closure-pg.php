@@ -100,6 +100,18 @@ $command='php artisan migrate --path=database/lab-migrations '
 $failOutput=[];
 $failCode=-1;
 exec($command,$failOutput,$failCode);
+if ($failCode===0) {
+    $col->execute([
+        'perf_f28_app_reader','public.performance_demo_budget_scenarios',
+        'scenario_ref','SELECT'
+    ]);
+    $still=in_array($col->fetchColumn(),[true,'t','1',1],true);
+    throw new RuntimeException(
+        'FAIL F112 expected column-level grant guard to reject migration; '
+        .'column grant remains='.($still?'yes':'no')
+        .'; artisan output='.implode(' | ',$failOutput)
+    );
+}
 $check($failCode!==0,'migration refuses residual column-level privilege');
 $check(str_contains(implode("\n",$failOutput),'residual column grant'),
     'migration failure identifies security-specific reason');
