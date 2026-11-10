@@ -231,4 +231,4 @@ $check($risk['risk_state']==='open_no_go'
     && $risk['direct_sql_client_access_allowed']===false,
     'production RLS/GUC and IAM risk still recorded as OPEN/NO-GO');
 
-echo "PASS F112 $n assertions: versioned CI grant migration, transactional rollback on column grants, safe readers, NO-GO\n";
+echo "PASS F112 $n assertions: versioned CI grant migration, rollback on inherited grants, column cleanup, safe readers, NO-GO\n";
