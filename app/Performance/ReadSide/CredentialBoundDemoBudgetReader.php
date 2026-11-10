@@ -60,9 +60,6 @@ final class CredentialBoundDemoBudgetReader
                 .'session_user::text AS db_login, '
                 .'public.perf_f91_tenant_for_login()::text AS bound_tenant';
             $identity = $db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
-            /* F111: identity also checked after rows were materialized. */
-            $identity_unused = null;
-
             if (!is_array($identity)
                 || $identity['dbname'] !== 'perf_test_campaign_registry'
                 || !in_array($identity['db_login'], [
