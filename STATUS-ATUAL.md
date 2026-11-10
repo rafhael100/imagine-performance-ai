@@ -1,3 +1,16 @@
+# Imagine Performance AI — F1-91/F1-92: segurança de leitura por login SQL (10/11/2026)
+
+**Status:** código de laboratório implementado e CI de PostgreSQL real descartável aprovado. **NÃO concluído para operação nem pronto para produção**.
+
+- **F1-91** — novo modelo de mapeamento `session_user`↔tenant administrado no PostgreSQL, função SECURITY DEFINER com `search_path` fixo e VIEW `security_barrier=true` exclusivamente DEMO; detecta falsificação de GUC de tenant e revogação sem acesso cruzado. [PR #190](https://github.com/rafhael100/imagine-performance-ai/pull/190), [CI validado](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42750562440).
+- **F1-92** — classe PHP integrada ao autoload do Laravel consulta essa VIEW usando login SQL autenticado sem aceitar tenant indicado pelo chamador; testa leitura de empresas A/B, GUC adulterada, revogação e compatibilidade com a classe `DemoAdAccount` **real** do Portal. [CI de código aprovado #42750938312](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42750938312).
+- **Limite do avanço:** esse caminho read-only não substitui as rotas/papéis antigos dependentes de GUC, não implementa identidade Portal de produção e ainda não resolve escala/pooling de credenciais. O banco de testes não é a VPS nem contém anúncios reais.
+- **Bloqueios mandatórios:** P0, HT-R01, SEC-R03/T3, AppSec/DBA independente, Portal IAM/MFA/S2S autenticado, OAuth/permissões Google/Meta, consentimentos e LGPD, idempotência/reconciliação real, autoridade antirollback monotônica, VPS/homologação e segurança de dados/segredos.
+
+**Main, clientes, VPS, anúncios, cobrança e gastos não alterados; PRs draft e NO-GO.**
+
+---
+
 # Imagine Performance AI — progresso de integração F1-87–F1-90 (09/11/2026)
 
 **Estado consolidado: desenvolvimento em PRs draft, sem merge, lançamento e operações reais.**
