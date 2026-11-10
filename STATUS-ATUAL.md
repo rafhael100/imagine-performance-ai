@@ -1,3 +1,27 @@
+# Imagine Performance AI — integração demonstrativa F1-100 a F1-104 (10/11/2026)
+
+**Estado:** PostgreSQL/Laravel/Portal com prévia visual offline aprovada em CI. **Release e produção: NO-GO.** O desenvolvimento continua sob PRs draft, sem merge.
+
+| Entrega | Evidência e escopo |
+|---|---|
+| F1-100 | [PR #201](https://github.com/rafhael100/imagine-performance-ai/pull/201); leitor composto Laravel de contas F92, campanhas F94 e revisões F98, após revogação de grants fictícios F99, [CI SUCCESS #42758983346](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42758983346) |
+| Portal F62 | [PR Portal #217](https://github.com/rafhael100/imagine-portal/pull/217); consumidor tipado offline de F100, rejeita status/flags operacionais ou referências inconsistentes, [CI SUCCESS #42759410856](https://github.com/rafhael100/imagine-portal/actions/runs/42759410856) |
+| F1-101 | [PR #202](https://github.com/rafhael100/imagine-performance-ai/pull/202); JSON real produzido pelo PostgreSQL F100 é validado pelo código PHP real Portal F62, [CI SUCCESS #42770215699](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42770215699) |
+| Portal F63 | [PR Portal #218](https://github.com/rafhael100/imagine-portal/pull/218); HTML estático acessível offline com indicadores e tabelas de dados fictícios, CSP sem rede/scripts/links/formulários, [CI SUCCESS #42770750508](https://github.com/rafhael100/imagine-portal/actions/runs/42770750508) |
+| F1-102 | [PR #203](https://github.com/rafhael100/imagine-performance-ai/pull/203); Python não envolvido: PHP real Laravel/PostgreSQL gera JSON, Portal F63 gera HTML **no runner de CI**, [CI SUCCESS #42770819408](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42770819408) |
+| F1-103 | [PR #204](https://github.com/rafhael100/imagine-performance-ai/pull/204); fixa `search_path=pg_catalog` na função trigger `SECURITY DEFINER` F27, [CI SUCCESS #42771226261](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42771226261) |
+| F1-104 | [PR #205](https://github.com/rafhael100/imagine-performance-ai/pull/205); migra o owner da função F27 para role dedicada NOLOGIN/NOSUPERUSER com política INSERT sintética restrita, [CI do código SUCCESS #42771686427](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42771686427) |
+
+## Restrições críticas, ainda abertas
+
+Nenhum caminho acima autentica usuário humano do Portal nem obtém autorização do anunciante; a prévia F63 **não é um dashboard publicado**. O `session_user` usado nas VIEWs é identidade SQL de laboratório, não IAM empresarial. As políticas RLS legadas baseadas em `app.performance_tenant_id` ainda podem permitir vazamento quando alguém controla uma role SQL com SELECT direto; F99 revogou **somente permissões de roles fictícias do banco efêmero de CI**, não da VPS ou de produção. É proibido oferecer acesso SQL direto a clientes.
+
+Antes de homologar: substituir consumidores de GUC/roles legados; IAM/MFA/S2S Portal e autorização por tenant/serviço; revisão AppSec/DBA independente de VIEWs, triggers, proprietários e grants; consentimento/OAuth Google Ads/Meta, tokens sob cofre e limites financeiros aprovados; LGPD, idempotência/reconciliação, recuperação antirollback e backups; infraestrutura VPS e QA reais; gates P0, HT-R01, SEC-R03/T3 e política de deploy.
+
+**`main`, VPS, contas anunciantes, mídia real, clientes, cobranças e despesas não alterados.**
+
+---
+
 # Imagine Performance AI — integração F1-97 a F1-99 (10/11/2026)
 
 **Estado validado:** desenvolvimento em CI e laboratório PostgreSQL16, **sem release operacional**.
