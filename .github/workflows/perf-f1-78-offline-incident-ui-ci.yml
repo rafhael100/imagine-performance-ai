@@ -1,0 +1,41 @@
+name: Performance F1-78 - offline incident dashboard
+on:
+  push:
+    branches:
+      - dev/perf-f1-78-offline-incident-dashboard-2026-11-09
+  pull_request:
+    paths:
+      - 'contracts/demo/f78-render-incident-preview.php'
+      - 'tests/ui/test-f78-offline-incident-ui.mjs'
+      - '.github/workflows/perf-f1-78-offline-incident-ui-ci.yml'
+permissions:
+  contents: read
+jobs:
+  static-dashboard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sodium
+          coverage: none
+          tools: none
+      - name: F78 static HTML parity, no network or operations
+        env:
+          APP_ENV: testing
+          PERF_F75_SIGNED_WITNESS_LAB: '1'
+          PERF_F76_RECONCILIATION_LAB: '1'
+          PERF_F77_INCIDENT_LAB: '1'
+          PERF_F78_HTML_PREVIEW_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l contracts/demo/f78-render-incident-preview.php
+          node --check tests/ui/test-f78-offline-incident-ui.mjs
+          node tests/ui/test-f78-offline-incident-ui.mjs
+          php tests/Unit/SyntheticRecoveryIncidentReadModelStandalone.php
+          if grep -R -n -E 'f78-render-incident-preview|PERF_F78_HTML_PREVIEW_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F78 preview connected to operational paths'; exit 1
+          fi
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
