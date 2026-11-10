@@ -1,0 +1,24 @@
+name: PERF F127 quarantine laboratory
+on:
+  push:
+    branches:
+      - dev/perf-f1-127-ambiguous-witness-quarantine-2026-11-10
+  pull_request:
+    paths:
+      - 'src/Lab/AmbiguousWitnessQuarantine.php'
+      - 'tests/Standalone/F127AmbiguousWitnessQuarantineTest.php'
+      - '.github/workflows/perf-f1-127-quarantine-lab.yml'
+permissions:
+  contents: read
+jobs:
+  quarantine-lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint and synthetic failure tests
+        run: |
+          php -v
+          php -l src/Lab/AmbiguousWitnessQuarantine.php
+          php -l tests/Standalone/F127AmbiguousWitnessQuarantineTest.php
+          php tests/Standalone/F127AmbiguousWitnessQuarantineTest.php
