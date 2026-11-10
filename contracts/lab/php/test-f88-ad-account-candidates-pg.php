@@ -34,6 +34,15 @@ foreach([[$tenantA,'a'],[$tenantB,'b']] as [$t,$label]) {
 $sql='INSERT INTO performance_ad_account_candidates '
     .'(id,tenant_id,portal_service_ref,channel,account_ref,connection_state,source,provider_connected,dispatch_allowed,billable) '
     .'VALUES(?,?,?,?,?,?,?,?,?,?)';
+// PDO::execute(array) serializes false as an empty string; PostgreSQL boolean
+// placeholders need explicit PDO::PARAM_BOOL to test CHECK constraints correctly.
+$execute=static function(PDO $db,array $values)use($sql):void {
+    $stmt=$db->prepare($sql);
+    foreach($values as $index=>$value) {
+        $stmt->bindValue($index+1,$value,is_bool($value)?PDO::PARAM_BOOL:PDO::PARAM_STR);
+    }
+    $stmt->execute();
+};
 $good=static fn(string $id,string $tenant,string $channel,string $ref):array=>[
     $id,$tenant,'svc-demo-f88',$channel,$ref,'unverified_demo',
     'portal_demo_fixture',false,false,false
@@ -61,8 +70,8 @@ $check=static function(bool $ok,string $msg)use(&$n):void{
     if(!$ok)throw new RuntimeException("FAIL F88: $msg");
     ++$n;
 };
-$transact($role,$tenantA,static function(PDO $db)use($sql,$a):void{$db->prepare($sql)->execute($a);});
-$transact($role,$tenantB,static function(PDO $db)use($sql,$b):void{$db->prepare($sql)->execute($b);});
+$transact($role,$tenantA,static function(PDO $db)use($execute,$a):void{$execute($db,$a);});
+$transact($role,$tenantB,static function(PDO $db)use($execute,$b):void{$execute($db,$b);});
 $check(true,'insert distinct tenant references');
 $read=static fn(PDO $db):array=>$db->query(
     'SELECT tenant_id, channel, account_ref, connection_state, provider_connected, dispatch_allowed, billable '
@@ -80,11 +89,11 @@ $rows=$transact($role,$tenantB,$read);
 $check(count($rows)===1 && $rows[0]['tenant_id']===$tenantB,'tenant B sees only B');
 $check(count($read($role))===0,'transaction-local tenant scope does not leak');
 
-$reject=static function(string $name,string $tenant,array $values)use($role,$sql,$transact,$check):void {
+$reject=static function(string $name,string $tenant,array $values)use($role,$execute,$transact,$check):void {
     $failed=false;
     try {
-        $transact($role,$tenant,static function(PDO $db)use($sql,$values):void{
-            $db->prepare($sql)->execute($values);
+        $transact($role,$tenant,static function(PDO $db)use($execute,$values):void{
+            $execute($db,$values);
         });
     } catch(PDOException) {
         $failed=true;
