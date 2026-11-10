@@ -1,0 +1,81 @@
+name: Performance F1-129 - disposable PostgreSQL quarantine journal
+on:
+  push:
+    branches:
+      - dev/perf-f1-129-pg-quarantine-journal-2026-11-10
+  pull_request:
+    paths:
+      - 'database/lab-migrations/f129_disposable_quarantine_journal.sql'
+      - 'tests/Standalone/F129PgDurableQuarantineTest.php'
+      - '.github/workflows/perf-f1-129-quarantine-pg-ci.yml'
+permissions:
+  contents: read
+jobs:
+  disposable-pg-journal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f129-admin-only
+          POSTGRES_DB: perf_f129_ci
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f129_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 10
+    env:
+      APP_ENV: testing
+      PERF_F129_LAB: '1'
+      PGHOST: '127.0.0.1'
+      PGPORT: '5432'
+      PGDATABASE: perf_f129_ci
+      PGUSER: postgres
+      PGPASSWORD: ci-f129-admin-only
+      PERF_F129_WRITER_PASSWORD: ci-f129-writer-only
+      PERF_F129_SIM_PASSWORD: ci-f129-simulator-only
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: PHP 8.4 with PostgreSQL PDO and disposable psql
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo,pdo_pgsql
+      - name: Confirm isolation, lint and earlier regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -m | grep -i pdo_pgsql
+          php -l tests/Standalone/F129PgDurableQuarantineTest.php
+          php -l src/Lab/AmbiguousWitnessQuarantine.php
+          php -l src/Lab/SyntheticWitnessReconciliation.php
+          php tests/Standalone/F127AmbiguousWitnessQuarantineTest.php
+          php tests/Standalone/F128SyntheticWitnessReconciliationTest.php
+          if grep -R -E 'perf_f129_lab|F129PgDurableQuarantine' routes/ app/ bootstrap/; then
+            echo "FAIL: F129 test-only storage was wired to runtime"
+            exit 1
+          fi
+      - name: Create only ephemeral database roles and apply isolated SQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F129_LAB" = 1
+          test "$PGDATABASE" = perf_f129_ci
+          pg_isready -h "$PGHOST" -p "$PGPORT" -U postgres -d "$PGDATABASE"
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f129_writer LOGIN PASSWORD 'ci-f129-writer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f129_failure_simulator LOGIN PASSWORD 'ci-f129-simulator-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f129_disposable_quarantine_journal.sql
+          psql -X -v ON_ERROR_STOP=1 -c "SELECT nspname FROM pg_namespace WHERE nspname='perf_f129_lab'"
+      - name: PostgreSQL duplicate, concurrency, recovery and ACL checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F129PgDurableQuarantineTest.php
