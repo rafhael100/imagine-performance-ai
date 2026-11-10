@@ -1,3 +1,29 @@
+# Imagine Performance AI — corte seguro de RLS no laboratório F1-117–F1-119 (10/11/2026)
+
+**Estado de engenharia:** ownership das VIEWs/F91 reduzido a duas roles SQL NOLOGIN e políticas RLS legadas substituídas **somente no banco PostgreSQL16 descartável de CI**. A aplicação SaaS, o Portal operacional e a VPS **não estão homologados**. **RELEASE: NO-GO.**
+
+| Etapa | Implementação efetiva e evidência |
+|---|---|
+| F117 | [PR #221](https://github.com/rafhael100/imagine-performance-ai/pull/221) — migração versionada exclusiva de CI, duas roles NOLOGIN/NOSUPERUSER/NOBYPASSRLS, quatro VIEWs e a função F91 sob owners distintos de privilégio mínimo, policies SELECT PERMISSIVE+RESTRICTIVE por login SQL. [CI #42864022918 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42864022918), **186 asserts PostgreSQL16**, preservação das VIEWs e orçamentos A/B |
+| F118 | [PR #222](https://github.com/rafhael100/imagine-performance-ai/pull/222) — auditor do novo ownership e políticas RLS que detecta grants/attributes/SET ROLE indevidos; reproduz no CI como uma política RESTRICTIVE enfraquecida deixa o GUC legado reabrir o acesso a registros DEMO. [CI #42865194168 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42865194168), **80 asserts** |
+| F119 | [PR #223](https://github.com/rafhael100/imagine-performance-ai/pull/223) — migração separada, **somente CI**, retira onze políticas que dependem do GUC mutável `app.performance_tenant_id` sem alterar FORCE RLS nem as políticas e VIEWs login-bound F117; mantém F104 journal. [CI #42866892928 SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42866892928), **78 asserts** mais validador real Portal F64, HTML F65 e CSV F66 após a migração |
+
+### Escopo concreto do código
+
+As migrations F112/F117/F119 estão em **pastas isoladas de laboratório**, deliberadamente fora de `database/migrations/`, e são aplicadas após as regressões anteriores apenas no `perf_test_campaign_registry` efêmero. F119 elimina todas as políticas RLS que referenciam o GUC no schema `public` **naquele banco de teste**, mantém a leitura sob o login SQL autenticado e preserva os contratos demonstrativos Laravel/Portal. Isso **não é correção instalada nos bancos de operação**.
+
+### Dependências para concluir o produto comercial
+
+**P0: segurança externa e IAM.** Revisão independente AppSec/DBA do modelo F117/F119, roles e owners, política de sessões SQL/pooling, RLS, revogação e rotatividade de credenciais; inventário e migração de consumidores legados, plano de homologação/rollback sem reabrir permissões.
+
+**P0: autorização do anunciante.** Autenticação e RBAC Portal/MFA/S2S por pessoa, empresa e serviço, consentimentos/LGPD, escopos OAuth/permissões oficiais Google Ads/Meta, cofre de tokens e alçadas para aprovar orçamento. Nenhum orçamento DEMO pode disparar gastos ou cobrança.
+
+**P0: operação.** VPS Leaseweb e homologação funcional/segurança, backups/antirollback, reconciliação/idempotência, testes reais autorizados, monitoramento, gates P0/HT-R01/SEC-R03/T3, QA e aprovação de lançamento.
+
+**Sem merge em `main`, deploy, acesso a clientes, contas Ads, cobranças, veiculação ou novos fornecedores.** PRs draft e NO-GO mantidos. O progresso de CI não equivale à porcentagem ou à conclusão do SaaS.
+
+---
+
 # Imagine Performance AI — hardening PostgreSQL F1-112–F1-116 (10/11/2026)
 
 **Resultado do trabalho desta rodada:** migração versionada de revogação de grants SQL legados em laboratório; auditoria de deriva de permissões; inspeção de ACLs de roles novas, grafo de herança/SET ROLE; inventário explícito de owners privilegiados. **NO-GO mantido.** Nenhuma dessas etapas foi aplicada à VPS, produção ou clientes.
