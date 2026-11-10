@@ -1035,6 +1035,7 @@ jobs:
         shell: bash
         env:
           PERF_F124_SIGNED_NONCE_LAB: '1'
+          PERF_F124_SQL_DIAGNOSTICS_LAB: '1'
           PERF_F123_SIGNED_SQL_WORKBENCH_LAB: '1'
           PERF_F29_SIGNED_PORTAL_LAB: '1'
           PORTAL_PERF_SIGNED_LAB: '1'
