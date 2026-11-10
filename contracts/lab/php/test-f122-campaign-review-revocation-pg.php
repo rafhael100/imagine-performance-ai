@@ -96,12 +96,25 @@ foreach($fixtures as $name=>$f){
     $two=$f['reader']->read($b);
     $check($one['status']===$f['status'],"$name A baseline is valid");
     $check($two['status']===$f['status'],"$name B baseline is valid");
-    $check(count($one[$f['field']])===1,
-        "$name A one visible DEMO item; actual ".count($one[$f['field']])
-        .' / '.json_encode($one,JSON_UNESCAPED_SLASHES));
+    // F103/F104 insert two additional *legitimate synthetic* terminal
+    // reviews for A during earlier migration regression tests. The F97
+    // fixture alone had one; here we require all three exact references.
+    $expectedA=$name==='review'?3:1;
+    $check(count($one[$f['field']])===$expectedA,
+        "$name A expected $expectedA scoped items; actual ".count($one[$f['field']]));
     $check(count($two[$f['field']])===1,
-        "$name B one visible DEMO item; actual ".count($two[$f['field']])
-        .' / '.json_encode($two,JSON_UNESCAPED_SLASHES));
+        "$name B exactly one scoped DEMO item");
+    if($name==='review'){
+        $aRefs=array_column($one['reviews'],'request_ref');
+        sort($aRefs);
+        $check($aRefs===[
+            'req-demo-f103-locked-trigger',
+            'req-demo-f104-non-superuser-owner',
+            'req-demo-f97-a-approved',
+        ],'A includes only exact reviewed F97/F103/F104 DEMO journal fixtures');
+        $check($two['reviews'][0]['request_ref']==='req-demo-f97-b-rejected',
+            'B retains only its own DEMO rejection');
+    }
     $check($one[$f['field']]!==$two[$f['field']],
         "$name A/B projections differ");
     foreach([$one,$two] as $dto){
