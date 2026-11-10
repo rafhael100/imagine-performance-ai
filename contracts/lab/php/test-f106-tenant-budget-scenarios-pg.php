@@ -133,7 +133,7 @@ $denySql($a,'SET ROLE perf_f91_reader_b','A cannot impersonate B');
 $bad=static function(array $replacement,string $name)use($admin,$rowA,$add,$check):void{
     $candidate=array_replace($rowA,$replacement);
     $candidate[0]='88888888-8888-4888-8888-888888888889';
-    $candidate[3]='scenario-demo-f106-invalid';
+    $candidate[3]=$replacement[3]??'scenario-demo-f106-invalid';
     $blocked=false;
     try{$add->execute($candidate);}catch(PDOException){$blocked=true;}
     $check($blocked,'reject invalid SQL insert: '.$name);
