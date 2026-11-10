@@ -1,0 +1,55 @@
+name: Performance F1-77 - offline recovery incident triage
+on:
+  push:
+    branches:
+      - dev/perf-f1-77-synthetic-incident-triage-2026-11-09
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/SyntheticRecoveryIncidentReadModel.php'
+      - 'tests/Unit/SyntheticRecoveryIncidentReadModelStandalone.php'
+      - 'contracts/demo/f77-incident-preview.php'
+      - '.github/workflows/perf-f1-77-incident-triage-ci.yml'
+permissions:
+  contents: read
+jobs:
+  offline-triage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sodium
+          coverage: none
+          tools: none
+      - name: F77 incident read model with F74-76 regressions and NO-GO
+        env:
+          APP_ENV: testing
+          PERF_F75_SIGNED_WITNESS_LAB: '1'
+          PERF_F76_RECONCILIATION_LAB: '1'
+          PERF_F77_INCIDENT_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/SyntheticRecoveryIncidentReadModel.php
+          php -l tests/Unit/SyntheticRecoveryIncidentReadModelStandalone.php
+          php -l contracts/demo/f77-incident-preview.php
+          php tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          php tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php
+          php tests/Unit/SyntheticOfflineProviderReconcilerStandalone.php
+          php tests/Unit/SyntheticRecoveryIncidentReadModelStandalone.php
+          tmp="$(mktemp)"
+          trap 'rm -f "$tmp"' EXIT
+          php contracts/demo/f77-incident-preview.php > "$tmp"
+          jq -e '.schema_version == "perf.recovery.incident.synthetic.v1" and
+            .status == "manual_reconciliation_required" and
+            .simulation_only == true and .human_review_required == true and
+            .authorization_eligible == false and .ready_for_production == false and
+            .dispatch_enabled == false and .billing_enabled == false' "$tmp"
+          if APP_ENV=production php contracts/demo/f77-incident-preview.php >/dev/null 2>&1; then
+            echo 'FAIL F77 preview ran in production'; exit 1
+          fi
+          if grep -R -n -E 'SyntheticRecoveryIncidentReadModel|PERF_F77_INCIDENT_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL F77 triage connected to operational routes'; exit 1
+          fi
+          grep -q '"release_state": "blocked"' contracts/lab/ci/performance-release-no-go.json
