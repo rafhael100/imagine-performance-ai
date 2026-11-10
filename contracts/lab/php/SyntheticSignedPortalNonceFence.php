@@ -53,16 +53,26 @@ final class SyntheticSignedPortalNonceFence
             // Domain separation prevents the ledger digest from being a
             // reusable raw representation of the signed Portal nonce.
             $digest=hash('sha256',"IMAGINE-PERF-F124-SIGNED-NONCE\x00".$nonce);
+            // PostgreSQL ON CONFLICT may require additional SELECT
+            // privileges on the target. Never expand the dedicated SQL
+            // writer to SELECT. Instead INSERT once and classify ONLY the
+            // nonce_sha256 primary-key violation (SQLSTATE 23505) as replay.
             $stmt=$this->writer->prepare(
                 'INSERT INTO public.performance_signed_portal_demo_receipts '
                 .'(nonce_sha256,seen_epoch) VALUES (CAST(? AS char(64)),'
-                .'CAST(? AS bigint)) '
-                .'ON CONFLICT (nonce_sha256) DO NOTHING'
+                .'CAST(? AS bigint))'
             );
-            $stmt->execute([$digest,$now]);
+            try{
+                $stmt->execute([$digest,$now]);
+            }catch(\PDOException $error){
+                if((string)$error->getCode()==='23505'){
+                    return 'nonce_replay_denied';
+                }
+                throw $error;
+            }
             return $stmt->rowCount()===1
                 ?'nonce_recorded_ci_only'
-                :'nonce_replay_denied';
+                :'receipt_storage_unavailable';
         }catch(Throwable $error){
             // CI-only diagnostics; do not print signed packets or credentials.
             if(getenv('PERF_F124_SQL_DIAGNOSTICS_LAB')==='1'){
