@@ -1,3 +1,25 @@
+# Imagine Performance AI — isolamento de leitura e revogação SQL F1-120–F1-122 (10/11/2026)
+
+**Estado:** implementações Laravel e testes de segurança PostgreSQL16 avançaram até F1-122; **somente cenários DEMO e runners descartáveis**, sem integração IAM Portal, anúncios ou produção. **NO-GO permanece.**
+
+| Etapa | Entrega concreta | Evidência |
+|---|---|---|
+| F120 | [PR #225](https://github.com/rafhael100/imagine-performance-ai/pull/225) — lease de laboratório ligado ao login real PostgreSQL, tenant, banco e PID do backend; rejeita uso da conexão de A como B, GUC falsificado, transações obsoletas, revogação e reassociação durante SELECT. **A identidade esperada deve vir do IAM confiável em produção e ainda não vem.** | [CI #42871074244 — SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42871074244), **81 verificações** |
+| F121 | [PR #226](https://github.com/rafhael100/imagine-performance-ai/pull/226) — reforço **na classe Laravel F92 real de contas**, com checagem posterior de tenant e recusa de transações com snapshot antigo/escrita; preserva composição F100 `READ COMMITTED READ ONLY`. | [CI #42872244667 — SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42872244667), **96 verificações** |
+| F122 | [PR #227](https://github.com/rafhael100/imagine-performance-ai/pull/227) — mesma validação nas **classes Laravel F94 campanha e F98 revisão**, inclusive revogação ou reassociação entre SELECT e retorno; preserva as três revisões DEMO A de F97/F103/F104 e a revisão B. | [CI #42873849184 — SUCCESS](https://github.com/rafhael100/imagine-performance-ai/actions/runs/42873849184), **139 verificações** |
+
+As três classes do painel composto F100 agora fazem rechecagem própria de vínculo após materializar cada resultado. **Não é garantia atômica de autorização**: revogação posterior ao último check pode ocorrer e falta identidade humana Portal. A capacidade F120 recebe os IDs esperados do chamador no CI e **não valida por si só o contexto IAM/S2S**. Não habilitar em endpoints ou clientes.
+
+### Próximos bloqueios de liberação
+
+1. **IAM e banco:** login real Portal/MFA/S2S, vínculo usuário/empresa/serviço, regra de acesso, revogação, autorização independente, pooling de conexões, RLS/owner/grants, migração operacional F112/F117/F119 e revisão **independente** AppSec/DBA. As migrations de segurança executaram apenas no banco de CI descartável.
+2. **Provedores e dinheiro:** OAuth Google Ads/Meta, permissões do anunciante, LGPD, consentimento, cofre de tokens, aprovação humana de anúncios e limites de orçamento, idempotência/reconciliação e billing auditado.
+3. **Infra e release:** VPS Leaseweb acessível e homologada, backups/antirollback e incidentes, testes de QA e gates P0/HT-R01/SEC-R03/T3.
+
+**PRs permanecem draft, `main` e VPS inalteradas. Não criar anúncios, acessar contas reais, cobrar clientes ou registrar despesas.**
+
+---
+
 # Imagine Performance AI — corte seguro de RLS no laboratório F1-117–F1-119 (10/11/2026)
 
 **Estado de engenharia:** ownership das VIEWs/F91 reduzido a duas roles SQL NOLOGIN e políticas RLS legadas substituídas **somente no banco PostgreSQL16 descartável de CI**. A aplicação SaaS, o Portal operacional e a VPS **não estão homologados**. **RELEASE: NO-GO.**
