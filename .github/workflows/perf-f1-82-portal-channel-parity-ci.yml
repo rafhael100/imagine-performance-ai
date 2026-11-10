@@ -40,7 +40,9 @@ jobs:
           php -l app/Performance/Contracts/PortalPerformanceChannelContract.php
           php -l tests/Unit/PortalPerformanceChannelContractStandalone.php
           php tests/Unit/PortalPerformanceChannelContractStandalone.php
-          php vendor/bin/phpunit --filter NoPublicEndpointsTest --no-progress || test ! -d vendor
+          test ! -f routes/api.php
+          test ! -f routes/web.php
+          grep -q 'withRouting(commands:' bootstrap/app.php
           if grep -R -n 'PortalPerformanceChannelContract' routes/ bootstrap/ app/Providers/; then
             echo 'FAIL F82 codec wired into operational HTTP'
             exit 1
