@@ -92,7 +92,7 @@ if ($phase === 'seed') {
 
     $q=$pAdmin->query("SELECT perf_f129_lab.mark_uncertain('operation_6002','{$fpB}','timeout')")->fetchColumn();
     $check($q === false || $q === 'f' || $q === '0', 'timeout incident never grants action');
-    $check($pAdmin->query('SELECT quarantined FROM perf_f129_lab.circuit WHERE singleton=1')->fetchColumn()==='t',
+    $check(in_array($pAdmin->query('SELECT quarantined FROM perf_f129_lab.circuit WHERE singleton=1')->fetchColumn(), [true, 't', '1', 1], true),
         'persistent quarantine after timeout');
     $check($bridge->register('operation_6005','tenant_demo_B',$fpE,8)['status']==='primary_denied_witness_spent',
         'primary quarantine denies even after witness reservation');
@@ -100,7 +100,7 @@ if ($phase === 'seed') {
 } elseif ($phase === 'after-restore') {
     $check($countPrimary()===1, 'real old backup erased B and C primary entries');
     $check($countWitness()===5, 'witness receipts survive primary restore');
-    $check($pAdmin->query('SELECT quarantined FROM perf_f129_lab.circuit WHERE singleton=1')->fetchColumn()==='f',
+    $check(in_array($pAdmin->query('SELECT quarantined FROM perf_f129_lab.circuit WHERE singleton=1')->fetchColumn(), [false, 'f', '0', 0], true),
         'expected negative: old backup lost primary quarantine');
     $fresh=new F131WitnessFirstRegistration(
         db131('perf_f131_ci','perf_f131_primary_bridge',(string)getenv('PERF_F131_PRIMARY_PASSWORD')),
