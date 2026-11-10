@@ -78,7 +78,7 @@ $check(count($baseline['A']['perf_f106_credential_budget_demo_read'])===1
     &&count($baseline['B']['perf_f106_credential_budget_demo_read'])===1,
     'both tenants have independent synthetic budget previews');
 
-$command='php artisan migrate --path=database/lab-migrations '
+$command='php artisan migrate --path=database/f117-owner-lab-migrations '
     .'--force --no-interaction 2>&1';
 $output=[];$code=-1;
 exec($command,$output,$code);
