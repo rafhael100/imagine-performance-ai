@@ -48,11 +48,18 @@ final class CredentialBoundDemoAccountReader
             if($db->getAttribute(PDO::ATTR_DRIVER_NAME)!=='pgsql') {
                 return self::denied('invalid_database_driver');
             }
-            // The F91 tenant binding must not be read through a pre-existing
-            // caller transaction (especially REPEATABLE READ or SERIALIZABLE),
-            // which could retain a previously revoked database identity.
+            // F100's read-only workbench composes three projections inside
+            // an explicitly READ COMMITTED + READ ONLY transaction. Allow
+            // only that bounded context: each SQL statement gets a fresh
+            // PostgreSQL snapshot, so the post-query identity check below
+            // observes a committed revocation or reassignment. Never read
+            // under REPEATABLE READ/SERIALIZABLE or a write-capable transaction.
             if($db->inTransaction()) {
-                return self::denied('invalid_connection_state');
+                $isolation=$db->query('SHOW transaction_isolation')->fetchColumn();
+                $readOnly=$db->query('SHOW transaction_read_only')->fetchColumn();
+                if($isolation!=='read committed' || $readOnly!=='on') {
+                    return self::denied('invalid_connection_state');
+                }
             }
             $identitySql='SELECT current_database() AS dbname, '
                 .'session_user::text AS db_login, '
