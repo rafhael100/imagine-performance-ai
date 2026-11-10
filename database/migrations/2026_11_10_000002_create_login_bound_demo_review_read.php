@@ -54,7 +54,11 @@ WHERE i.tenant_id = public.perf_f91_tenant_for_login()
   AND (
     (i.review_state = 'awaiting_approval'
        AND i.reviewer_actor_ref IS NULL
-       AND j.id IS NULL)
+       AND j.id IS NULL
+       AND NOT EXISTS (
+          SELECT 1 FROM public.performance_intent_review_journal AS invalid_j
+          WHERE invalid_j.intent_id = i.id
+       ))
     OR
     (i.review_state IN ('approved_internal','rejected')
        AND i.reviewer_actor_ref IS NOT NULL
