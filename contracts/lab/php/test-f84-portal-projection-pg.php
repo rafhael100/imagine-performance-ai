@@ -51,6 +51,14 @@ foreach(['contracted','portal_identity_authenticated','ready_for_production',
     $assert($view[$flag]===false,"$flag blocked");
 }
 $json=json_encode($view,JSON_THROW_ON_ERROR);
+$target=getenv('PERF_F84_OUTPUT_FILE');
+if(is_string($target) && $target!=='') {
+    if (getenv('APP_ENV')!=='testing' || !is_dir(dirname($target))
+        || is_link($target) || file_exists($target)
+        || file_put_contents($target,$json."\n",LOCK_EX)===false) {
+        throw new RuntimeException('F84 refused unsafe CI fixture export');
+    }
+}
 foreach(['11111111-1111-4111-8111-111111111111','actor-demo-',
          'reviewer-demo-','access_token','media_spend','provider_account_id'] as $secret) {
     $assert(!str_contains($json,$secret),"no leaked $secret");
