@@ -176,6 +176,9 @@ final class SyntheticPostReceiptF100Delivery
                     ||!fflush($handle)||!fsync($handle)){
                     throw new RuntimeException('short write or fsync failed');
                 }
+            }catch(Throwable $error){
+                @unlink($tmp);
+                throw $error;
             }finally{
                 fclose($handle);
             }
