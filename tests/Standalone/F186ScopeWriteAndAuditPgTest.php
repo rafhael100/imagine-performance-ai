@@ -65,7 +65,7 @@ $admin->exec("INSERT INTO public.performance_managed_campaigns (
  id,tenant_id,portal_service_ref,channel,campaign_ref,campaign_label,
  lifecycle_state,managed,dispatch_state,created_at,updated_at,management_epoch
 ) SELECT '{$newCampaign}'::uuid,tenant_id,portal_service_ref,channel,
- 'cam-f186-new','Fresh synthetic generation 1', 'draft',true,'disabled',
+ 'cam-demo-f186-new','Fresh synthetic generation 1', 'draft',true,'disabled',
  clock_timestamp(),clock_timestamp(),1
  FROM public.performance_managed_campaigns WHERE id='{$campaignId}'::uuid");
 $check((int)$admin->query(
@@ -102,7 +102,7 @@ $insertIntent=static function(string $uuid,string $targetId,int $epoch,string $r
  $stmt=$admin->prepare($sql);
  $stmt->execute([$uuid,$targetId,$request,$epoch,$campaignId]);
 };
-$insertIntent($newIntent,$newCampaign,1,'req-f186-new');
+$insertIntent($newIntent,$newCampaign,1,'req-demo-f186-new');
 $check((int)$admin->query(
  "SELECT count(*) FROM public.performance_campaign_intents
   WHERE id='{$newIntent}'::uuid AND review_state='awaiting_approval'"
@@ -110,11 +110,11 @@ $check((int)$admin->query(
  'new first-generation review request is pending, never preapproved');
 $check((int)$a->query(
  "SELECT count(*) FROM public.perf_f93_demo_campaign_account_read
-  WHERE campaign_ref='cam-f186-new'"
+  WHERE campaign_ref='cam-demo-f186-new'"
 )->fetchColumn()===1
  &&(int)$a->query(
  "SELECT count(*) FROM public.perf_f97_demo_review_read
-  WHERE campaign_ref='cam-f186-new'"
+  WHERE campaign_ref='cam-demo-f186-new'"
 )->fetchColumn()===1,
  'existing F100 SQL views accept only freshly created epoch-1 pending workflow');
 
@@ -172,11 +172,11 @@ $check($refused(static fn()=>$insertOldCampaignLink(1)),
  'direct INSERT cannot reuse old generation 1 after reactivation');
 $check($refused(static fn()=>$insertIntent(
  'ac860000-0000-4000-8000-000000000005',
- $campaignId,2,'req-f186-stale-2'
+ $campaignId,2,'req-demo-f186-stale-2'
 )), 'direct new review for previously retired campaign at epoch 2 is denied');
 $check($refused(static fn()=>$insertIntent(
  'ac860000-0000-4000-8000-000000000006',
- $campaignId,1,'req-f186-stale-1'
+ $campaignId,1,'req-demo-f186-stale-1'
 )), 'direct new review copied from epoch 1 cannot bypass reactivation scope');
 $check($refused(static fn()=>$admin->exec(
  "DELETE FROM public.performance_campaign_account_links
@@ -191,8 +191,8 @@ $after=$reader->read($a);
 $check($after['status']==='credential_scoped_demo_workbench_only'
  &&$after['counts']['linked_campaigns']===1
  &&$after['counts']['visible_reviews']===1
- &&$after['campaigns'][0]['campaign_ref']==='cam-f186-new'
- &&$after['reviews'][0]['review_observation_state']==='pending',
+ &&$after['campaigns'][0]['campaign_ref']==='cam-demo-f186-new'
+ &&$after['reviews'][0]['review_observation_state']==='pending_human_demo',
  'F100 displays only newly created first-epoch campaign and pending review');
 $check($after['dispatch_enabled']===false&&$after['billing_enabled']===false
  &&$after['ready_for_production']===false,
