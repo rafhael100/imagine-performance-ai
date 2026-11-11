@@ -1,0 +1,37 @@
+name: Performance F1-199 - offline BRL scenario comparison
+on:
+  push:
+    branches:
+      - dev/perf-f1-199-offline-budget-scenario-comparison-2026-11-11
+  pull_request:
+    paths:
+      - 'app/Performance/Planning/OfflineBudgetScenarioPreview.php'
+      - 'app/Performance/Planning/OfflineBudgetScenarioComparison.php'
+      - 'tests/Standalone/F199OfflineBudgetScenarioComparisonTest.php'
+      - '.github/workflows/perf-f1-199-offline-budget-compare-ci.yml'
+permissions:
+  contents: read
+jobs:
+  compare-forecasts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Syntax and independent pure domain tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Planning/OfflineBudgetScenarioPreview.php
+          php -l app/Performance/Planning/OfflineBudgetScenarioComparison.php
+          php -l tests/Standalone/F199OfflineBudgetScenarioComparisonTest.php
+          php tests/Standalone/F199OfflineBudgetScenarioComparisonTest.php
+          if grep -R 'OfflineBudgetScenarioComparison' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F199 comparison accidentally wired to operational runtime'
+            exit 1
+          fi

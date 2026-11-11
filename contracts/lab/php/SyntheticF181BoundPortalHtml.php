@@ -98,7 +98,8 @@ final class SyntheticF181BoundPortalHtml
         array $f180Result,
         string $f100JsonPath,
         string $htmlTargetPath,
-        ?PDO $tenantSqlConnection=null
+        ?PDO $tenantSqlConnection=null,
+        bool $inlineCiOnly=false
     ):array {
         if(PHP_SAPI!=='cli'
             ||getenv('APP_ENV')!=='testing'
@@ -118,11 +119,19 @@ final class SyntheticF181BoundPortalHtml
             '/portal-f176-candidate/apps/portal/tools/f63-render-credential-workbench.php');
         if($runnerTemp===false ||$jsonReal===false ||$renderer===false
             ||dirname($jsonReal)!==$runnerTemp
-            ||dirname($htmlTargetPath)!==$runnerTemp
-            ||preg_match('/^f181-[a-z0-9-]{1,64}\.html$/D',
-                 basename($htmlTargetPath))!==1
-            ||is_link($f100JsonPath)||is_link($htmlTargetPath)
-            ||file_exists($htmlTargetPath)
+            ||is_link($f100JsonPath)
+            ||(!$inlineCiOnly && (
+                dirname($htmlTargetPath)!==$runnerTemp
+                ||preg_match('/^f181-[a-z0-9-]{1,64}\\.html$/D',
+                     basename($htmlTargetPath))!==1
+                ||is_link($htmlTargetPath)||file_exists($htmlTargetPath)
+            ))
+            ||($inlineCiOnly && (
+                $htmlTargetPath!==':memory:'
+                ||getenv('PERF_F196_INLINE_HTML_LAB')!=='1'
+                ||getenv('PERF_F193_F63_SERVICE_LAB')!=='1'
+                ||$tenantSqlConnection===null
+            ))
             ||filesize($jsonReal)<100||filesize($jsonReal)>48000){
             return self::denied('unsafe_input_or_output_path');
         }
@@ -172,7 +181,19 @@ final class SyntheticF181BoundPortalHtml
             // Stage EXACT validated bytes into a new private file. Renderer
             // receives this file, not an attacker-controlled mutable path.
             $staged=$runnerTemp.'/.f181-json-'.bin2hex(random_bytes(12)).'.tmp';
-            $handle=@fopen($staged,'x');
+            // F198: private file mode is established at creation time.
+            $previousUmask=umask(0077);
+            try{
+                $handle=@fopen($staged,'x');
+            }finally{
+                umask($previousUmask);
+            }
+            if(is_resource($handle)
+                &&((fileperms($staged) & 0777)!==0600)){
+                fclose($handle);
+                @unlink($staged);
+                return self::denied('temporary_file_not_private');
+            }
             if(!is_resource($handle)){
                 return self::denied('stage_file_unavailable');
             }
@@ -240,8 +261,32 @@ final class SyntheticF181BoundPortalHtml
                     )){
                     return self::denied('service_or_sql_changed_after_renderer');
                 }
+                // F196: apply actual Portal F63 renderer and F193 SQL/epoch
+                // checks but do not persist any HTML artifact on this path.
+                if($inlineCiOnly){
+                    return [
+                        ...self::denied('in_memory_f63_ci_only'),
+                        'status'=>'in_memory_f63_ci_only',
+                        'html_path'=>null,
+                        'html_sha256'=>hash('sha256',$html),
+                        'html_bytes'=>$html,
+                        'non_persistent'=>true,
+                    ];
+                }
                 $tmpHtml=$runnerTemp.'/.f181-html-'.bin2hex(random_bytes(12)).'.tmp';
-                $out=@fopen($tmpHtml,'x');
+                // F198: private file mode is established at creation time.
+                $previousUmask=umask(0077);
+                try{
+                    $out=@fopen($tmpHtml,'x');
+                }finally{
+                    umask($previousUmask);
+                }
+                if(is_resource($out)
+                    &&((fileperms($tmpHtml) & 0777)!==0600)){
+                    fclose($out);
+                    @unlink($tmpHtml);
+                    return self::denied('temporary_file_not_private');
+                }
                 if(!is_resource($out)){
                     return self::denied('html_output_unavailable');
                 }

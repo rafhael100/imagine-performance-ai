@@ -235,7 +235,19 @@ final class SyntheticPostReceiptF100Delivery
             // NEW destination. link() refuses replacing an existing file.
             // This is a CI filesystem property, NOT WORM storage.
             $tmp=$root.'/.f180-'.bin2hex(random_bytes(12)).'.tmp';
-            $handle=@fopen($tmp,'x');
+            // F198: private file mode is established at creation time.
+            $previousUmask=umask(0077);
+            try{
+                $handle=@fopen($tmp,'x');
+            }finally{
+                umask($previousUmask);
+            }
+            if(is_resource($handle)
+                &&((fileperms($tmp) & 0777)!==0600)){
+                fclose($handle);
+                @unlink($tmp);
+                return self::denied('temporary_file_not_private');
+            }
             if(!is_resource($handle)){
                 return self::denied('atomic_persist_unavailable');
             }

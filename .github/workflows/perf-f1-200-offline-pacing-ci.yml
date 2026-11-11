@@ -1,0 +1,37 @@
+name: Performance F1-200 - offline synthetic budget pacing
+on:
+  push:
+    branches:
+      - dev/perf-f1-200-offline-pacing-monitor-2026-11-11
+  pull_request:
+    paths:
+      - 'app/Performance/Planning/OfflineBudgetScenarioPreview.php'
+      - 'app/Performance/Planning/OfflineBudgetPacingMonitor.php'
+      - 'tests/Standalone/F200OfflineBudgetPacingMonitorTest.php'
+      - '.github/workflows/perf-f1-200-offline-pacing-ci.yml'
+permissions:
+  contents: read
+jobs:
+  analyze-synthetic-pacing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: PHP 8.4 syntax and pure synthetic scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Planning/OfflineBudgetScenarioPreview.php
+          php -l app/Performance/Planning/OfflineBudgetPacingMonitor.php
+          php -l tests/Standalone/F200OfflineBudgetPacingMonitorTest.php
+          php tests/Standalone/F200OfflineBudgetPacingMonitorTest.php
+          if grep -R 'OfflineBudgetPacingMonitor' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: offline monitor wired to operational app'
+            exit 1
+          fi
