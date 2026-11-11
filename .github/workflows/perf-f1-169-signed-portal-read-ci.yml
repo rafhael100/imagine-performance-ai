@@ -1,0 +1,120 @@
+name: Performance F1-169 - signed S2S mock capability for PG16 Portal reader
+on:
+  push:
+    branches:
+      - dev/perf-f1-169-signed-portal-read-capability-2026-11-11
+  pull_request:
+    paths:
+      - 'contracts/demo/f168-pg16-portal-offline-template.html'
+      - 'contracts/demo/f168-render-pg16-offline.php'
+      - 'tests/Standalone/F168Pg16OfflineHtmlTest.php'
+      - 'src/Domain/Performance/F169SignedPortalReadGateway.php'
+      - 'tests/Standalone/F169SignedPortalReadGatewayTest.php'
+      - '.github/workflows/perf-f1-169-signed-portal-read-ci.yml'
+permissions:
+  contents: read
+jobs:
+  pg16-offline-portal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: perf_f162_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f162_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F162_PG_LAB: '1'
+      PERF_F163_PHP_BRIDGE_LAB: '1'
+      PERF_F164_PG_SCOPE_LAB: '1'
+      PERF_F165_CAMPAIGN_LOCK_LAB: '1'
+      PERF_F166_READ_DASHBOARD_LAB: '1'
+      PERF_F167_SCOPE_EPOCH_LAB: '1'
+      PERF_F168_PG_HTML_LAB: '1'
+      PERF_F169_SIGNED_READ_LAB: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_f162_ci
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql,pgsql
+          coverage: none
+      - name: Prepare disposable PostgreSQL16 and mock review scope security
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f162_pg16_tenant_review_registry_ci.sql
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f164_pg16_managed_campaign_boundary_ci.sql
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f165_pg16_campaign_retirement_lock_audit_ci.sql
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f166_pg16_readonly_dashboard_views_ci.sql
+      - name: Regress PostgreSQL security F162 through F167 before HTML generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F162Pg16TenantReviewRegistryTest.php
+          psql -v ON_ERROR_STOP=1 -c 'TRUNCATE perf_f162.events,perf_f162.reviews RESTART IDENTITY CASCADE'
+          php tests/Standalone/F163Pg16SyntheticReviewBridgeTest.php
+          php tests/Standalone/F164Pg16ManagedCampaignBoundaryTest.php
+          php tests/Standalone/F165Pg16CampaignRetirementLockAuditTest.php
+          psql -v ON_ERROR_STOP=1 -c 'TRUNCATE perf_f162.events,perf_f162.reviews RESTART IDENTITY CASCADE'
+          php tests/Standalone/F166Pg16ReadOnlyDashboardTest.php
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f167_pg16_scope_generation_fence_ci.sql
+          php tests/Standalone/F167Pg16ScopeGenerationTest.php
+      - name: Render actual isolated PG16 into accessible offline HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -c 'TRUNCATE perf_f162.events,perf_f162.reviews RESTART IDENTITY CASCADE'
+          php -l contracts/demo/f168-render-pg16-offline.php
+          php -l tests/Standalone/F168Pg16OfflineHtmlTest.php
+          php tests/Standalone/F168Pg16OfflineHtmlTest.php
+          PERF_F168_SYNTHETIC_ROLE=perf_f162_a php contracts/demo/f168-render-pg16-offline.php > "$RUNNER_TEMP/f168-aurora.html"
+          PERF_F168_SYNTHETIC_ROLE=perf_f162_b php contracts/demo/f168-render-pg16-offline.php > "$RUNNER_TEMP/f168-boreal.html"
+          test -s "$RUNNER_TEMP/f168-aurora.html"
+          test -s "$RUNNER_TEMP/f168-boreal.html"
+          grep -q 'Simulação / NÃO É PRODUÇÃO' "$RUNNER_TEMP/f168-aurora.html"
+          if grep -R -E 'f168-render-pg16-offline|PERF_F168_PG_HTML_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL: offline renderer attached to production routes'
+            exit 1
+          fi
+      - name: Syntax-check embedded offline UI JavaScript without any npm downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          data=Path('contracts/demo/f168-pg16-portal-offline-template.html').read_text()
+          scripts=re.findall(r'<script>([\s\S]*?)</script>',data)
+          assert len(scripts)==1
+          Path('/tmp/f168-portal.js').write_text(scripts[0])
+          PY
+          node --check /tmp/f168-portal.js
+      - name: Verify signed short-lived read capability and RLS tenant binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F169_SIGNED_READ_LAB" = 1
+          php -l src/Domain/Performance/F169SignedPortalReadGateway.php
+          php -l tests/Standalone/F169SignedPortalReadGatewayTest.php
+          php tests/Standalone/F169SignedPortalReadGatewayTest.php
+          if grep -R -E 'F169SignedPortalReadGateway|PERF_F169_SIGNED_READ_LAB' routes/ app/ bootstrap/ database/migrations/; then
+            echo 'FAIL: synthetic S2S proof referenced in operational app'
+            exit 1
+          fi
