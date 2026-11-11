@@ -1,0 +1,55 @@
+name: Performance F1-151 - creative review queue offline preview
+on:
+  push:
+    branches:
+      - dev/perf-f1-151-offline-creative-review-queue-2026-11-10
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F151SyntheticCreativeReviewQueue.php'
+      - 'src/Domain/Performance/SyntheticManagedScopeLedger.php'
+      - 'contracts/demo/f55-render-offline-preview.php'
+      - 'tests/Standalone/F151CreativeReviewQueueTest.php'
+      - '.github/workflows/perf-f1-151-creative-review-offline-ci.yml'
+permissions:
+  contents: read
+jobs:
+  fictional-review-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+      PERF_F56_CSV_LAB: '1'
+      PERF_F151_APPROVAL_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP 8.4 no provider integrations
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Test fictional tenant-scoped review lifecycle and offline view
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F151SyntheticCreativeReviewQueue.php
+          php -l contracts/demo/f55-render-offline-preview.php
+          php -l tests/Standalone/F151CreativeReviewQueueTest.php
+          php tests/Standalone/F151CreativeReviewQueueTest.php
+      - name: Render HTML and CSV, verify no operational transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          php contracts/demo/f55-render-offline-preview.php > "$RUNNER_TEMP/perf-f151-offline.html"
+          php contracts/demo/f56-export-capacity-csv.php > "$RUNNER_TEMP/perf-f151-capacity.csv"
+          test -s "$RUNNER_TEMP/perf-f151-offline.html"
+          test -s "$RUNNER_TEMP/perf-f151-capacity.csv"
+          grep -q 'rev-search-demo' "$RUNNER_TEMP/perf-f151-offline.html"
+          grep -q 'rev-social-demo' "$RUNNER_TEMP/perf-f151-offline.html"
+          grep -q 'Somente demonstração' "$RUNNER_TEMP/perf-f151-offline.html"
+          if grep -R -E 'F151SyntheticCreativeReviewQueue|PERF_F151_APPROVAL_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: synthetic review queue referenced by product route'
+            exit 1
+          fi
