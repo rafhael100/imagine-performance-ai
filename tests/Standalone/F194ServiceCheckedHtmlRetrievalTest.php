@@ -113,6 +113,12 @@ $check($rendered['status']==='offline_html_bound_to_f180_ci_only'
  &&is_file($html),
  'F193 service-bound original Portal F63 HTML is generated first');
 
+// F198: both signed JSON and Portal F63 HTML remain owner-only.
+clearstatcache(true,$json);
+clearstatcache(true,$html);
+$check((fileperms($json)&0777)===0600
+ &&(fileperms($html)&0777)===0600,
+ 'signed report and Portal HTML are created mode 0600, never world-readable');
 $fetcher=new SyntheticServiceCheckedHtmlRetrieval();
 $first=$fetcher->fetch($a,$delivery,$rendered);
 $check($first['status']==='offline_html_readonly_preview_only'
@@ -165,6 +171,25 @@ $mutatedInline['html_bytes'].='<!-- malicious append -->';
 $check($fetcher->fetchInline($a,$delivery,$mutatedInline)['html']===null,
  'inline HTML byte mutation is rejected despite original proof');
 
+// F198: even if a local process relaxes file permissions, deny fetch.
+$check(chmod($html,0644)===true,'CI intentionally relaxes HTML mode for attack');
+clearstatcache(true,$html);
+$exposedHtml=$fetcher->fetch($a,$delivery,$rendered);
+$check($exposedHtml['html']===null
+ &&$exposedHtml['status']==='missing_or_unsafe_html_artifact',
+ 'world-readable HTML is rejected instead of served');
+$check(chmod($html,0600)===true,'restore private HTML mode');
+clearstatcache(true,$html);
+$check(chmod($json,0644)===true,'CI intentionally relaxes JSON mode for attack');
+clearstatcache(true,$json);
+$exposedJson=$fetcher->fetch($a,$delivery,$rendered);
+$check($exposedJson['html']===null
+ &&$exposedJson['status']==='missing_or_unsafe_html_artifact',
+ 'world-readable signed JSON is rejected');
+$check(chmod($json,0600)===true,'restore private JSON mode');
+clearstatcache(true,$json);
+$check($fetcher->fetch($a,$delivery,$rendered)['html']===$first['html'],
+ 'private modes restored and genuine authorized read recovers');
 $other=$fetcher->fetch($b,$delivery,$rendered);
 $check($other['status']==='service_revoked_or_sql_changed'
  &&$other['html']===null,
