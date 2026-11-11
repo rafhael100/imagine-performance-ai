@@ -131,6 +131,9 @@ $run=static function(array $request,array $envOverride=[])use(
  if($exit!==0)throw new RuntimeException('F148 sandbox container exited: '.substr((string)$stderr,0,400));
  $response=json_decode((string)$stdout,true,512,JSON_THROW_ON_ERROR);
  if(!is_array($response))throw new RuntimeException('F148 unexpected child response');
+ if (($response['status']??null)==='executor_bootstrap_denied') {
+  echo "F148 sandbox denied; coarse diagnostic: ".trim((string)$stderr)."\n";
+ }
  return $response;
 };
 $n=0;
