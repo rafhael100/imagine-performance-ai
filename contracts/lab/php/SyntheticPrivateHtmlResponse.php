@@ -38,7 +38,7 @@ final class SyntheticPrivateHtmlResponse
     ): array {
         $retrieved=(new SyntheticServiceCheckedHtmlRetrieval())
             ->fetch($tenantSqlConnection,$receipt,$htmlResult);
-        return self::fromCheckedRetrieval($retrieved);
+        return self::mapVerified($retrieved);
     }
 
     /**
@@ -58,15 +58,30 @@ final class SyntheticPrivateHtmlResponse
         $retrieved=(new SyntheticServiceCheckedHtmlRetrieval())->fetchInline(
             $tenantSqlConnection,$receipt,$inline
         );
-        return self::fromCheckedRetrieval($retrieved);
+        return self::mapVerified($retrieved);
     }
 
     /**
-     * Pure response mapper for standalone negative tests. Input must be the
-     * exact F194 success contract; a caller-provided raw HTML value does NOT
-     * turn this method into authorization.
+     * F197: public raw-array mapping is a potential authorization bypass.
+     * An arbitrary caller can fabricate the F194 success fields. Restrict
+     * it to explicit standalone CLI tests; real serving paths must call
+     * F194 SQL/service validation and the private mapper below.
      */
     public static function fromCheckedRetrieval(array $retrieved): array
+    {
+        if(PHP_SAPI!=='cli'
+            ||getenv('APP_ENV')!=='testing'
+            ||getenv('PERF_F197_TEST_ONLY_MAPPER')!=='1'){
+            return self::mapVerified([]);
+        }
+        return self::mapVerified($retrieved);
+    }
+
+    /**
+     * Never expose this map function as an independent authorization API.
+     * Used only after fetch()/fetchInline() has checked F194 SQL/epoch/bytes.
+     */
+    private static function mapVerified(array $retrieved): array
     {
         $headers=self::HEADERS;
         $headers['Content-Type']='text/plain; charset=utf-8';
