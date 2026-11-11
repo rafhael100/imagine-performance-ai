@@ -81,7 +81,7 @@ $ui['campaigns']=$cards;
 $ui['approvals']=$previous['approvals'];
 if(getenv('PERF_F151_APPROVAL_LAB')==='1'){
     require_once dirname(__DIR__,2).'/src/Domain/Performance/F151SyntheticCreativeReviewQueue.php';
-    $reviews=new \\Imagine\\Performance\\Domain\\F151SyntheticCreativeReviewQueue($l);
+    $reviews=new \Imagine\Performance\Domain\F151SyntheticCreativeReviewQueue($l);
     if($reviews->submit($t,'rev-search-demo','cam-search-demo','google_ads',
             'Revisar peça de pesquisa')!=='submitted_demo'
         ||$reviews->submit($t,'rev-social-demo','cam-social-demo','meta',
