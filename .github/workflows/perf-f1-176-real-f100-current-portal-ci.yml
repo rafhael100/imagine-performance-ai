@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - dev/perf-f1-176-f100-current-portal-f62-e2e-2026-11-11
+  pull_request:
+    paths:
+      - 'tests/Standalone/F176CurrentPortalF62ContractTest.php'
+      - '.github/workflows/perf-f1-176-real-f100-current-portal-ci.yml'
+      - 'docs/execucao/FAST-PERF-F1-176-F100-PORTAL-F62-PG16-CANONICAL-PATH.md'
 
 permissions:
   contents: read
