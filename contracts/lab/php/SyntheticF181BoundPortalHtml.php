@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 namespace App\Performance\Security;
 
+use App\Performance\ReadSide\CredentialBoundDemoServiceStatusFence;
 use Closure;
+use PDO;
 use RuntimeException;
 use Throwable;
 
@@ -36,11 +38,67 @@ final class SyntheticF181BoundPortalHtml
         ];
     }
 
+    /**
+     * F193 CI-only operational boundary check. The source SQL database is
+     * NOT a Portal IAM authority; the same original F100 DTO and local
+     * monotonic versions must still be visible immediately before F63.
+     */
+    private static function unchangedServiceAndReport(
+        PDO $sql,
+        array $proof,
+        string $sourceJson
+    ):bool {
+        if($sql->getAttribute(PDO::ATTR_DRIVER_NAME)!=='pgsql'
+            ||$sql->inTransaction()
+            ||getenv('PERF_F192_SIGNED_SERVICE_LAB')!=='1'
+            ||getenv('PERF_F191_SERVICE_EPOCH_LAB')!=='1'
+            ||getenv('PERF_F189_SERVICE_STATUS_LAB')!=='1'){
+            return false;
+        }
+        $originalEpoch=$proof['service_epoch_at_delivery']??null;
+        if(!is_array($originalEpoch)||array_keys($originalEpoch)!==[
+            'tenant_epoch','service_epoch'
+        ] ||!is_int($originalEpoch['tenant_epoch'])
+          ||!is_int($originalEpoch['service_epoch'])){
+            return false;
+        }
+        $rows=$sql->query(
+            'SELECT tenant_epoch,service_epoch '
+            .'FROM public.perf_f191_service_epoch_for_login()'
+        )->fetchAll(PDO::FETCH_ASSOC);
+        if(!is_array($rows)||count($rows)!==1
+            ||!is_array($rows[0])
+            ||array_keys($rows[0])!==['tenant_epoch','service_epoch']){
+            return false;
+        }
+        foreach($originalEpoch as $key=>$expected){
+            $raw=$rows[0][$key];
+            if((!is_int($raw)&&!is_string($raw))
+                ||preg_match('/^[1-9][0-9]{0,6}$/D',(string)$raw)!==1
+                ||(int)$raw!==$expected)return false;
+        }
+        $expectedDto=json_decode(
+            $sourceJson,true,24,JSON_THROW_ON_ERROR
+        );
+        if(!is_array($expectedDto)){
+            return false;
+        }
+        $fresh=(new CredentialBoundDemoServiceStatusFence())->read($sql);
+        return ($fresh['status']??null)==='credential_scoped_demo_workbench_only'
+            &&($fresh['credential_binding_confirmed']??null)===true
+            &&($fresh['portal_identity_authenticated']??null)===false
+            &&($fresh['authorization_eligible']??null)===false
+            &&($fresh['dispatch_enabled']??null)===false
+            &&($fresh['billing_enabled']??null)===false
+            &&$fresh===$expectedDto;
+    }
+
     /** @param array<string,mixed> $f180Result */
     public function render(
         array $f180Result,
         string $f100JsonPath,
-        string $htmlTargetPath
+        string $htmlTargetPath,
+        ?PDO $tenantSqlConnection=null
     ):array {
         if(PHP_SAPI!=='cli'
             ||getenv('APP_ENV')!=='testing'
@@ -88,6 +146,15 @@ final class SyntheticF181BoundPortalHtml
             if(!hash_equals($expected,hash('sha256',$read))){
                 return self::denied('json_digest_mismatch');
             }
+            $serviceRequired=getenv('PERF_F193_F63_SERVICE_LAB')==='1';
+            if($serviceRequired){
+                if($tenantSqlConnection===null
+                    ||!self::unchangedServiceAndReport(
+                        $tenantSqlConnection,$f180Result,$read
+                    )){
+                    return self::denied('service_or_sql_changed_before_html');
+                }
+            }
             if($this->afterInitialHashCiHook!==null){
                 ($this->afterInitialHashCiHook)();
             }
@@ -95,6 +162,12 @@ final class SyntheticF181BoundPortalHtml
             // race window; never render a replacement valid-looking F100.
             if(!hash_equals($expected,(string)hash_file('sha256',$jsonReal))){
                 return self::denied('json_changed_before_render');
+            }
+            if($serviceRequired
+                &&!self::unchangedServiceAndReport(
+                    $tenantSqlConnection,$f180Result,$read
+                )){
+                return self::denied('service_or_sql_changed_during_html');
             }
             // Stage EXACT validated bytes into a new private file. Renderer
             // receives this file, not an attacker-controlled mutable path.
@@ -160,6 +233,12 @@ final class SyntheticF181BoundPortalHtml
                 if(!hash_equals($expected,(string)hash_file('sha256',$jsonReal))
                    ||!hash_equals($expected,(string)hash_file('sha256',$staged))){
                     return self::denied('json_modified_during_render');
+                }
+                if($serviceRequired
+                    &&!self::unchangedServiceAndReport(
+                        $tenantSqlConnection,$f180Result,$read
+                    )){
+                    return self::denied('service_or_sql_changed_after_renderer');
                 }
                 $tmpHtml=$runnerTemp.'/.f181-html-'.bin2hex(random_bytes(12)).'.tmp';
                 $out=@fopen($tmpHtml,'x');

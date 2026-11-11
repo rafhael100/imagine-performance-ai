@@ -267,6 +267,12 @@ final class SyntheticPostReceiptF100Delivery
                 'artifact_path'=>$targetFile,
                 'sha256'=>hash('sha256',$json),
                 'receipt_consumed_demo'=>true,
+                // F193: pass exact F191 SQL generations in SAME process
+                // to original Portal F63 render boundary. These versions
+                // remain local/synthetic and are not external credentials.
+                ...($serviceRequired?[
+                    'service_epoch_at_delivery'=>$serviceEpochAfter
+                ]:[]),
             ];
         }catch(Throwable){
             return self::denied('delivery_unavailable_fail_closed');
