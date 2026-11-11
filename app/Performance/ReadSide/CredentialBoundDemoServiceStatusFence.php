@@ -56,6 +56,33 @@ final class CredentialBoundDemoServiceStatusFence
         return $rows[0];
     }
 
+    /**
+     * F191 optional CI gate: track *any* intermediate revocation/link change,
+     * even when its final status returns to the original ABA value.
+     * SQL superusers and same-domain restores can still forge this number.
+     */
+    private static function localServiceVersions(PDO $db):?array
+    {
+        $rows=$db->query(
+            'SELECT tenant_epoch,service_epoch '
+            .'FROM public.perf_f191_service_epoch_for_login()'
+        )->fetchAll(PDO::FETCH_ASSOC);
+        if(!is_array($rows)||count($rows)!==1
+            ||!is_array($rows[0])
+            ||array_keys($rows[0])!==['tenant_epoch','service_epoch']){
+            return null;
+        }
+        $result=[];
+        foreach(['tenant_epoch','service_epoch'] as $field){
+            $value=$rows[0][$field];
+            if(!is_string($value)&&!is_int($value))return null;
+            if(preg_match('/^[1-9][0-9]{0,5}$/D',(string)$value)!==1
+                ||(int)$value>1000000)return null;
+            $result[$field]=(int)$value;
+        }
+        return $result;
+    }
+
     private static function labEligible(?array $row,int $now):bool
     {
         if($row===null)return false;
@@ -93,6 +120,11 @@ final class CredentialBoundDemoServiceStatusFence
                 return self::denied('invalid_connection_state');
             }
             $now=time();
+            $checkEpoch=getenv('PERF_F191_SERVICE_EPOCH_LAB')==='1';
+            $versionBefore=$checkEpoch?self::localServiceVersions($db):null;
+            if($checkEpoch&&$versionBefore===null){
+                return self::denied('service_epoch_probe_unavailable');
+            }
             $first=self::evidence($db);
             if(!self::labEligible($first,$now)){
                 return self::denied('service_not_eligible_in_local_demo');
@@ -111,7 +143,10 @@ final class CredentialBoundDemoServiceStatusFence
                 return self::denied('underlying_workbench_denied');
             }
             $second=self::evidence($db);
-            if(!self::labEligible($second,time())||$first!==$second){
+            $versionAfter=$checkEpoch?self::localServiceVersions($db):null;
+            if(!self::labEligible($second,time())||$first!==$second
+                ||($checkEpoch&&($versionAfter===null
+                    ||$versionBefore!==$versionAfter))){
                 return self::denied('service_changed_during_demo_read');
             }
             // Keep original F100 contract unchanged for pinned Portal F62.
