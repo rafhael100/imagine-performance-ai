@@ -70,7 +70,7 @@ try {
     // Lab-only coarse diagnostic, no exception message or runtime secrets.
     // Throwable class helps isolate missing PHP extensions from access denial.
     if (getenv('PERF_F148_LAB')==='1') {
-        fwrite(STDERR, "F148 boot diagnostic: ".get_class($e)."\n");
+        fwrite(STDERR, "F148 boot diagnostic: ".get_class($e)." at ".basename($e->getFile()).":".$e->getLine()."\n");
     }
     $result=$denied;
 }
