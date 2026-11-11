@@ -1,0 +1,58 @@
+name: Performance F1-156 - Portal offline read-only JSON bundle
+on:
+  push:
+    branches:
+      - dev/perf-f1-156-offline-portal-readonly-bundle-2026-11-10
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F156SyntheticPortalReadBundle.php'
+      - 'contracts/portal/f156-build-readonly-review-bundle.php'
+      - 'contracts/portal/performance-dashboard.synthetic.v1.schema.json'
+      - 'tests/Standalone/F156PortalReadBundleTest.php'
+      - '.github/workflows/perf-f1-156-portal-read-bundle-ci.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-portal-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+      PERF_F151_APPROVAL_LAB: '1'
+      PERF_F152_CSV_LAB: '1'
+      PERF_F153_PARITY_LAB: '1'
+      PERF_F154_ATTENTION_LAB: '1'
+      PERF_F155_FILTER_LAB: '1'
+      PERF_F156_PORTAL_BUNDLE_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Run all offline functional regressions F151 through F156
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F156SyntheticPortalReadBundle.php
+          php -l contracts/portal/f156-build-readonly-review-bundle.php
+          php -l tests/Standalone/F156PortalReadBundleTest.php
+          php tests/Standalone/F151CreativeReviewQueueTest.php
+          php tests/Standalone/F152CreativeReviewCsvTest.php
+          php tests/Standalone/F153OfflinePreviewCsvParityTest.php
+          php tests/Standalone/F154AttentionPanelTest.php
+          php tests/Standalone/F155OfflineReviewStatusFilterTest.php
+          php tests/Standalone/F156PortalReadBundleTest.php
+      - name: Check actual JSON output against versioned no-go contract fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          php contracts/portal/f156-build-readonly-review-bundle.php > "$RUNNER_TEMP/f156-bundle.json"
+          php -r '$v=json_decode(file_get_contents($argv[1]),true,64,JSON_THROW_ON_ERROR);$s=json_decode(file_get_contents($argv[2]),true,64,JSON_THROW_ON_ERROR);$required=$s["required"]; $actual=array_keys($v);sort($required);sort($actual);if($required!==$actual)exit(3);foreach(["contracted","iam_verified","s2s_verified","authorization_eligible","human_approval_verified","dispatch_enabled","billing_enabled","ready_for_production","real_metrics_available"] as $k){if($v[$k]!==false||$s["properties"][$k]["const"]!==false)exit(4);}echo "F156 Portal JSON schema fields and NO-GO verified\n";' "$RUNNER_TEMP/f156-bundle.json" contracts/portal/performance-dashboard.synthetic.v1.schema.json
+          if grep -R -E 'F156SyntheticPortalReadBundle|PERF_F156_PORTAL_BUNDLE_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: F156 synthetic contract exposed on app runtime'
+            exit 1
+          fi
