@@ -108,6 +108,9 @@ final class SyntheticF181BoundPortalHtml
                     ||!fflush($handle)||!fsync($handle)){
                     throw new RuntimeException('stage file write/sync unavailable');
                 }
+            }catch(Throwable $error){
+                @unlink($staged);
+                throw $error;
             }finally{
                 fclose($handle);
             }
