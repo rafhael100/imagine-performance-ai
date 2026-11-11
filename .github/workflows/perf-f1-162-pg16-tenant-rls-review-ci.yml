@@ -1,0 +1,62 @@
+name: Performance F1-162 - tenant-scoped PostgreSQL16 review and audit
+on:
+  push:
+    branches:
+      - dev/perf-f1-162-pg16-tenant-rls-review-registry-2026-11-11
+  pull_request:
+    paths:
+      - 'database/lab-migrations/f162_pg16_tenant_review_registry_ci.sql'
+      - 'tests/Standalone/F162Pg16TenantReviewRegistryTest.php'
+      - '.github/workflows/perf-f1-162-pg16-tenant-rls-review-ci.yml'
+permissions:
+  contents: read
+jobs:
+  pg16-tenant-rls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: perf_f162_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f162_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F162_PG_LAB: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_f162_ci
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql,pgsql
+          coverage: none
+      - name: Migrate only disposable PostgreSQL16 synthetic tenant roles
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_f162_ci
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f162_pg16_tenant_review_registry_ci.sql
+      - name: Validate two real session roles, RLS, immutable scopes and SQL trigger rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tests/Standalone/F162Pg16TenantReviewRegistryTest.php
+          php tests/Standalone/F162Pg16TenantReviewRegistryTest.php
+          if grep -R -E 'perf_f162|PERF_F162_PG_LAB' database/migrations/ app/ routes/ bootstrap/; then
+            echo 'FAIL: experimental PostgreSQL policy referenced in production code'
+            exit 1
+          fi
