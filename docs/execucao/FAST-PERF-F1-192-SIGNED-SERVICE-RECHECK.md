@@ -1,0 +1,17 @@
+# FAST-PERF F1-192 — serviço vigente obrigatório também para entrega assinada F29/F124/F180
+
+**Base F191/PR #299, CI PostgreSQL16 descartável, DRAFT/NO-GO.**
+
+F189–F191 reforçaram o leitor de prévia F100 para empresas/serviços com estados internos inativos, pendentes, revogados, desatualizados ou com mudanças ABA. Contudo a cadeia que gera o arquivo assinada pelo emissor **original histórico** Portal F29 → F123/F124 nonce → F180 ainda chamava o leitor F100 **sem consultar a elegibilidade sintética**. Isso permitiria entregar HTML de contas fictícias inativas apesar do novo controle. A F192 fecha a diferença no componente **já existente** `SyntheticPostReceiptF100Delivery.php`, sem construir outro emissor, sem um segundo contrato F62/F63 e sem mudar endpoint.
+
+Quando a flag **CI-only** `PERF_F192_SIGNED_SERVICE_LAB=1` está ativa, a entrega:
+1. Confirma todos os gates F189/F191, verifica a identidade SQL ligada ao serviço demo fixo e lê uma prévia F100 passando pela F189; se a empresa estiver inativa, o vínculo pendente ou a evidência inválida, devolve `service_ineligible_before_nonce` **sem consumir o nonce F124**.
+2. Guarda ambas as gerações monotônicas de serviço/empresa F191 **antes** de emitir o recibo da assinatura Portal.
+3. Usa sem modificações o emissor histórico Ed25519 F29, verificador F123, nonce único F124 e reconsulta de contas/campanhas/revisões F180.
+4. Depois do recibo F124 e de eventual alteração concorrente, consulta novamente o leitor F189, compara estritamente seu DTO com F100 e as gerações com as originais. Qualquer revogação, mudança de revisão ou reativação ABA retorna `post_receipt_service_changed` **sem criar arquivo**, mantendo o nonce gasto. Se nada mudou, persiste JSON F100 com os mecanismos de integridade/arquivo exclusivo já existentes e o renderer F63 original pode produzir HTML offline.
+
+O teste real do CI gera **cinco envelopes com o emissor PHP original do Portal**, usando novos nonces. Inicialmente a empresa A original tem `status=inactive`, `link_status=pending`: o primeiro envelope é recusado sem gasto. Somente no próprio banco **fictício** o teste ativa a empresa/link e insere uma evidência `synthetic_ci_only` fresca, demonstrando saída F100 **sem campanhas antigas ressuscitadas**. Esse envelope pode ser usado uma única vez. Outros envelopes são consumidos e **negados para entrega** após cancelamento, sequência serviço pending→active e sequência tenant inactive→active. Uma revisão divergente é recusada antes do nonce; depois de restaurar apenas a fixture, o mesmo envelope ainda não gasto pode ser usado uma vez. O CI gera HTML estático original F63 com esses dados fictícios e anexa artefato GitHub Actions por um dia.
+
+**Limites críticos:** a flag F192 não é habilitação de produção; a empresa/serviço foram ativados apenas artificialmente no CI. A autoridade de sessão F29 permanece caller-constructible/sintética, nonce F124 e versões F191 são SQL local sem WORM/antirollback independente, e até dados assinados não são autorização de anunciante ou serviço cobrado. Um DBA/superusuário ou backup restaurado pode alterar tudo nesse mesmo domínio. Cancelamento após última leitura não é detectado sem uma autoridade operacional externa. Antes de deploy requer IAM Portal, contratos e sessão verificados, consentimento, política de lease/revogação e revisão independente AppSec/DBA.
+
+**P0/HT-R01/SEC-R03/T3 = NO-GO. Sem merge dev/main, VPS, deploy, anúncios, contas reais, cobranças ou despesas.**
