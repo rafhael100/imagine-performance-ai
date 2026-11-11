@@ -1,0 +1,58 @@
+name: Performance F1-153 - consistent creative reviews HTML and CSV
+on:
+  push:
+    branches:
+      - dev/perf-f1-153-offline-preview-csv-parity-2026-11-10
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F153OfflineReviewFixtureFactory.php'
+      - 'src/Domain/Performance/F153OfflinePreviewCsvParity.php'
+      - 'contracts/demo/f55-render-offline-preview.php'
+      - 'contracts/demo/f152-export-creative-reviews.php'
+      - 'bin/lab/f153-verify-offline-reports.php'
+      - 'tests/Standalone/F153OfflinePreviewCsvParityTest.php'
+      - '.github/workflows/perf-f1-153-html-csv-parity-ci.yml'
+permissions:
+  contents: read
+jobs:
+  parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+      PERF_F151_APPROVAL_LAB: '1'
+      PERF_F152_CSV_LAB: '1'
+      PERF_F153_PARITY_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Validate fictional review source and two independent reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F153OfflineReviewFixtureFactory.php
+          php -l src/Domain/Performance/F153OfflinePreviewCsvParity.php
+          php -l contracts/demo/f55-render-offline-preview.php
+          php -l contracts/demo/f152-export-creative-reviews.php
+          php -l bin/lab/f153-verify-offline-reports.php
+          php -l tests/Standalone/F153OfflinePreviewCsvParityTest.php
+          php tests/Standalone/F151CreativeReviewQueueTest.php
+          php tests/Standalone/F152CreativeReviewCsvTest.php
+          php tests/Standalone/F153OfflinePreviewCsvParityTest.php
+      - name: Verify the actual generated HTML and CSV have matching synthetic reviews
+        shell: bash
+        run: |
+          set -euo pipefail
+          php bin/lab/f153-verify-offline-reports.php > "$RUNNER_TEMP/f153-parity.json"
+          test -s "$RUNNER_TEMP/f153-parity.json"
+          php -r '$r=json_decode(file_get_contents($argv[1]),true,32,JSON_THROW_ON_ERROR); if(($r["status"]??null)!=="CONSISTENT_DEMO_ONLY"||($r["count"]??null)!==2||($r["dispatch_enabled"]??null)!==false||($r["billing_enabled"]??null)!==false)exit(3); echo "F153 consistent offline reports: PASS\n";' "$RUNNER_TEMP/f153-parity.json"
+          if grep -R -E 'F153OfflinePreviewCsvParity|PERF_F153_PARITY_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: offline report parity code invoked by product'
+            exit 1
+          fi
