@@ -114,7 +114,7 @@ final class F166Pg16ReadOnlyDashboard
                 'active_review_count'=>count($items),
                 'reviews'=>$items,
                 'review_status_demo'=>$stats,
-                'retired_review_counts_demo'=>$retired,
+                'quarantined_review_counts_demo'=>$retired,
                 'campaign_scope_events_demo'=>$activity,
             ];
         }catch(PDOException $e){
