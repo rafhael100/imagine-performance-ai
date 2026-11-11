@@ -145,7 +145,7 @@ final class F141SignedJournalAuthority
             throw new RuntimeException('F141 missing/incomplete journal: deny all');
         $lines=explode("\n",rtrim($raw,"\n"));
         $epoch=0;$seq=0;$prev=str_repeat('0',64);
-        $seen=[];$operations=[];
+        $seen=[];$operations=[];$bindings=[];
         foreach($lines as $line) {
             try {
                 $entry=json_decode($line,true,512,JSON_THROW_ON_ERROR);
@@ -185,6 +185,10 @@ final class F141SignedJournalAuthority
                     }
                     $seen[$p['fingerprint']]=true;
                     $operations[$p['operation']]=true;
+                    $bindings[$p['operation']]=[
+                        'tenant'=>$p['tenant'],
+                        'fingerprint'=>$p['fingerprint'],
+                    ];
                 } else throw new RuntimeException('unsupported event type');
                 $prev=$digest;++$seq;
             } catch(Throwable $e) {
@@ -193,7 +197,7 @@ final class F141SignedJournalAuthority
         }
         return [
             'epoch'=>$epoch,'events'=>$seq,'head'=>$prev,
-            'seen'=>$seen,'operations'=>$operations,
+            'seen'=>$seen,'operations'=>$operations,'bindings'=>$bindings,
         ];
     }
 }
