@@ -591,7 +591,7 @@ jobs:
         with:
           repository: rafhael100/imagine-portal
           ref: 1427a486434f653e6873ea6f3b37294d781aa316
-          path: portal-f178-candidate
+          path: portal-f176-candidate
           persist-credentials: false
           sparse-checkout: |
             apps/portal/app/Domain/Catalog/PerformanceChannel.php
@@ -648,16 +648,16 @@ jobs:
           PERF_F100_JSON_OUTPUT_FILE: /tmp/perf-f100-unified.json
         run: |
           set -euo pipefail
-          test "$(git -C portal-f178-candidate rev-parse HEAD)" = 1427a486434f653e6873ea6f3b37294d781aa316
+          test "$(git -C portal-f176-candidate rev-parse HEAD)" = 1427a486434f653e6873ea6f3b37294d781aa316
           test -s "$PERF_F100_JSON_OUTPUT_FILE"
-          php -l portal-f178-candidate/apps/portal/tools/f63-render-credential-workbench.php
+          php -l portal-f176-candidate/apps/portal/tools/f63-render-credential-workbench.php
           php -l tests/Standalone/F178RealPortalF63SqlHtmlTest.php
-          (cd portal-f178-candidate && node apps/portal/tests/ui/test-f63-static-credential-workbench.mjs "$PERF_F100_JSON_OUTPUT_FILE")
-          (cd portal-f178-candidate && php apps/portal/tools/f63-render-credential-workbench.php "$PERF_F100_JSON_OUTPUT_FILE") > "$RUNNER_TEMP/f178-portal-f63.html"
+          (cd portal-f176-candidate && node apps/portal/tests/ui/test-f63-static-credential-workbench.mjs "$PERF_F100_JSON_OUTPUT_FILE")
+          (cd portal-f176-candidate && php apps/portal/tools/f63-render-credential-workbench.php "$PERF_F100_JSON_OUTPUT_FILE") > "$RUNNER_TEMP/f178-portal-f63.html"
           test -s "$RUNNER_TEMP/f178-portal-f63.html"
           export PERF_F178_HTML_OUTPUT_FILE="$RUNNER_TEMP/f178-portal-f63.html"
           php tests/Standalone/F178RealPortalF63SqlHtmlTest.php
-          if grep -R -E 'F178RealPortalF63SqlHtmlTest|PERF_F178_REAL_PORTAL_HTML_LAB|portal-f178-candidate' routes/ bootstrap/ app/Providers/; then
+          if grep -R -E 'F178RealPortalF63SqlHtmlTest|PERF_F178_REAL_PORTAL_HTML_LAB|portal-f176-candidate' routes/ bootstrap/ app/Providers/; then
             echo 'FAIL: F178 offline Portal HTML fixture wired to runtime'
             exit 1
           fi
