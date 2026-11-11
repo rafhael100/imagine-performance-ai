@@ -1,0 +1,15 @@
+# FAST-PERF F1-169 — capacidade assinada de leitura para futura integração Portal
+
+**Base F168 / PR #276. DRAFT/NO-GO; somente GitHub Actions PostgreSQL16 descartável.**
+
+A F168 gerou HTML offline a partir de dados SQL reais do CI, mas a interface ainda depende de uma role de banco fictícia. A F169 cria `F169SignedPortalReadGateway`, um **contrato preparatório de autenticação serviço-a-serviço**, que aceita uma solicitação JSON contendo claims e assinatura Ed25519 detached. O consumidor recebe a chave pública **fixada por configuração confiável**, nunca enviada pela própria requisição, e verifica um payload JSON com lista exata de campos, subject/audience/escopo fixos, empresa fictícia permitida, request ID validado e expiração curta (até 60s, emissão recente). Assinatura inválida, scope de Ads, destino externo, token vencido ou campos desconhecidos são recusados antes de ler o banco.
+
+Uma assinatura correta é **necessária, porém não suficiente**: a camada F166 consulta dados em PostgreSQL com `session_user` real da role SQL fictícia A/B e RLS `security_invoker`. Se a empresa assinada não coincide com o tenant da conexão SQL, não retorna dados. Toda resposta tem `read_only=true`, `action_authorized=false`, `can_enable_ads=false`, `can_bill=false` e `ready_for_production=false`. O DTO interno F166 permanece com `iam_verified=false` e `s2s_verified=false`, porque não existe ainda emissor Portal operacional.
+
+O CI gera um par Ed25519 efêmero em memória, testa leitura válida A/B, spoof cross-tenant com assinatura realmente válida, alteração pós-assinatura, chave aleatória, emissor/audience errados, privilégio Ads, expiração/tempo futuro, TTL excessivo, ID malformado, tentativa de enviar public key própria, JSON excessivo/malformado, rotação de chave fixada e ausência de mutação no histórico SQL. A execução inclui todas as regressões F162–F168 e não publica chaves ou assinaturas em provedores externos.
+
+**Limites importantes:** o emissor e o par de chaves são fixtures de laboratório criados pelo próprio teste. Esta assinatura NÃO é sessão de usuário Portal, MFA, service entitlement, consentimento OAuth nem chave emitida por KMS/HSM. O request ID não é persistido como nonce, portanto replays de leitura são possíveis durante o TTL; isso está comprovado no teste e precisa de política real antes de expor dados de clientes. Uma chave comprometida permitiria criar claims e a confiança depende de um canal seguro de provisionamento e revogação do public key. Não existe endpoint HTTP nem middleware real e não foi realizada revisão independente AppSec/DBA.
+
+**P0/HT-R01/SEC-R03/T3 = NO-GO. Sem merge main, VPS, deploy, Ads, cobrança, despesas, contas reais ou dados de clientes.**
+
+Próximo gate operacional: integração com identidade S2S realmente emitida pelo Portal, vínculo de membership/serviço elegível, revogação/rotação confiável, auditoria e nonce fora do domínio do emissor; homologação isolada, revisão independente e autorização explícita de qualquer operação externa.
