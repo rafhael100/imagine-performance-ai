@@ -1038,6 +1038,8 @@ jobs:
           PERF_F92_CREDENTIAL_READER_LAB: '1'
           PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
           PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+          PORTAL_F63_STATIC_HTML_LAB: '1'
         run: |
           set -euo pipefail
           test "$APP_ENV" = testing
