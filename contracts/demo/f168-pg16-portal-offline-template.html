@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
+  <title>Imagine Performance · Painel fictício de revisões</title>
+  <style>
+    :root{color-scheme:light;font:15px/1.5 system-ui,sans-serif;background:#f6f7fb;color:#1b2440}
+    *{box-sizing:border-box}body{max-width:1040px;margin:0 auto;padding:28px 18px}
+    .eyebrow{letter-spacing:.1em;text-transform:uppercase;font-size:11px;font-weight:800;color:#5c6480}
+    h1{font-size:clamp(25px,4vw,37px);line-height:1.2;margin:9px 0 9px}
+    h2{font-size:18px;margin:0 0 15px}p{margin:6px 0 14px}
+    .muted{color:#515b78}.strip{padding:14px 16px;border:1px solid #d4dcea;background:#fff;border-radius:13px;margin:20px 0}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:20px 0}
+    .card,.panel{background:#fff;border:1px solid #d9e0ee;border-radius:14px;padding:18px}
+    .value{font-size:27px;font-weight:800;line-height:1.2;margin:6px 0}.panel{margin:16px 0}
+    .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+    label{font-weight:650;font-size:13px;display:grid;gap:6px}
+    select{background:#fff;border:1px solid #b6c0d6;border-radius:9px;padding:9px 12px;color:inherit}
+    table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #e6eaf2}
+    th{color:#58627b;font-weight:700}.table-wrap{overflow-x:auto}
+    .status{display:inline-block;padding:4px 8px;background:#e9edf9;border-radius:8px;font-size:12px;font-weight:650}
+    .empty{padding:18px;background:#f4f6fa;border-radius:10px}
+    @media(max-width:600px){body{padding:19px 12px}.card,.panel{padding:14px}}
+  </style>
+</head>
+<body>
+  <div class="eyebrow">Imagine Performance AI / Laboratório PostgreSQL16</div>
+  <h1>Revisões de campanhas</h1>
+  <p class="muted">Painel de demonstração somente leitura com dados fictícios de PostgreSQL. Nenhuma campanha real pode ser aprovada ou publicada aqui.</p>
+  <div class="strip" role="note"><strong>Simulação / NÃO É PRODUÇÃO</strong> · Sem autorização humana real, sem conexão com anunciantes, sem cobrança ou disparos automáticos.</div>
+  <div class="grid" aria-label="Resumo fictício">
+    <div class="card"><div class="muted">Revisões visíveis</div><div class="value" id="active-count">–</div><div class="muted">Somente escopo ativo e geração atual</div></div>
+    <div class="card"><div class="muted">Revisões em quarentena</div><div class="value" id="quarantined-count">–</div><div class="muted">Resumo agregado; sem detalhes antigos</div></div>
+    <div class="card"><div class="muted">Pendências fictícias</div><div class="value" id="pending-count">–</div><div class="muted">Não representam SLA contratado</div></div>
+  </div>
+  <section class="panel">
+    <h2>Fila de revisões fictícias</h2>
+    <div class="controls">
+      <label for="filter-channel">Canal
+        <select id="filter-channel">
+          <option value="all">Google Ads e Meta</option>
+          <option value="google_ads">Google Ads</option>
+          <option value="meta">Meta</option>
+        </select>
+      </label>
+      <label for="filter-state">Situação da simulação
+        <select id="filter-state">
+          <option value="all">Todas</option>
+          <option value="pending_demo">Pendente</option>
+          <option value="changes_requested_demo">Ajustes solicitados</option>
+          <option value="approved_mock_only">Aprovada apenas na simulação</option>
+          <option value="rejected_mock_only">Rejeitada apenas na simulação</option>
+        </select>
+      </label>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Revisão</th><th>Campanha fictícia</th><th>Canal</th><th>Situação</th><th>Versão</th></tr></thead>
+        <tbody id="review-rows"></tbody>
+      </table>
+      <p id="review-empty" class="empty" hidden>Nenhuma revisão fictícia corresponde aos filtros.</p>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Histórico agregado de escopo</h2>
+    <p class="muted">Registro de alterações em campanhas fictícias. Não representa consentimento ou autorização comercial.</p>
+    <div id="scope-activity"></div>
+  </section>
+  <script type="application/json" id="f168-snapshot">__F168_SNAPSHOT__</script>
+  <script>
+    (() => {
+      'use strict';
+      const raw=document.getElementById('f168-snapshot').textContent;
+      const data=JSON.parse(raw);
+      const falseKeys=[
+        'iam_verified','s2s_verified','human_approval_verified',
+        'authorization_eligible','contracted','dispatch_enabled',
+        'billing_enabled','ready_for_production','real_metrics_available'
+      ];
+      if(data.schema_version!=='perf.portal.pg16-tenant-review-report.synthetic.v1'
+        ||data.source!=='pg16_security_invoker_ci_only'
+        ||data.read_only!==true
+        ||falseKeys.some(k=>data[k]!==false)
+        ||!Array.isArray(data.reviews)){
+          throw new Error('Contrato fictício inválido; sem renderização.');
+      }
+      const $=id=>document.getElementById(id);
+      const statuses={
+        pending_demo:'Pendente (simulação)',
+        changes_requested_demo:'Ajustes solicitados (simulação)',
+        approved_mock_only:'Aprovada apenas na simulação',
+        rejected_mock_only:'Rejeitada apenas na simulação'
+      };
+      const name=ch=>ch==='google_ads'?'Google Ads':'Meta';
+      const text=(tag,value)=>{const el=document.createElement(tag);el.textContent=String(value);return el;};
+      $('active-count').textContent=String(data.active_review_count);
+      const q=data.quarantined_review_counts_demo;
+      $('quarantined-count').textContent=String((q.google_ads||0)+(q.meta||0));
+      const s=data.review_status_demo;
+      $('pending-count').textContent=String((s.pending_demo||0)+(s.changes_requested_demo||0));
+      const activity=$('scope-activity');
+      const counts=data.campaign_scope_events_demo;
+      const labels={
+        baseline_demo:'Campanhas fictícias no cadastro inicial',
+        registered_demo:'Campanhas fictícias registradas',
+        retired_demo:'Retiradas fictícias',
+        reactivated_demo:'Reativações fictícias'
+      };
+      Object.entries(labels).forEach(([key,label])=>{
+        const p=text('p',label+': '+String(counts[key]||0));
+        activity.append(p);
+      });
+      function render(){
+        const channel=$('filter-channel').value;
+        const state=$('filter-state').value;
+        const target=$('review-rows');
+        target.replaceChildren();
+        const visible=data.reviews.filter(row=>
+          (channel==='all'||row.channel===channel)
+          &&(state==='all'||row.status===state));
+        for(const row of visible){
+          if(row.real_approval!==false||row.action_authorized!==false
+              ||!(row.status in statuses)){
+            throw new Error('Revisão operacional inválida.');
+          }
+          const tr=document.createElement('tr');
+          for(const value of [
+              row.review_ref,row.campaign_ref,name(row.channel),
+              statuses[row.status],row.version
+          ])tr.append(text('td',value));
+          target.append(tr);
+        }
+        $('review-empty').hidden=visible.length!==0;
+      }
+      $('filter-channel').addEventListener('change',render);
+      $('filter-state').addEventListener('change',render);
+      render();
+    })();
+  </script>
+</body>
+</html>
