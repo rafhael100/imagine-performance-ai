@@ -60,6 +60,7 @@ p{margin:0}.muted{color:#6c7791;font-size:13px;line-height:1.6}
 .empty{color:#8995aa;font-size:13px;padding:20px 0}.bottom{margin-top:26px;color:#93a0b5;font-size:11px}
 .hidden{display:none!important}.full{grid-column:1/-1}
 .detail-btn{background:#fff;border:1px solid #dce3f2;color:#4a50a3;border-radius:10px;font-size:12px;font-weight:750;padding:9px 11px;cursor:pointer}
+.review-filter{flex-wrap:wrap;margin:0 0 14px}.review-filter button{font-size:11px;padding:8px 10px}
 #methodology{margin-top:14px}
 @media(max-width:1050px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}}
 @media(max-width:740px){.app{display:block}.side{padding:18px;gap:13px}.side-foot,.side-caption{display:none}.nav{display:flex;flex-wrap:wrap}.nav button{padding:8px 10px;font-size:12px}.main{padding:24px 15px 35px}.metrics{gap:10px}.metric{padding:14px}.metric strong{font-size:25px}.panel{padding:17px}}
@@ -84,7 +85,7 @@ p{margin:0}.muted{color:#6c7791;font-size:13px;line-height:1.6}
  <div class="metrics" id="metrics" aria-live="polite"></div>
  <div class="grid">
   <section id="scope-panel" class="panel"><div class="panel-head"><div><h2>Capacidade sob gestão</h2><p class="muted">Ativas e pausadas ocupam vagas</p></div><button id="method-btn" type="button" class="detail-btn" aria-expanded="false" aria-controls="methodology">Como contar</button></div><div id="channels" class="stack"></div><div id="methodology" class="notice hidden">Uma campanha pausada continua sob gestão até sua retirada formal. Grupos/conjuntos são contados aqui somente como hipótese de demonstração, ainda sujeita a homologação comercial. Substituições ordinárias não geram cobrança automática.</div></section>
-  <section id="approvals-panel" class="panel"><div class="panel-head"><div><h2>Revisões simuladas</h2><p class="muted">Sugestões sem execução</p></div><span class="minor">Somente leitura</span></div><div id="approvals"></div></section>
+  <section id="approvals-panel" class="panel"><div class="panel-head"><div><h2>Revisões simuladas</h2><p class="muted">Sugestões sem execução</p></div><span class="minor">Somente leitura</span></div><div class="seg review-filter" role="group" aria-label="Filtrar revisões fictícias"><button type="button" class="active" data-review-filter="all" aria-pressed="true">Todas</button><button type="button" data-review-filter="pending_demo" aria-pressed="false">Pendentes</button><button type="button" data-review-filter="changes_requested_demo" aria-pressed="false">Ajustes</button><button type="button" data-review-filter="approved_mock_only" aria-pressed="false">Aprovadas (simulação)</button><button type="button" data-review-filter="rejected_mock_only" aria-pressed="false">Rejeitadas (simulação)</button></div><div id="approvals"></div></section>
   <section id="campaigns-panel" class="panel full"><div class="panel-head"><div><h2>Campanhas em demonstração</h2><p class="muted">Nenhum anúncio foi publicado ou alterado</p></div><span class="minor" id="campaign-count"></span></div><div id="campaigns"></div></section>
   <section id="reports-panel" class="panel full"><div class="panel-head"><div><h2>Relatórios e indicadores</h2><p class="muted">Integração externa ainda indisponível</p></div></div><div class="notice">Nenhuma métrica real de impressões, cliques, custo, conversões ou retorno foi consultada. Os relatórios dependem de contratos, autorização, autenticação e validação de dados.</div><div id="attention-cards" class="stack" aria-live="polite" style="margin-top:18px"></div></section>
  </div>
@@ -98,14 +99,14 @@ p{margin:0}.muted{color:#6c7791;font-size:13px;line-height:1.6}
 'use strict';
 const data=JSON.parse(document.getElementById('preview-data').textContent);
 if(data.schema_version!=='perf.portal.scope-preview.synthetic.v1'||data.contracted!==false||data.dispatch_enabled!==false||data.billing_enabled!==false||data.ready_for_production!==false){throw new Error('Contrato de demonstração inválido.');}
-let channel='all',view='overview';
+let channel='all',view='overview',reviewFilter='all';
 const $=id=>document.getElementById(id);
 const el=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=String(value);return n;};
 function relevant(items){return items.filter(x=>channel==='all'||x.channel===channel||x.id===channel);}
 function renderMetrics(){const chosen=relevant(data.channels);const c=chosen.reduce((n,x)=>n+x.campaigns.used,0);const g=chosen.reduce((n,x)=>n+x.groups.used,0);const pending=relevant(data.approvals).length;const values=[['Campanhas sob gestão',c,'Inclui campanhas pausadas'],['Grupos/conjuntos',g,'Contagem ilustrativa'],['Revisões simuladas',pending,'Nenhuma aprovação real'],['Estado comercial','Bloqueado','Sem contrato ou cobrança']];$('metrics').replaceChildren();values.forEach((x,i)=>{const m=el('div','metric'+(i===3?' deny':''));m.append(el('label','',x[0]),el('strong','',x[1]),el('small','',x[2]));$('metrics').append(m);});}
 function renderChannels(){$('channels').replaceChildren();relevant(data.channels).forEach(x=>{const c=el('div','channel-card');const head=el('div','channel-head');head.append(el('span','',x.label),el('span','','Capacidade fictícia'));c.append(head);[['Campanhas',x.campaigns,''],['Grupos/conjuntos',x.groups,'group']].forEach(([label,cap,typ])=>{const line=el('div','bar-label');line.append(el('span','',label),el('span','',cap.used+' de '+cap.limit));const bar=el('div','bar '+typ);const filled=el('span');filled.style.width=(cap.limit===0?0:Math.min(100,100*cap.used/cap.limit))+'%';bar.append(filled);c.append(line,bar);});$('channels').append(c);});}
 function renderCampaigns(){const list=relevant(data.campaigns);$('campaign-count').textContent=list.length+' demonstrações';$('campaigns').replaceChildren();if(!list.length){$('campaigns').append(el('p','empty','Nenhuma campanha neste filtro.'));return;}list.forEach(x=>{const card=el('div','campaign');card.append(el('div','avatar',x.channel==='meta'?'M':'G'));const body=el('div','campaign-body');body.append(el('div','campaign-title',x.title),el('div','campaign-sub',(x.channel==='meta'?'Meta':'Google Ads')+' · '+x.ref+' · sem publicação'));card.append(body);const state=x.state==='paused_demo'?'Pausada (sob gestão)':x.state==='draft_demo'?'Rascunho':'Ativa (simulação)';card.append(el('span','tag '+(x.state==='paused_demo'?'paused':x.state==='draft_demo'?'draft':''),state));$('campaigns').append(card);});}
-function renderApprovals(){$('approvals').replaceChildren();const list=relevant(data.approvals);if(!list.length){$('approvals').append(el('p','empty','Nenhuma revisão simulada no canal.'));return;}list.forEach(x=>{const a=el('div','approval');a.append(el('strong','',x.title),el('p','',x.status));$('approvals').append(a);});}
+function renderApprovals(){$('approvals').replaceChildren();const list=relevant(data.approvals).filter(x=>reviewFilter==='all'||x.state===reviewFilter);if(!list.length){$('approvals').append(el('p','empty','Nenhuma revisão simulada no canal.'));return;}list.forEach(x=>{const a=el('div','approval');a.append(el('strong','',x.title),el('p','',x.status));$('approvals').append(a);});}
 function renderAttention(){
  const target=$('attention-cards');target.replaceChildren();
  const state=data.review_attention;
@@ -134,6 +135,14 @@ function renderView(){const panels={overview:['scope','approvals','campaigns','r
 function render(){renderMetrics();renderChannels();renderCampaigns();renderApprovals();renderAttention();renderView();}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.view;renderView();}));
 document.querySelectorAll('[data-channel]').forEach(b=>b.addEventListener('click',()=>{channel=b.dataset.channel;document.querySelectorAll('[data-channel]').forEach(x=>{const active=x===b;x.classList.toggle('active',active);x.setAttribute('aria-pressed',String(active));});render();}));
+document.querySelectorAll('[data-review-filter]').forEach(b=>b.addEventListener('click',()=>{
+ reviewFilter=b.dataset.reviewFilter;
+ document.querySelectorAll('[data-review-filter]').forEach(x=>{
+   const active=x===b;x.classList.toggle('active',active);
+   x.setAttribute('aria-pressed',String(active));
+ });
+ renderApprovals();
+}));
 $('method-btn').addEventListener('click',()=>{const hidden=$('methodology').classList.toggle('hidden');$('method-btn').setAttribute('aria-expanded',String(!hidden));});
 render();
 </script>
