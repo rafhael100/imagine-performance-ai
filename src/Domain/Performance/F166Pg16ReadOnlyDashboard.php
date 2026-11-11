@@ -38,24 +38,71 @@ final class F166Pg16ReadOnlyDashboard
         $this->tenant=$identity['tenant'];
     }
 
-    /** @return array<string,mixed>|null */
+    /**
+     * CI-only credential-bound read.
+     *
+     * READ COMMITTED is intentional: each later SELECT observes newly
+     * committed campaign retirements and role revocations. A second query
+     * pass refuses internally inconsistent snapshots. This cannot prevent
+     * revocation after the final check and is NOT operational IAM.
+     *
+     * @return array<string,mixed>|null
+     */
     public function read(string $tenant):?array
     {
         if($tenant!==$this->tenant
-            ||!preg_match('/^perf-demo-[a-z0-9-]{1,60}$/D',$tenant))return null;
-        try{
-            $statement=$this->db->prepare('SELECT reference,campaign,channel,title,status,version
-                FROM perf_f162.active_review_dashboard
-                WHERE tenant=? ORDER BY reference COLLATE "C" LIMIT 26');
-            $statement->execute([$tenant]);
-            $reviews=$statement->fetchAll(PDO::FETCH_ASSOC);
+            ||!preg_match('/^perf-demo-[a-z0-9-]{1,60}$/D',$tenant)
+            ||$this->db->inTransaction())return null;
+        try {
+            $this->db->beginTransaction();
+            $this->db->exec(
+                'SET TRANSACTION ISOLATION LEVEL READ COMMITTED, READ ONLY'
+            );
+            $identitySql='SELECT current_database() AS db,
+                session_user AS role_name,
+                perf_f162.tenant_from_session() AS tenant';
+            $identityBefore=$this->db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
+            if(!is_array($identityBefore)
+                ||$identityBefore['db']!=='perf_f162_ci'
+                ||!in_array($identityBefore['role_name'],['perf_f162_a','perf_f162_b'],true)
+                ||$identityBefore['tenant']!==$tenant)return null;
+
+            $readRows=function()use($tenant):array {
+                $stmt=$this->db->prepare(
+                    'SELECT reference,campaign,channel,title,status,version
+                     FROM perf_f162.active_review_dashboard
+                     WHERE tenant=? ORDER BY reference COLLATE "C" LIMIT 26'
+                );
+                $stmt->execute([$tenant]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            };
+            $readRetired=function()use($tenant):array {
+                $stmt=$this->db->prepare(
+                    'SELECT channel,count_retired_demo
+                     FROM perf_f162.retired_review_counts WHERE tenant=?
+                     ORDER BY channel COLLATE "C"'
+                );
+                $stmt->execute([$tenant]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            };
+            $readActivity=function()use($tenant):array {
+                $stmt=$this->db->prepare(
+                    'SELECT event_type,event_count_demo
+                     FROM perf_f162.campaign_scope_activity WHERE tenant=?
+                     ORDER BY event_type COLLATE "C"'
+                );
+                $stmt->execute([$tenant]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            };
+
+            $reviews=$readRows();
             if(count($reviews)>25)return null;
             $stats=[
                 'pending_demo'=>0,'changes_requested_demo'=>0,
                 'approved_mock_only'=>0,'rejected_mock_only'=>0,
             ];
             $seen=[];$items=[];
-            foreach($reviews as $row) {
+            foreach($reviews as $row){
                 if(!is_string($row['reference'])
                     ||!preg_match('/^rev-[a-z0-9-]{1,60}$/D',$row['reference'])
                     ||isset($seen[$row['reference']])
@@ -66,9 +113,9 @@ final class F166Pg16ReadOnlyDashboard
                     ||!is_string($row['title'])||$row['title']===''
                     ||strlen($row['title'])>100
                     ||preg_match('/[<>\x00-\x1f\x7f]/',$row['title'])
-                    ||(int)$row['version']<1 ||(int)$row['version']>1000)return null;
+                    ||(int)$row['version']<1||(int)$row['version']>1000)return null;
                 $seen[$row['reference']]=true;
-                $stats[$row['status']]++;
+                ++$stats[$row['status']];
                 $items[]=[
                     'review_ref'=>$row['reference'],
                     'campaign_ref'=>$row['campaign'],
@@ -79,28 +126,37 @@ final class F166Pg16ReadOnlyDashboard
                     'real_approval'=>false,'action_authorized'=>false,
                 ];
             }
-            $query=$this->db->prepare('SELECT channel,count_retired_demo
-                FROM perf_f162.retired_review_counts WHERE tenant=?');
-            $query->execute([$tenant]);
+
+            $retiredRows=$readRetired();
             $retired=['google_ads'=>0,'meta'=>0];
-            foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row){
+            foreach($retiredRows as $row){
                 if(!isset($retired[$row['channel']]))return null;
                 $retired[$row['channel']]=(int)$row['count_retired_demo'];
-                if($retired[$row['channel']]<0 || $retired[$row['channel']]>25)return null;
+                if($retired[$row['channel']]<0
+                    ||$retired[$row['channel']]>25)return null;
             }
-            $query=$this->db->prepare('SELECT event_type,event_count_demo
-                FROM perf_f162.campaign_scope_activity WHERE tenant=?');
-            $query->execute([$tenant]);
+            $activityRows=$readActivity();
             $activity=[];
-            foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row){
+            foreach($activityRows as $row){
                 if(!in_array($row['event_type'],[
                     'baseline_demo','registered_demo','retired_demo',
                     'reactivated_demo',
-                ],true) || isset($activity[$row['event_type']]))return null;
+                ],true)||isset($activity[$row['event_type']]))return null;
                 $activity[$row['event_type']]=(int)$row['event_count_demo'];
                 if($activity[$row['event_type']]<0
                     ||$activity[$row['event_type']]>2000)return null;
             }
+
+            // F175: fail closed if a committed SQL scope change or review
+            // edit became visible during composition, instead of leaking
+            // titles/versions that were already retired mid-read.
+            if($reviews!==$readRows()
+                ||$retiredRows!==$readRetired()
+                ||$activityRows!==$readActivity())return null;
+            $identityAfter=$this->db->query($identitySql)->fetch(PDO::FETCH_ASSOC);
+            if($identityAfter!==$identityBefore)return null;
+
+            $this->db->commit();
             return [
                 'schema_version'=>'perf.portal.pg16-tenant-review-report.synthetic.v1',
                 'source'=>'pg16_security_invoker_ci_only',
@@ -117,11 +173,16 @@ final class F166Pg16ReadOnlyDashboard
                 'quarantined_review_counts_demo'=>$retired,
                 'campaign_scope_events_demo'=>$activity,
             ];
-        }catch(PDOException $e){
-            if(getenv('PERF_F166_READ_DASHBOARD_LAB')==='1'){
+        }catch(\Throwable $e){
+            // Diagnostics are intentionally limited to SQLSTATE so that
+            // even test logs do not disclose tenant or review content.
+            if($e instanceof PDOException
+                &&getenv('PERF_F166_READ_DASHBOARD_LAB')==='1'){
                 fwrite(STDERR,'F166 query denial SQLSTATE='.$e->getCode()."\n");
             }
             return null;
+        }finally{
+            if($this->db->inTransaction())$this->db->rollBack();
         }
     }
 }
