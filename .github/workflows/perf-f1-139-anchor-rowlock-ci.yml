@@ -1,0 +1,236 @@
+name: Performance F1-139 - anchor row-lock race and fail closed
+on:
+  push:
+    branches:
+      - dev/perf-f1-139-third-anchor-rowlock-race-ci-2026-11-10
+  pull_request:
+    paths:
+      - 'database/lab-migrations/f139_locked_anchor_admission_ci.sql'
+      - 'tests/Standalone/F139AnchorLockRacePgTest.php'
+      - 'database/lab-migrations/f136_witness_atomic_redemption_ci.sql'
+      - 'src/Lab/F136OnlineWitnessRedemption.php'
+      - 'tests/Standalone/F136OnlineWitnessRedemptionPgTest.php'
+      - 'src/Lab/F139LockedAnchorRegistration.php'
+      - '.github/workflows/perf-f1-139-anchor-rowlock-ci.yml'
+permissions:
+  contents: read
+jobs:
+  two-db-epoch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      primary:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f132-admin-only
+          POSTGRES_DB: perf_f132_ci
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f132_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+      witness:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f132-witness-admin-only
+          POSTGRES_DB: perf_f132_witness_ci
+        ports:
+          - '127.0.0.1:5433:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f132_witness_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+      anchor:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f138-admin-only
+          POSTGRES_DB: perf_f138_anchor_ci
+        ports:
+          - '127.0.0.1:5434:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f138_anchor_ci"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F132_LAB: '1'
+      PERF_F134_LAB: '1'
+      PERF_F136_LAB: '1'
+      PERF_F137_LAB: '1'
+      PERF_F138_LAB: '1'
+      PERF_F139_LAB: '1'
+      PGHOST: '127.0.0.1'
+      PGPORT: '5432'
+      PGDATABASE: perf_f132_ci
+      PGUSER: postgres
+      PGPASSWORD: ci-f132-admin-only
+      WITNESS_DB: perf_f132_witness_ci
+      WITNESS_PASSWORD: ci-f132-witness-admin-only
+      PERF_F131_PRIMARY_PASSWORD: ci-f131-primary-only
+      PERF_F131_WITNESS_PASSWORD: ci-f131-witness-only
+      PERF_F132_PRIMARY_PASSWORD: ci-f132-primary-only
+      PERF_F132_WITNESS_PASSWORD: ci-f132-witness-only
+      PERF_F134_PRIMARY_PASSWORD: ci-f134-primary-only
+      PERF_F134_WITNESS_PASSWORD: ci-f134-witness-only
+      PERF_F136_PRIMARY_PASSWORD: ci-f136-primary-only
+      PERF_F136_ISSUER_PASSWORD: ci-f136-issuer-only
+      PERF_F136_REDEEMER_PASSWORD: ci-f136-redeemer-only
+      ANCHOR_DB: perf_f138_anchor_ci
+      ANCHOR_PASSWORD: ci-f138-admin-only
+      PERF_F138_ANCHOR_READER_PASSWORD: ci-f138-reader-only
+      PERF_F138_PRIMARY_PASSWORD: ci-f138-primary-only
+      PERF_F139_PRIMARY_PASSWORD: ci-f139-primary-only
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install disposable PHP 8.4 pgsql runtime
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo,pdo_pgsql
+      - name: Lint, regression and runtime isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Lab/F132EpochFencedRegistration.php
+          php -l tests/Standalone/F132EpochRestoreFencePgTest.php
+          php tests/Standalone/F127AmbiguousWitnessQuarantineTest.php
+          php tests/Standalone/F128SyntheticWitnessReconciliationTest.php
+          if grep -R -E 'F132EpochFencedRegistration|perf_f132_primary|perf_f132_witness' routes/ app/ bootstrap/; then
+            echo 'FAIL F132 lab leaked into runtime'
+            exit 1
+          fi
+      - name: Create ephemeral primary schema and fenced role
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F132_LAB" = 1
+          test "$PGDATABASE" = perf_f132_ci
+          pg_isready -h 127.0.0.1 -p 5432 -d perf_f132_ci -U postgres
+          PGPASSWORD="$WITNESS_PASSWORD" pg_isready -h 127.0.0.1 -p 5433 -d perf_f132_witness_ci -U postgres
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f129_writer LOGIN PASSWORD 'ci-f129-writer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f129_failure_simulator LOGIN PASSWORD 'ci-f129-sim-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f131_primary_bridge LOGIN PASSWORD 'ci-f131-primary-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f132_primary_bridge LOGIN PASSWORD 'ci-f132-primary-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f129_disposable_quarantine_journal.sql
+          psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f131_cutover_primary_bridge_ci.sql
+          psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f132_primary_generation_gate_ci.sql
+      - name: Create ephemeral witness schema and epoch floor role
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f130_writer LOGIN PASSWORD 'ci-f130-writer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f131_witness_bridge LOGIN PASSWORD 'ci-f131-witness-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f132_witness_bridge LOGIN PASSWORD 'ci-f132-witness-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f130_disposable_external_witness.sql
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f131_cutover_witness_bridge_ci.sql
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f132_witness_epoch_floor_ci.sql
+      - name: Generate random CI-only HMAC key without printing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$(openssl rand -hex 32)"
+          echo "::add-mask::$key"
+          echo "PERF_F134_CI_KEY=$key" >> "$GITHUB_ENV"
+      - name: Apply restricted SQL issuer and verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F134_LAB" = 1
+          test "$PGDATABASE" = perf_f132_ci
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f134_primary_bridge LOGIN PASSWORD 'ci-f134-primary-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE perf_f134_witness_bridge LOGIN PASSWORD 'ci-f134-witness-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPASSWORD="$WITNESS_PASSWORD" PGPORT=5433 PGDATABASE="$WITNESS_DB" \
+            psql -X -v ON_ERROR_STOP=1 -v ci_key="$PERF_F134_CI_KEY" \
+            -f database/lab-migrations/f134_witness_signed_permit_ci.sql
+          psql -X -v ON_ERROR_STOP=1 -v ci_key="$PERF_F134_CI_KEY" \
+            -f database/lab-migrations/f134_primary_verified_permit_ci.sql
+      - name: Create disposable F136 issuer, redeemer and primary bridge roles
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F136_LAB" = 1
+          test "$PGDATABASE" = perf_f132_ci
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE perf_f136_issuer LOGIN PASSWORD 'ci-f136-issuer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" psql -X -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE perf_f136_redeemer LOGIN PASSWORD 'ci-f136-redeemer-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE perf_f136_primary_bridge LOGIN PASSWORD 'ci-f136-primary-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+      - name: Apply witness irreversible redemption and primary FDW function
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPORT=5433 PGDATABASE="$WITNESS_DB" PGPASSWORD="$WITNESS_PASSWORD" \
+            psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f136_witness_atomic_redemption_ci.sql
+          psql -X -v ON_ERROR_STOP=1 -v redeemer_password="$PERF_F136_REDEEMER_PASSWORD" \
+            -f database/lab-migrations/f136_primary_fdw_redemption_ci.sql
+          php -l src/Lab/F136OnlineWitnessRedemption.php
+          php -l tests/Standalone/F136OnlineWitnessRedemptionPgTest.php
+          if grep -R -E 'F136OnlineWitnessRedemption|perf_f136_witness|perf_f136_primary' routes/ app/ bootstrap/; then
+            echo 'FAIL F136 lab wired into production routing'
+            exit 1
+          fi
+      - name: Initialize third CI-only epoch authority and primary FDW gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F138_LAB" = 1
+          test "$PGDATABASE" = perf_f132_ci
+          test "$ANCHOR_DB" = perf_f138_anchor_ci
+          PGPASSWORD="$ANCHOR_PASSWORD" pg_isready -h 127.0.0.1 -p 5434 -d "$ANCHOR_DB" -U postgres
+          PGPORT=5434 PGDATABASE="$ANCHOR_DB" PGPASSWORD="$ANCHOR_PASSWORD" \
+            psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_f138_anchor_reader LOGIN PASSWORD 'ci-f138-reader-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5434 PGDATABASE="$ANCHOR_DB" PGPASSWORD="$ANCHOR_PASSWORD" \
+            psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f138_third_anchor_epoch_ci.sql
+          psql -X -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE perf_f138_primary_bridge LOGIN PASSWORD 'ci-f138-primary-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -v anchor_reader_password="$PERF_F138_ANCHOR_READER_PASSWORD" \
+            -f database/lab-migrations/f138_primary_third_anchor_gate_ci.sql
+          php -l src/Lab/F138ThirdAnchorRegistration.php
+          php -l tests/Standalone/F138ThirdAnchorRollbackPgTest.php
+          if grep -R -E 'F138ThirdAnchorRegistration|perf_f138_anchor|perf_f138_primary' routes/ app/ bootstrap/; then
+            echo 'FAIL: F138 CI-only gate referenced by product runtime'
+            exit 1
+          fi
+      - name: Install CI-only row-lock SQL and cut the former direct bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F139_LAB" = 1
+          test "$PGDATABASE" = perf_f132_ci
+          test "$ANCHOR_DB" = perf_f138_anchor_ci
+          psql -X -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE perf_f139_primary_bridge LOGIN PASSWORD 'ci-f139-primary-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f139_locked_anchor_admission_ci.sql
+          php -l src/Lab/F139LockedAnchorRegistration.php
+          php -l tests/Standalone/F139AnchorLockRacePgTest.php
+          if grep -R -E 'F139LockedAnchorRegistration|perf_f139_primary|PERF_F139_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: F139 locked-anchor lab exposed in production routing'
+            exit 1
+          fi
+      - name: Validate normal registration and deprecated SQL paths denied
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F139AnchorLockRacePgTest.php seed
+      - name: Lock anchor row across primary transaction and race with floor advancement
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F139AnchorLockRacePgTest.php race
