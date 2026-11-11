@@ -65,6 +65,9 @@ if($phase==='seed'){
   'F138 legacy SQL principal loses direct admission access');
  $check($expectDenied(static fn()=>$p->query('SELECT * FROM perf_f138_primary.external_epoch')),
   'F139 bridge may not bypass secure SQL by reading remote foreign table');
+ $check($expectDenied(static fn()=>$a->exec(
+  'UPDATE perf_f138_anchor.epoch_floor SET singleton=singleton WHERE singleton=1')),
+  'anchor reader with row-mark privilege still cannot mutate the authority');
  $check($sut->register('bad','tenant_demo_A',$fingerprint('x'))['status']==='invalid_inputs',
   'bad operation rejected without spending witness nonce');
  $check($primaryCount()===0 && $witnessCount()===0,'bad inputs leave both journals unchanged');
