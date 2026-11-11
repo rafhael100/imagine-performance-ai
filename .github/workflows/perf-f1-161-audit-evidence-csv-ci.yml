@@ -1,0 +1,46 @@
+name: Performance F1-161 - export consistent fictional audit CSV
+on:
+  push:
+    branches:
+      - dev/perf-f1-161-safe-audit-evidence-csv-ci-2026-11-11
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F161SyntheticAuditCsvExporter.php'
+      - 'tests/Standalone/F161SyntheticAuditCsvTest.php'
+      - '.github/workflows/perf-f1-161-audit-evidence-csv-ci.yml'
+permissions:
+  contents: read
+jobs:
+  safe-audit-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F157_SQLITE_LAB: '1'
+      PERF_F158_RACE_LAB: '1'
+      PERF_F159_PAGING_LAB: '1'
+      PERF_F160_AUDIT_LAB: '1'
+      PERF_F161_AUDIT_CSV_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, sqlite3
+          coverage: none
+      - name: Verify consistent-only audit CSV and database tampering failures
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F161SyntheticAuditCsvExporter.php
+          php -l tests/Standalone/F161SyntheticAuditCsvTest.php
+          php tests/Standalone/F157SqliteReviewStoreTest.php
+          php tests/Standalone/F158ConcurrentSqliteReviewTest.php
+          php tests/Standalone/F159SqliteReviewPagerTest.php
+          php tests/Standalone/F160SqliteReviewAuditReaderTest.php
+          php tests/Standalone/F161SyntheticAuditCsvTest.php
+          if grep -R -E 'F161SyntheticAuditCsvExporter|PERF_F161_AUDIT_CSV_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: audit CSV prototype exposed by app'
+            exit 1
+          fi
