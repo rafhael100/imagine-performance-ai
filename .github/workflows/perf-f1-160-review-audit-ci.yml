@@ -1,0 +1,44 @@
+name: Performance F1-160 - SQLite fictional review audit integrity
+on:
+  push:
+    branches:
+      - dev/perf-f1-160-sqlite-review-audit-integrity-2026-11-11
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F160SyntheticSqliteAuditReader.php'
+      - 'tests/Standalone/F160SqliteReviewAuditReaderTest.php'
+      - '.github/workflows/perf-f1-160-review-audit-ci.yml'
+permissions:
+  contents: read
+jobs:
+  read-only-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F157_SQLITE_LAB: '1'
+      PERF_F158_RACE_LAB: '1'
+      PERF_F159_PAGING_LAB: '1'
+      PERF_F160_AUDIT_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, sqlite3
+          coverage: none
+      - name: Verify synthetic SQLite audit transitions and fail-closed tampering
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F160SyntheticSqliteAuditReader.php
+          php -l tests/Standalone/F160SqliteReviewAuditReaderTest.php
+          php tests/Standalone/F157SqliteReviewStoreTest.php
+          php tests/Standalone/F158ConcurrentSqliteReviewTest.php
+          php tests/Standalone/F159SqliteReviewPagerTest.php
+          php tests/Standalone/F160SqliteReviewAuditReaderTest.php
+          if grep -R -E 'F160SyntheticSqliteAuditReader|PERF_F160_AUDIT_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: CI-only SQLite audit exposed to application'
+            exit 1
+          fi
