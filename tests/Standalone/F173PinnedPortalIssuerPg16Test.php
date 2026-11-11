@@ -27,7 +27,7 @@ if(PHP_SAPI!=='cli'||getenv('APP_ENV')!=='testing'
  ||!extension_loaded('sodium')||!extension_loaded('pdo_pgsql')){
  throw new RuntimeException('F173 only runs against local CI PostgreSQL16');
 }
-$temp=realpath((string)getenv('RUNNER_TEMP'));
+$temp=realpath(sys_get_temp_dir());
 $packetPath=realpath((string)getenv('PERF_F173_SIGNED_PACKET_FILE'));
 $publicPath=realpath((string)getenv('PERF_F173_SIGNED_PUBLIC_FILE'));
 if($temp===false||$packetPath===false||$publicPath===false
