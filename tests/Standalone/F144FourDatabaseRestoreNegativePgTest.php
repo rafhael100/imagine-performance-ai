@@ -131,7 +131,7 @@ if($phase==='seed'){
  $check($journal->inspect()['epoch']===9,
    'signed file remains at9 outside the four SQL backups');
  $check($bridge->register('operation_1442','tenant_demo_B',$fp('B'))['status']
-   ==='sql_epoch_mismatch','guarded gateway blocks B while 4 SQL floors old');
+   ==='journal_epoch_mismatch','guarded gateway blocks B because un-restored signed journal retains epoch9');
 
  // This is a LAB-ADMIN reset only, not a recovery protocol.
  $oa->query('SELECT perf_f143_oracle.advance_floor(9)')->fetchColumn();
