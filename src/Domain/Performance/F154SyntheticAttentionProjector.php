@@ -26,6 +26,7 @@ final class F154SyntheticAttentionProjector
             ||($scope['source']??null)!=='in_memory_fixture_only'
             ||($reviews['source']??null)!=='in_memory_fixture_only'
             ||!self::denied($scope)||!self::denied($reviews)
+            ||($reviews['human_approval_verified']??null)!==false
             ||!is_array($scope['channels']??null)
             ||count($scope['channels'])!==2
             ||!is_array($reviews['reviews']??null)
