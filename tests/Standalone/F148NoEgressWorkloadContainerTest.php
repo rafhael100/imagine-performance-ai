@@ -199,6 +199,37 @@ $check($run($reqB,[
 $check($run($reqB)['status']==='synthetic_noop_recorded',
  'valid B works only in credential-free container with private network disabled');
 
+// F149: rotate the independent workload key: old signed workload identities
+// must stop working, while the terminal F146 grant remains unchanged.
+$e=$grant('operation_1485','tenant_demo_A',$fingerprint('E'));
+$oldWorkload=$workload($e);
+$rotatedKeyPair=sodium_crypto_sign_keypair();
+$rotatedPublic=base64_encode(sodium_crypto_sign_publickey($rotatedKeyPair));
+$rotatedPrivate=sodium_crypto_sign_secretkey($rotatedKeyPair);
+$deniedAfterRotation=$run(
+ ['grant'=>$e,'workload'=>$oldWorkload,'fault'=>'none'],
+ ['F148_WORKLOAD_PUBLIC'=>$rotatedPublic]
+);
+$check($deniedAfterRotation['status']==='workload_signature_denied',
+ 'rotating trusted workload key invalidates prior identity');
+$newClaims=$oldWorkload;
+unset($newClaims['signature']);
+$newClaims['issued_at']=time();
+$newClaims['signature']=base64_encode(sodium_crypto_sign_detached(
+ json_encode($newClaims,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),
+ $rotatedPrivate
+));
+$check($run(
+ ['grant'=>$e,'workload'=>$newClaims,'fault'=>'none'],
+ ['F148_WORKLOAD_PUBLIC'=>$rotatedPublic]
+)['status']==='synthetic_noop_recorded',
+ 'new workload key can use still-valid terminal grant exactly once');
+$check($run(
+ ['grant'=>$e,'workload'=>$oldWorkload,'fault'=>'none'],
+ ['F148_WORKLOAD_PUBLIC'=>$rotatedPublic]
+)['status']==='workload_signature_denied',
+ 'old key stays revoked even after new identity executes');
+
 $c=$grant('operation_1483','tenant_demo_A',$fingerprint('C'));
 $reqC=['grant'=>$c,'workload'=>$workload($c),'fault'=>'ack_lost'];
 $check($run($reqC)['status']==='in_doubt_quarantined',
@@ -213,8 +244,8 @@ $journalFile=$hostSandbox.'/f148-executor/receipt-log.jsonl';
 $incidentFile=$hostSandbox.'/f148-executor/sticky-quarantine.json';
 $check(is_file($incidentFile)&&is_file($journalFile),
  'sticky incident and receipts survived container recreation');
-$check(substr_count((string)file_get_contents($journalFile),"\n")===4,
- 'only A/B/C records, no repeats or D');
+$check(substr_count((string)file_get_contents($journalFile),"\n")===5,
+ 'only A/B/E/C records, no repeats or D');
 $check($run($reqD)['action_authorized']===false,
  'quarantine and all positive flows never grant real media authorization');
 
