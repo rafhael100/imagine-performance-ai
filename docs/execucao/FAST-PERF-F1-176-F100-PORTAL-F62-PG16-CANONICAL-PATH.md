@@ -1,0 +1,13 @@
+# FAST-PERF F1-176 — contrato canônico F100 → Portal F62 com PostgreSQL real de laboratório
+
+**Base F175/PR #283. PR draft; somente runner PostgreSQL16 temporário, Laravel sem endpoint.**
+
+F174 provou um falso caminho de integração: o novo leitor de revisões F166 retorna `perf.portal.pg16-tenant-review-report.synthetic.v1`, que o consumidor F62 do Portal rejeita corretamente. **Não é necessário criar adaptador artificial F166→F62 nem simular vínculos de contas**. O repositório Performance já possui F100 `CredentialBoundDemoWorkbenchReader`, que projeta contas, campanhas e revisões de três views PostgreSQL/RLS ligadas a um login SQL e exporta o contrato `perf.portal.credential-bound-workbench.synthetic.v1`.
+
+F176 reutiliza o **próprio workflow histórico de migrações e testes F100** para obter `/tmp/perf-f100-unified.json` diretamente do PostgreSQL16 temporário. Faz checkout **somente de arquivos PHP do Portal** em `rafhael100/imagine-portal`, commit pinado `1427a486434f653e6873ea6f3b37294d781aa316` (candidata PR #356 da inspeção), e executa **o teste F62 original** com o DTO SQL F100 como argumento. Também executa `F176CurrentPortalF62ContractTest.php`, que invoca a classe Portal F62 verdadeira, verifica contas/vínculos e status de revisão SQL e submete alterações adversariais: credencial falsa, autorização Ads/billing indevida, conta ausente, campanha fora de vínculo, review órfão, status de aprovação real, marcação falsa de `journaled`, token adicionado, domínio de canal divergente e versão F166. Tudo deve ser recusado sem converter nem inventar dados.
+
+**Decisão de integração:** F100 → F62 já é o caminho SQL-backed **compatível no laboratório**; F166 permanece um relatório especializado de revisão por gerações, não um substituto para contas/vínculos F100. O contrato F100 **não contém uma identidade Portal/autorização de usuário**, e F62 é apenas um consumidor de dados fictícios. A assinatura original F29 e o pin do emissor Portal histórico permanecem problemas separados do DTO de leitura e NÃO são ativados por este teste.
+
+**Limitações:** o checkout usa o SHA pinado da candidata, não um watcher automático de HEAD nem uma versão implantada. Banco e dados são ficcionais, e `credential_binding_confirmed=true` prova somente `session_user` PostgreSQL, nunca serviço contratado, sessão/MFA real, anunciante verificado ou humano aprovador. Nenhum OAuth, anúncio, pagamento, rota HTTP, S2S real, antirollback offsite, backup operacional ou deploy. O workflow antigo inclui `composer audit`; alertas de dependências não serão omitidos para fingir prontidão.
+
+**P0/HT-R01/SEC-R03/T3 continuam NO-GO; nenhum merge dev/main, VPS, Ads, cobrança, clientes ou novas despesas.**
