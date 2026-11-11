@@ -180,6 +180,29 @@ final class CredentialBoundDemoWorkbenchReader
                 $seenRequests[$r['request_ref']]=true;
             }
 
+            // F177: F100 assembles three separately snapshotted READ
+            // COMMITTED views. A campaign may change or be revoked after the
+            // first campaign SELECT but before review composition; the old
+            // checks only compared SQL login identity. Re-run the exact
+            // credential-bound component readers while still READ ONLY.
+            // Any visible account/campaign/review mutation must deny the
+            // whole mixed workbench instead of exposing stale associations.
+            $againAccounts=(new CredentialBoundDemoAccountReader())->read($db);
+            $againCampaigns=(new CredentialBoundDemoCampaignReader())->read($db);
+            $againReviews=(new CredentialBoundDemoReviewReader())->read($db);
+            if(($againAccounts['status']??null)!=='credential_scoped_demo_preview_only'
+                ||($againCampaigns['status']??null)!=='credential_scoped_demo_preview_only'
+                ||($againReviews['status']??null)!=='credential_scoped_demo_review_preview_only'
+                ||($againAccounts['credential_binding_confirmed']??null)!==true
+                ||($againCampaigns['credential_binding_confirmed']??null)!==true
+                ||($againReviews['credential_binding_confirmed']??null)!==true
+                ||($againAccounts['accounts']??null)!==$accounts['accounts']
+                ||($againCampaigns['campaigns']??null)!==$campaigns['campaigns']
+                ||($againReviews['reviews']??null)!==$reviews['reviews']) {
+                $db->rollBack();
+                return self::denied('components_changed_during_composition');
+            }
+
             $verify=$db->query($identityQuery)->fetch(PDO::FETCH_ASSOC);
             if(!is_array($verify)
                 || $verify['dbname']!==$identity['dbname']
