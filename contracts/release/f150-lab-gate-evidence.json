@@ -1,0 +1,67 @@
+{
+  "schema_version": "perf.release-evidence.synthetic.v1",
+  "environment": "testing",
+  "requested_action": "read_only_report",
+  "gates": [
+    {
+      "id": "portal_iam_tenant_mfa",
+      "state": "pending_external",
+      "evidence": "No production Portal session/MFA/tenant authority"
+    },
+    {
+      "id": "portal_s2s_workload",
+      "state": "pending_external",
+      "evidence": "Workload key in CI is ephemeral; no Portal S2S"
+    },
+    {
+      "id": "appsec_independent",
+      "state": "pending_external",
+      "evidence": "Independent AppSec evidence not provided"
+    },
+    {
+      "id": "dba_rls_independent",
+      "state": "pending_external",
+      "evidence": "Independent operational DBA/RLS review not provided"
+    },
+    {
+      "id": "external_antirollback",
+      "state": "blocked",
+      "evidence": "All CI journal and DB stores share disaster domain"
+    },
+    {
+      "id": "offline_executor_isolation",
+      "state": "lab_passed",
+      "evidence": "Synthetic Docker no-network proof F148/F149 only"
+    },
+    {
+      "id": "oauth_google_meta_consent",
+      "state": "not_started",
+      "evidence": "Real provider OAuth and advertiser consent unavailable"
+    },
+    {
+      "id": "human_ads_budget_approval",
+      "state": "pending_external",
+      "evidence": "Human limits and real approval gates unverified"
+    },
+    {
+      "id": "billing_and_idempotency",
+      "state": "blocked",
+      "evidence": "No production billing or vendor idempotency validation"
+    },
+    {
+      "id": "vps_uat_backup_restore",
+      "state": "blocked",
+      "evidence": "No approved real VPS UAT or backup/restore evidence"
+    },
+    {
+      "id": "change_control_main",
+      "state": "pending_external",
+      "evidence": "Main protection and independent approval not verified"
+    },
+    {
+      "id": "incident_reconciliation",
+      "state": "pending_external",
+      "evidence": "In-doubt no-retry tested only in synthetic CI"
+    }
+  ]
+}
