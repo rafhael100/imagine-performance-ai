@@ -1,0 +1,61 @@
+name: Performance F1-155 - offline creative review status filters
+on:
+  push:
+    branches:
+      - dev/perf-f1-155-offline-review-status-filter-2026-11-10
+  pull_request:
+    paths:
+      - 'contracts/demo/performance-scope-preview-v1.html'
+      - 'contracts/demo/f55-render-offline-preview.php'
+      - 'tests/Standalone/F155OfflineReviewStatusFilterTest.php'
+      - '.github/workflows/perf-f1-155-review-status-filter-ci.yml'
+permissions:
+  contents: read
+jobs:
+  read-only-filter:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+      PERF_F151_APPROVAL_LAB: '1'
+      PERF_F152_CSV_LAB: '1'
+      PERF_F153_PARITY_LAB: '1'
+      PERF_F154_ATTENTION_LAB: '1'
+      PERF_F155_FILTER_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Validate queue, CSV, parity, attention and offline state filters
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/demo/f55-render-offline-preview.php
+          php -l tests/Standalone/F155OfflineReviewStatusFilterTest.php
+          php tests/Standalone/F151CreativeReviewQueueTest.php
+          php tests/Standalone/F152CreativeReviewCsvTest.php
+          php tests/Standalone/F153OfflinePreviewCsvParityTest.php
+          php tests/Standalone/F154AttentionPanelTest.php
+          php tests/Standalone/F155OfflineReviewStatusFilterTest.php
+      - name: Check offline review filters JavaScript syntax without browser network
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path('contracts/demo/performance-scope-preview-v1.html').read_text()
+          scripts = re.findall(r'<script>([\s\S]*?)</script>', text)
+          assert len(scripts) == 1
+          Path('/tmp/perf-f155-offline-ui.js').write_text(scripts[0])
+          PY
+          node --check /tmp/perf-f155-offline-ui.js
+          if grep -R -E 'PERF_F155_FILTER_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: F155 synthetic UI wired to production runtime'
+            exit 1
+          fi
