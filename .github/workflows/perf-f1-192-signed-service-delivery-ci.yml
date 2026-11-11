@@ -1,0 +1,1072 @@
+name: Performance F1-192 - original signed Portal delivery requires eligible service and monotonic epoch
+
+on:
+  push:
+    branches:
+      - dev/perf-f1-192-signed-delivery-service-epoch-gate-2026-11-11
+  pull_request:
+    paths:
+      - 'tests/Standalone/F176CurrentPortalF62ContractTest.php'
+      - 'tests/Standalone/F177F100MultiViewConsistencyRaceTest.php'
+      - 'tests/Standalone/F178RealPortalF63SqlHtmlTest.php'
+      - 'tests/Standalone/F179SignedPortalToF63CanonicalE2ETest.php'
+      - 'contracts/lab/php/SyntheticPostReceiptF100Delivery.php'
+      - 'tests/Standalone/F180PostReceiptSnapshotDeliveryTest.php'
+      - 'contracts/lab/php/SyntheticF181BoundPortalHtml.php'
+      - 'tests/Standalone/F181BoundPortalHtmlIntegrityTest.php'
+      - 'tests/Standalone/F182TwoTenantPortalHtmlTest.php'
+      - 'database/f184-lab-migrations/2026_11_11_000001_filter_unmanaged_credential_views.php'
+      - 'tests/Standalone/F184UnmanagedCampaignViewsPgTest.php'
+      - 'database/f185-lab-migrations/2026_11_11_000001_fence_campaign_management_epochs.php'
+      - 'tests/Standalone/F185ManagementEpochReactivationPgTest.php'
+      - 'database/f186-lab-migrations/2026_11_11_000001_fence_scope_writes_and_audit.php'
+      - 'tests/Standalone/F186ScopeWriteAndAuditPgTest.php'
+      - 'tests/Standalone/F188PortalAfterReactivationPrivacyTest.php'
+      - 'database/f189-lab-migrations/2026_11_11_000001_login_service_status_probe.php'
+      - 'app/Performance/ReadSide/CredentialBoundDemoServiceStatusFence.php'
+      - 'tests/Standalone/F189CredentialServiceStatusFencePgTest.php'
+      - 'tests/Standalone/F190ConcurrentServiceRevocationPgTest.php'
+      - 'database/f191-lab-migrations/2026_11_11_000001_tenant_service_aba_epochs.php'
+      - 'app/Performance/ReadSide/CredentialBoundDemoServiceStatusFence.php'
+      - 'tests/Standalone/F191ServiceAbaEpochPgTest.php'
+      - 'contracts/lab/php/SyntheticPostReceiptF100Delivery.php'
+      - 'tests/Standalone/F192SignedServiceEpochDeliveryTest.php'
+      - '.github/workflows/perf-f1-192-signed-service-delivery-ci.yml'
+      - '.github/workflows/perf-f1-191-service-aba-epoch-ci.yml'
+      - '.github/workflows/perf-f1-190-service-revocation-race-ci.yml'
+      - '.github/workflows/perf-f1-189-service-status-fence-ci.yml'
+      - '.github/workflows/perf-f1-188-post-reactivation-portal-ci.yml'
+      - '.github/workflows/perf-f1-186-epoch-write-audit-ci.yml'
+      - '.github/workflows/perf-f1-185-reactivation-epoch-ci.yml'
+      - '.github/workflows/perf-f1-184-managed-visibility-pg-ci.yml'
+      - '.github/workflows/perf-f1-182-two-tenant-portal-html-ci.yml'
+      - '.github/workflows/perf-f1-181-integrity-bound-f63-ci.yml'
+      - '.github/workflows/perf-f1-180-post-receipt-f100-delivery-ci.yml'
+      - '.github/workflows/perf-f1-179-signed-portal-f63-e2e-ci.yml'
+      - '.github/workflows/perf-f1-178-portal-f63-real-pg-html-ci.yml'
+      - 'app/Performance/ReadSide/CredentialBoundDemoWorkbenchReader.php'
+      - '.github/workflows/perf-f1-177-f100-multiview-consistency-ci.yml'
+      - '.github/workflows/perf-f1-176-real-f100-current-portal-ci.yml'
+      - 'docs/execucao/FAST-PERF-F1-176-F100-PORTAL-F62-PG16-CANONICAL-PATH.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-f1192-signed-service-delivery-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  disposable-campaign-storage:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-f22-db-only
+          POSTGRES_DB: perf_test_campaign_registry
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_test_campaign_registry"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: perf_test_campaign_registry
+      DB_USERNAME: postgres
+      DB_PASSWORD: ci-f22-db-only
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_test_campaign_registry
+      PGUSER: postgres
+      PGPASSWORD: ci-f22-db-only
+      RUN_PERF_F22_PG_LAB: '1'
+      LOG_CHANNEL: stderr
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: PHP 8.4, Composer locked dependencies and PostgreSQL
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo,pdo_pgsql,mbstring,dom,xml,curl,fileinfo,intl,bcmath,zip,sodium
+      - name: Validate migrations, deny deployment wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000005_create_performance_campaigns_and_intents.php
+          php -l database/migrations/2026_11_09_000006_enable_campaign_intent_rls.php
+          php -l contracts/lab/php/test-campaign-intents-pg.php
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres -d perf_test_campaign_registry
+          if grep -R -E 'performance_campaign_intents|performance_managed_campaigns' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL test-only persistence wired into operational route/provider/bootstrap'
+            exit 1
+          fi
+      - name: Install exact Composer.lock with no scripts/plugins
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer validate --strict --no-check-publish
+          composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
+          composer dump-autoload --no-interaction --no-scripts --no-plugins
+          cp .env.example .env
+          php artisan key:generate --force --no-interaction
+          git diff --exit-code -- composer.lock
+      - name: Apply Laravel migrations only to disposable perf_test_campaign_registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$DB_DATABASE" = perf_test_campaign_registry
+          php artisan migrate --force --no-interaction
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "CREATE ROLE perf_campaign_test_user LOGIN PASSWORD 'ci-f22-role-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_campaign_test_user"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT USAGE ON SCHEMA public TO perf_campaign_test_user"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT,INSERT,UPDATE,DELETE ON performance_managed_campaigns, performance_campaign_intents TO perf_campaign_test_user"
+      - name: Test tenant isolation, SQL constraints and disabled Ads dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-campaign-intents-pg.php
+      - name: Create least-privilege F23 ledger role only on disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/SyntheticCampaignApprovalLedger.php
+          php -l contracts/lab/php/test-campaign-approval-ledger-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "CREATE ROLE perf_f23_writer LOGIN PASSWORD 'ci-f23-ledger-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT USAGE ON SCHEMA public TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT ON performance_managed_campaigns, operational_memberships TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT,INSERT,UPDATE ON performance_campaign_intents TO perf_f23_writer"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT,INSERT ON audit_events TO perf_f23_writer"
+      - name: Run 56 atomic proposal, independent review, rollback and audit checks
+        shell: bash
+        env:
+          PERF_F23_LEDGER_LAB: '1'
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-campaign-approval-ledger-pg.php
+          if grep -R 'SyntheticCampaignApprovalLedger' app/ routes/ bootstrap/; then
+            echo 'FAIL F23 laboratory ledger accidentally wired into operational Laravel'
+            exit 1
+          fi
+      - name: Create SELECT-only F24 projection role under tenant RLS
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/SyntheticCampaignPortalProjection.php
+          php -l contracts/lab/php/test-campaign-portal-projection-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "CREATE ROLE perf_f24_reader LOGIN PASSWORD 'ci-f24-read-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f24_reader"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT USAGE ON SCHEMA public TO perf_f24_reader"
+          psql -X -v ON_ERROR_STOP=1 -d perf_test_campaign_registry -c \
+            "GRANT SELECT ON performance_managed_campaigns,performance_campaign_intents TO perf_f24_reader"
+      - name: Verify 50 synthetic Portal read-model privacy and fail-closed checks
+        shell: bash
+        env:
+          PERF_F24_READ_MODEL_LAB: '1'
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-campaign-portal-projection-pg.php
+          if grep -R 'SyntheticCampaignPortalProjection' app/ routes/ bootstrap/; then
+            echo 'FAIL: offline projection wired to operational web/API'
+            exit 1
+          fi
+      - name: Export the real synthetic SQL snapshot and assert byte-identical pinned JSON
+        shell: bash
+        env:
+          PERF_F24_READ_MODEL_LAB: '1'
+          PERF_F25_EXPORT_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l tools/export-performance-pg-preview-demo.php
+          php tools/export-performance-pg-preview-demo.php > "$RUNNER_TEMP/performance-storage-preview-v1.json"
+          test -s "$RUNNER_TEMP/performance-storage-preview-v1.json"
+          diff -u contracts/demo/performance-storage-preview-v1.json "$RUNNER_TEMP/performance-storage-preview-v1.json"
+          sha256sum contracts/demo/performance-storage-preview-v1.json
+          echo 'PASS F1-25 PostgreSQL rows match versioned JSON fixture byte-for-byte'
+      - name: Verify PostgreSQL approval integrity guard under direct SQL tampering
+        shell: bash
+        env:
+          PERF_F26_INTEGRITY_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000007_guard_campaign_intent_row_integrity.php
+          php -l contracts/lab/php/test-intent-transition-guard-pg.php
+          php contracts/lab/php/test-intent-transition-guard-pg.php
+          test "$(psql -X -A -t -d "$PGDATABASE" -c "SELECT count(*) FROM pg_trigger WHERE tgname='perf_f26_intent_row_guard' AND tgenabled='O'")" = 1
+          if grep -R -E 'perf_f26_guard_intent_row|test-intent-transition-guard-pg' app/ routes/ bootstrap/; then
+            echo 'FAIL: integrity lab referenced in operational Laravel route/provider'
+            exit 1
+          fi
+      - name: Grant isolated SELECT-only journal reader and validate SQL trigger syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000008_create_intent_review_journal_pg.php
+          php -l contracts/lab/php/test-intent-review-journal-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "CREATE ROLE perf_f27_journal_reader LOGIN PASSWORD 'ci-f27-reader-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f27_journal_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT USAGE ON SCHEMA public TO perf_f27_journal_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT SELECT ON performance_intent_review_journal TO perf_f27_journal_reader"
+      - name: Verify 50 synthetic RLS-journal and transactional rollback assertions
+        shell: bash
+        env:
+          PERF_F27_JOURNAL_LAB: '1'
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-intent-review-journal-pg.php
+          if grep -R -E 'perf_f27_capture_review_transition|perf_f27_journal_reader' app/ routes/ bootstrap/; then
+            echo 'FAIL F27 triggered audit SQL referenced in active product code'
+            exit 1
+          fi
+      - name: Create SELECT-only internal Laravel F28 workbench role
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/Performance/ReadSide/SyntheticWorkbenchScope.php
+          php -l app/Performance/ReadSide/SyntheticCampaignWorkbenchReader.php
+          php -l contracts/lab/php/test-laravel-campaign-workbench-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "CREATE ROLE perf_f28_app_reader LOGIN PASSWORD 'ci-f28-app-read-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f28_app_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT USAGE ON SCHEMA public TO perf_f28_app_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c \
+            "GRANT SELECT ON portal_service_links,performance_managed_campaigns,performance_campaign_intents,performance_intent_review_journal TO perf_f28_app_reader"
+      - name: Run 50 actual Laravel application-class read-model/tenant safety checks
+        shell: bash
+        env:
+          PERF_F28_APP_READ_LAB: '1'
+        run: |
+          set -euo pipefail
+          php contracts/lab/php/test-laravel-campaign-workbench-pg.php
+          if grep -R 'SyntheticCampaignWorkbenchReader' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F28 read-side accidentally registered in runtime routing/provider'
+            exit 1
+          fi
+      - name: F84 project actual F28 PostgreSQL read-model into safe Portal candidate
+        shell: bash
+        env:
+          PERF_F28_APP_READ_LAB: '1'
+          PERF_F84_WORKBENCH_LAB: '1'
+          PERF_F84_OUTPUT_FILE: ${{ runner.temp }}/perf-f84-output.json
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Contracts/PortalPerformanceChannelContract.php
+          php -l app/Performance/Contracts/PortalWorkbenchOfflineProjection.php
+          php -l contracts/lab/php/test-f84-portal-projection-pg.php
+          php contracts/lab/php/test-f84-portal-projection-pg.php
+          if grep -R -n -E 'PortalWorkbenchOfflineProjection|PERF_F84_WORKBENCH_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F84 offline projection referenced in operational routing/providers'
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: a8783d0009b60b6865135269a8a63ce60094c530
+          path: pinned-portal
+          persist-credentials: false
+          sparse-checkout: |
+            apps/portal/app/Domain/Catalog/PerformanceChannel.php
+            apps/portal/app/Domain/Organizations/OrganizationId.php
+            apps/portal/app/Domain/PerformanceOnboarding/DemoOnboardingId.php
+            apps/portal/app/Domain/PerformanceOnboarding/DemoPerformanceEvent.php
+            apps/portal/app/Domain/PerformanceOnboarding/DemoAdAccount.php
+            apps/portal/app/Domain/PerformanceDashboard/PerformanceCampaignObservationState.php
+            apps/portal/app/Domain/PerformanceDashboard/PerformanceReviewObservationState.php
+            apps/portal/app/Domain/PerformanceDashboard/OfflinePerformanceWorkbenchPreview.php
+            apps/portal/tests/Unit/PerformanceObservationStateContractStandalone.php
+            apps/portal/tests/Unit/OfflinePerformanceWorkbenchPreviewStandalone.php
+            apps/portal/tools/f60-render-performance-workbench.php
+            apps/portal/tests/ui/test-f60-static-workbench.mjs
+            apps/portal/tests/Fixtures/performance-workbench-offline-v1.json
+      - name: F82-F86 SQL-backed Portal contract and HTML end-to-end
+        shell: bash
+        env:
+          PORTAL_PERFORMANCE_ENUM_PATH: pinned-portal/apps/portal/app/Domain/Catalog/PerformanceChannel.php
+          PORTAL_CHECKOUT_ROOT: pinned-portal
+          PORTAL_F59_WORKBENCH_LAB: '1'
+          PORTAL_F60_HTML_LAB: '1'
+        run: |
+          set -euo pipefail
+          php tests/Unit/PortalPerformanceChannelContractStandalone.php
+          php tests/Unit/PortalOnboardingEventContractStandalone.php
+          test -s "$RUNNER_TEMP/perf-f84-output.json"
+          php pinned-portal/apps/portal/tests/Unit/PerformanceObservationStateContractStandalone.php
+          php pinned-portal/apps/portal/tests/Unit/OfflinePerformanceWorkbenchPreviewStandalone.php "$RUNNER_TEMP/perf-f84-output.json"
+          ( cd pinned-portal && node apps/portal/tests/ui/test-f60-static-workbench.mjs "$RUNNER_TEMP/perf-f84-output.json" )
+
+      - name: F88 real PostgreSQL tenant-bound ad account candidate registry
+        shell: bash
+        env:
+          PERF_F88_AD_ACCOUNT_PG_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000009_create_performance_ad_account_candidates.php
+          php -l contracts/lab/php/test-f88-ad-account-candidates-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "CREATE ROLE perf_f88_registrar LOGIN PASSWORD 'ci-f88-registrar-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f88_registrar"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT USAGE ON SCHEMA public TO perf_f88_registrar"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT SELECT,INSERT ON performance_ad_account_candidates TO perf_f88_registrar"
+          php contracts/lab/php/test-f88-ad-account-candidates-pg.php
+          if grep -R -n -E 'performance_ad_account_candidates|PERF_F88_AD_ACCOUNT_PG_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F88 ad-account enrollment exposed to HTTP runtime'
+            exit 1
+          fi
+
+      - name: F89 strict tenant/service/channel FK in real PostgreSQL RLS
+        shell: bash
+        env:
+          PERF_F89_ACCOUNT_LINK_PG_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000010_create_performance_campaign_account_links.php
+          php -l contracts/lab/php/test-f89-campaign-account-links-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "CREATE ROLE perf_f89_link_registrar LOGIN PASSWORD 'ci-f89-link-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f89_link_registrar"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT USAGE ON SCHEMA public TO perf_f89_link_registrar"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT SELECT,INSERT ON performance_campaign_account_links TO perf_f89_link_registrar"
+          php contracts/lab/php/test-f89-campaign-account-links-pg.php
+          if grep -R -n -E 'performance_campaign_account_links|PERF_F89_ACCOUNT_LINK_PG_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F89 account-campaign links used by operational HTTP'
+            exit 1
+          fi
+
+      - name: F90 SQL RLS -> actual Portal DemoAdAccount PHP under read-only role
+        shell: bash
+        env:
+          PERF_F90_REAL_PORTAL_ACCOUNT_PG_LAB: '1'
+          PORTAL_CHECKOUT_ROOT: pinned-portal
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/test-f90-portal-demo-ad-account-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "CREATE ROLE perf_f90_projection_reader LOGIN PASSWORD 'ci-f90-reader-only' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f90_projection_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT USAGE ON SCHEMA public TO perf_f90_projection_reader"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT SELECT ON performance_campaign_account_links,performance_ad_account_candidates,performance_managed_campaigns TO perf_f90_projection_reader"
+          php contracts/lab/php/test-f90-portal-demo-ad-account-pg.php
+          if grep -R -n 'test-f90-portal-demo-ad-account-pg' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F90 regression: test-only Portal account comparison wired into routing'
+            exit 1
+          fi
+
+      - name: F91 authenticated DB principal tenant scope, GUC spoof and revocation
+        shell: bash
+        env:
+          PERF_F91_DB_PRINCIPAL_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_09_000011_create_principal_bound_demo_account_read.php
+          php -l contracts/lab/php/test-f91-db-principal-tenant-view-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "CREATE ROLE perf_f91_reader_a LOGIN PASSWORD 'ci-f91-only-a' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "CREATE ROLE perf_f91_reader_b LOGIN PASSWORD 'ci-f91-only-b' NOSUPERUSER NOCREATEDB NOCREATEROLE"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT CONNECT ON DATABASE perf_test_campaign_registry TO perf_f91_reader_a, perf_f91_reader_b"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT USAGE ON SCHEMA public TO perf_f91_reader_a, perf_f91_reader_b"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT SELECT ON public.perf_f91_demo_account_read TO perf_f91_reader_a, perf_f91_reader_b"
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT EXECUTE ON FUNCTION public.perf_f91_tenant_for_login() TO perf_f91_reader_a, perf_f91_reader_b"
+          php contracts/lab/php/test-f91-db-principal-tenant-view-pg.php
+          if grep -R -n -E 'perf_f91_tenant_for_login|PERF_F91_DB_PRINCIPAL_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F91 credential-bound lab view wired into operational runtime'
+            exit 1
+          fi
+
+      - name: F92 Laravel-ready VIEW reader vs real Portal DemoAdAccount
+        shell: bash
+        env:
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PORTAL_CHECKOUT_ROOT: pinned-portal
+        run: |
+          set -euo pipefail
+          php -l app/Performance/ReadSide/CredentialBoundDemoAccountReader.php
+          php -l contracts/lab/php/test-f92-credential-bound-account-reader-pg.php
+          php contracts/lab/php/test-f92-credential-bound-account-reader-pg.php
+          if grep -R -n -E 'CredentialBoundDemoAccountReader|PERF_F92_CREDENTIAL_READER_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F92 credential reader is test-only and cannot be routed publicly'
+            exit 1
+          fi
+
+      - name: F93 login-bound DEMO campaign-account VIEW against tenant GUC spoof
+        shell: bash
+        env:
+          PERF_F93_LOGIN_CAMPAIGN_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_10_000001_create_credential_bound_campaign_account_read.php
+          php -l contracts/lab/php/test-f93-credential-bound-campaign-links-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT SELECT ON public.perf_f93_demo_campaign_account_read TO perf_f91_reader_a,perf_f91_reader_b"
+          php contracts/lab/php/test-f93-credential-bound-campaign-links-pg.php
+          if grep -R -n -E 'perf_f93_demo_campaign_account_read|PERF_F93_LOGIN_CAMPAIGN_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F93 lab view registered in public Laravel runtime'
+            exit 1
+          fi
+
+      - name: F94 Laravel campaign reader vs real Portal campaign observation enum
+        shell: bash
+        env:
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PORTAL_CHECKOUT_ROOT: pinned-portal
+        run: |
+          set -euo pipefail
+          php -l app/Performance/ReadSide/CredentialBoundDemoCampaignReader.php
+          php -l contracts/lab/php/test-f94-credential-bound-laravel-campaign-pg.php
+          php contracts/lab/php/test-f94-credential-bound-laravel-campaign-pg.php
+          if grep -R -n -E 'CredentialBoundDemoCampaignReader|PERF_F94_CREDENTIAL_CAMPAIGN_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F94 test-only reader is referenced by operational HTTP'
+            exit 1
+          fi
+
+      - name: F95 reproduce known caller-controlled GUC exposure and preserve NO-GO
+        shell: bash
+        env:
+          PERF_F95_LEGACY_GUC_RISK_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/test-f95-legacy-guc-risk-pg.php
+          jq -e '.schema_version == "perf.security.legacy-guc-risk.lab.v1"
+            and .risk_state == "open_no_go"
+            and .legacy_guc_spoof_reproduced == true
+            and .direct_sql_client_access_allowed == false
+            and .release_allowed == false
+            and .production_evidence == false' contracts/lab/ci/performance-legacy-guc-risk-v1.json
+          php contracts/lab/php/test-f95-legacy-guc-risk-pg.php
+          if grep -R -n -E 'PERF_F95_LEGACY_GUC_RISK_LAB|test-f95-legacy-guc-risk' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F95 vulnerability regression test referenced by runtime'
+            exit 1
+          fi
+
+      - name: F96 revoke one legacy direct-SQL role, keep login-bound read path
+        shell: bash
+        env:
+          PERF_F96_GRANT_REVOCATION_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/test-f96-revoke-legacy-direct-grants-pg.php
+          php contracts/lab/php/test-f96-revoke-legacy-direct-grants-pg.php
+          if grep -R -n -E 'PERF_F96_GRANT_REVOCATION_LAB|test-f96-revoke-legacy-direct-grants' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F96 lab-only grant reconciliation invoked from runtime routes'
+            exit 1
+          fi
+
+      - name: F97 PostgreSQL login-bound review VIEW against spoof and rogue F27 journal
+        shell: bash
+        env:
+          PERF_F97_LOGIN_REVIEW_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l database/migrations/2026_11_10_000002_create_login_bound_demo_review_read.php
+          php -l contracts/lab/php/test-f97-login-review-journal-pg.php
+          psql -X -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "GRANT SELECT ON public.perf_f97_demo_review_read TO perf_f91_reader_a,perf_f91_reader_b"
+          php contracts/lab/php/test-f97-login-review-journal-pg.php
+          if grep -R -n -E 'perf_f97_demo_review_read|PERF_F97_LOGIN_REVIEW_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F97 mock review view wired into operational Laravel runtime'
+            exit 1
+          fi
+
+      - name: F98 Laravel review reader against pinned real Portal observation enums
+        shell: bash
+        env:
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PORTAL_CHECKOUT_ROOT: pinned-portal
+        run: |
+          set -euo pipefail
+          php -l app/Performance/ReadSide/CredentialBoundDemoReviewReader.php
+          php -l contracts/lab/php/test-f98-credential-review-laravel-pg.php
+          php contracts/lab/php/test-f98-credential-review-laravel-pg.php
+          if grep -R -n -E 'CredentialBoundDemoReviewReader|PERF_F98_CREDENTIAL_REVIEW_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F98 lab-only reader wired into public runtime'
+            exit 1
+          fi
+
+      - name: F99 catalog inventory and revoke all known legacy CI direct-table grants
+        shell: bash
+        env:
+          PERF_F99_ROLE_GRANTS_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/test-f99-inventory-revoke-legacy-role-grants-pg.php
+          php contracts/lab/php/test-f99-inventory-revoke-legacy-role-grants-pg.php
+          if grep -R -n -E 'PERF_F99_ROLE_GRANTS_LAB|test-f99-inventory-revoke-legacy-role-grants' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F99 CI-only SQL grant audit wired into application routes'
+            exit 1
+          fi
+
+      - name: F100 compose scoped accounts campaigns reviews after F99 legacy revocation
+        shell: bash
+        env:
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F100_JSON_OUTPUT_FILE: /tmp/perf-f100-unified.json
+        run: |
+          set -euo pipefail
+          php -l app/Performance/ReadSide/CredentialBoundDemoWorkbenchReader.php
+          php -l contracts/lab/php/test-f100-credential-workbench-composition-pg.php
+          php contracts/lab/php/test-f100-credential-workbench-composition-pg.php
+          test -s "$PERF_F100_JSON_OUTPUT_FILE"
+          jq -e '.schema_version == "perf.portal.credential-bound-workbench.synthetic.v1"
+            and .status == "credential_scoped_demo_workbench_only"
+            and .portal_identity_authenticated == false
+            and .dispatch_enabled == false
+            and .billing_enabled == false
+            and .counts.account_candidates == 2
+            and .counts.linked_campaigns == 1
+            and .counts.visible_reviews == 1' "$PERF_F100_JSON_OUTPUT_FILE"
+          if grep -R -n -E 'CredentialBoundDemoWorkbenchReader|PERF_F100_CREDENTIAL_WORKBENCH_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F100 credential-bound offline reader wired into live runtime'
+            exit 1
+          fi
+
+      - name: No public Laravel endpoints, plugins, or deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          php vendor/bin/phpunit --filter NoPublicEndpointsTest --no-progress
+          git diff --exit-code -- composer.lock bootstrap/app.php app/ routes/
+
+      - name: Regress safety contracts F74-F79 together with migrated Laravel PostgreSQL
+        shell: bash
+        env:
+          PERF_F75_SIGNED_WITNESS_LAB: '1'
+          PERF_F76_RECONCILIATION_LAB: '1'
+          PERF_F77_INCIDENT_LAB: '1'
+          PERF_F78_HTML_PREVIEW_LAB: '1'
+          PERF_F79_RELEASE_AUDIT_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$DB_DATABASE" = perf_test_campaign_registry
+          php -l src/Domain/Performance/SyntheticRecoveryAdmissionPolicy.php
+          php -l src/Domain/Performance/SyntheticSignedRecoveryWitness.php
+          php -l src/Domain/Performance/SyntheticOfflineProviderReconciler.php
+          php -l src/Domain/Performance/SyntheticRecoveryIncidentReadModel.php
+          php -l src/Domain/Performance/SyntheticReleaseNoGoAuditor.php
+          php tests/Unit/SyntheticRecoveryAdmissionPolicyStandalone.php
+          php tests/Unit/SyntheticSignedRecoveryWitnessStandalone.php
+          php tests/Unit/SyntheticOfflineProviderReconcilerStandalone.php
+          php tests/Unit/SyntheticRecoveryIncidentReadModelStandalone.php
+          php tests/Unit/SyntheticReleaseNoGoAuditorStandalone.php
+          node tests/ui/test-f78-offline-incident-ui.mjs
+          set +e
+          php contracts/lab/php/f79-release-no-go-audit.php > "$RUNNER_TEMP/f80-release-blocked.json"
+          gate_code=$?
+          set -e
+          test "$gate_code" -eq 3
+          jq -e '.decision == "BLOCKED_AS_EXPECTED_NO_GO"
+            and .eligible_to_dispatch == false
+            and .eligible_to_bill == false
+            and .eligible_to_deploy == false
+            and .eligible_to_merge_main == false' "$RUNNER_TEMP/f80-release-blocked.json"
+          php vendor/bin/phpunit --filter NoPublicEndpointsTest --no-progress
+          test "$(php artisan route:list --json | jq length)" -eq 0
+          if grep -R -n -E 'SyntheticSignedRecoveryWitness|SyntheticOfflineProviderReconciler|SyntheticRecoveryIncidentReadModel|SyntheticReleaseNoGoAuditor' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL F80 mocked recovery or mock provider logic registered for web runtime'
+            exit 1
+          fi
+          echo 'PASS F80: real disposable migrations, SQL/RLS checks and NO-GO held together'
+
+      - name: Audit locked Composer dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer audit --no-interaction
+          git diff --exit-code -- composer.lock bootstrap/app.php
+
+      - name: F1-81 read-only VPS diagnostics script (runner rehearsal only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n ops/homologacao/preflight-host-readonly.sh
+          bash -n ops/homologacao/test-preflight-host-readonly.sh
+          bash ops/homologacao/test-preflight-host-readonly.sh
+      - name: Pin CURRENT Portal F62 consumer at inspected PR356 candidate SHA
+        uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 1427a486434f653e6873ea6f3b37294d781aa316
+          path: portal-f176-candidate
+          persist-credentials: false
+          sparse-checkout: |
+            apps/portal/app/Domain/Catalog/PerformanceChannel.php
+            apps/portal/app/Domain/PerformanceDashboard/PerformanceCampaignObservationState.php
+            apps/portal/app/Domain/PerformanceDashboard/PerformanceReviewObservationState.php
+            apps/portal/app/Domain/PerformanceDashboard/CredentialBoundPerformanceWorkbenchPreview.php
+            apps/portal/tests/Unit/CredentialBoundPerformanceWorkbenchPreviewStandalone.php
+            apps/portal/tools/f63-render-credential-workbench.php
+            apps/portal/tests/ui/test-f63-static-credential-workbench.mjs
+      - name: Execute original Portal F62 on ACTUAL F100 SQL-backed JSON with no conversion
+        shell: bash
+        env:
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F176_F100_PORTAL_CONTRACT_LAB: '1'
+          PERF_F100_JSON_OUTPUT_FILE: /tmp/perf-f100-unified.json
+        run: |
+          set -euo pipefail
+          test "$(git -C portal-f176-candidate rev-parse HEAD)" = 1427a486434f653e6873ea6f3b37294d781aa316
+          test -s "$PERF_F100_JSON_OUTPUT_FILE"
+          php -l tests/Standalone/F176CurrentPortalF62ContractTest.php
+          php -l portal-f176-candidate/apps/portal/app/Domain/PerformanceDashboard/CredentialBoundPerformanceWorkbenchPreview.php
+          php portal-f176-candidate/apps/portal/tests/Unit/CredentialBoundPerformanceWorkbenchPreviewStandalone.php "$PERF_F100_JSON_OUTPUT_FILE"
+          php tests/Standalone/F176CurrentPortalF62ContractTest.php
+          if grep -R -E 'F176CurrentPortalF62ContractTest|PERF_F176_F100_PORTAL_CONTRACT_LAB|portal-f176-candidate' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F176 cross-repo test attached to production route'
+            exit 1
+          fi
+      - name: Concurrent actual F100 lifecycle change must abort multi-view read
+        shell: bash
+        env:
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F177_F100_READ_COHERENCE_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l app/Performance/ReadSide/CredentialBoundDemoWorkbenchReader.php
+          php -l tests/Standalone/F177F100MultiViewConsistencyRaceTest.php
+          php tests/Standalone/F177F100MultiViewConsistencyRaceTest.php
+          if grep -R -E 'PERF_F177_F100_READ_COHERENCE_LAB|F177F100MultiViewConsistencyRaceTest' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F177 racing fixture exposed to operational runtime'
+            exit 1
+          fi
+      - name: Render CURRENT original Portal F63 HTML using exact F100 PostgreSQL JSON
+        shell: bash
+        env:
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+          PORTAL_F63_STATIC_HTML_LAB: '1'
+          PERF_F178_REAL_PORTAL_HTML_LAB: '1'
+          PERF_F100_JSON_OUTPUT_FILE: /tmp/perf-f100-unified.json
+        run: |
+          set -euo pipefail
+          test "$(git -C portal-f176-candidate rev-parse HEAD)" = 1427a486434f653e6873ea6f3b37294d781aa316
+          test -s "$PERF_F100_JSON_OUTPUT_FILE"
+          php -l portal-f176-candidate/apps/portal/tools/f63-render-credential-workbench.php
+          php -l tests/Standalone/F178RealPortalF63SqlHtmlTest.php
+          (cd portal-f176-candidate && node apps/portal/tests/ui/test-f63-static-credential-workbench.mjs "$PERF_F100_JSON_OUTPUT_FILE")
+          (cd portal-f176-candidate && php apps/portal/tools/f63-render-credential-workbench.php "$PERF_F100_JSON_OUTPUT_FILE") > "$RUNNER_TEMP/f178-portal-f63.html"
+          test -s "$RUNNER_TEMP/f178-portal-f63.html"
+          export PERF_F178_HTML_OUTPUT_FILE="$RUNNER_TEMP/f178-portal-f63.html"
+          php tests/Standalone/F178RealPortalF63SqlHtmlTest.php
+          if grep -R -E 'F178RealPortalF63SqlHtmlTest|PERF_F178_REAL_PORTAL_HTML_LAB|portal-f176-candidate' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F178 offline Portal HTML fixture wired to runtime'
+            exit 1
+          fi
+      - name: Pin preexisting ORIGINAL Imagine Portal capability issuer for F29
+        uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 739465b5cc5022aae85385e360e1b4b19ab033cd
+          path: portal-f179-signer
+          persist-credentials: false
+          sparse-checkout: |
+            apps/portal/app/Domain/PerformanceBridge/SyntheticCapabilityIssuer.php
+            apps/portal/preview/tests/emit_perf_capability.php
+      - name: Gate FULL original Portal F29/F123/F124 signed SQL read before Portal F62/F63
+        shell: bash
+        env:
+          PORTAL_PERF_SIGNED_LAB: '1'
+          PERF_F29_SIGNED_PORTAL_LAB: '1'
+          PERF_F123_SIGNED_SQL_WORKBENCH_LAB: '1'
+          PERF_F124_SIGNED_NONCE_LAB: '1'
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F179_CANONICAL_PORTAL_CHAIN_LAB: '1'
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+          PORTAL_F63_STATIC_HTML_LAB: '1'
+          PERF_F100_JSON_OUTPUT_FILE: /tmp/perf-f100-unified.json
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          test "$(git -C portal-f179-signer rev-parse HEAD)" = 739465b5cc5022aae85385e360e1b4b19ab033cd
+          php -l contracts/lab/php/SyntheticDurableSignedSqlPreviewBridge.php
+          php -l contracts/lab/php/SyntheticSignedPortalNonceFence.php
+          php -l database/f124-replay-lab-migrations/2026_11_10_000009_create_signed_portal_receipt_ledger.php
+          php -l portal-f179-signer/apps/portal/preview/tests/emit_perf_capability.php
+          php -l tests/Standalone/F179SignedPortalToF63CanonicalE2ETest.php
+          php artisan migrate --path=database/f124-replay-lab-migrations --force --no-interaction
+          temporary="$(mktemp -d /tmp/perf-f179-XXXXXX)"
+          trap 'rm -rf "$temporary"' EXIT
+          export PERF_F179_SIGNED_PUBLIC_FILE="$temporary/portal-pub.hex"
+          export PERF_F179_SIGNED_PACKET_FILE="$temporary/portal-signed.json"
+          export PERF_F179_AUTHORIZED_DTO_FILE="$RUNNER_TEMP/f179-signed-f100.json"
+          test ! -e "$PERF_F179_AUTHORIZED_DTO_FILE"
+          php portal-f179-signer/apps/portal/preview/tests/emit_perf_capability.php "$PERF_F179_SIGNED_PUBLIC_FILE" "$(date +%s)" > "$PERF_F179_SIGNED_PACKET_FILE"
+          test "$(wc -c < "$PERF_F179_SIGNED_PUBLIC_FILE")" -eq 64
+          test -s "$PERF_F179_SIGNED_PACKET_FILE"
+          php tests/Standalone/F179SignedPortalToF63CanonicalE2ETest.php
+          test -s "$PERF_F179_AUTHORIZED_DTO_FILE"
+          (cd portal-f176-candidate && php apps/portal/tools/f63-render-credential-workbench.php "$PERF_F179_AUTHORIZED_DTO_FILE") > "$RUNNER_TEMP/f179-portal-f63.html"
+          test -s "$RUNNER_TEMP/f179-portal-f63.html"
+          cmp "$RUNNER_TEMP/f178-portal-f63.html" "$RUNNER_TEMP/f179-portal-f63.html"
+          echo 'F179 PASS: signed original Portal F29/F124 gate -> identical F100/F62/F63 safe HTML'
+          if grep -R -E 'PERF_F179_CANONICAL_PORTAL_CHAIN_LAB|F179SignedPortalToF63CanonicalE2ETest|portal-f179-signer' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: signed test signer or receipt exposed to live Laravel'
+            exit 1
+          fi
+      - name: Verify revocation and campaign edits AFTER original Portal F124 nonce deny stale HTML
+        shell: bash
+        env:
+          PORTAL_PERF_SIGNED_LAB: '1'
+          PERF_F29_SIGNED_PORTAL_LAB: '1'
+          PERF_F123_SIGNED_SQL_WORKBENCH_LAB: '1'
+          PERF_F124_SIGNED_NONCE_LAB: '1'
+          PERF_F124_SQL_DIAGNOSTICS_LAB: '1'
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F180_POST_RECEIPT_LAB: '1'
+          PERF_F180_RACE_INJECTION_LAB: '1'
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+          PORTAL_F63_STATIC_HTML_LAB: '1'
+          PERF_F100_JSON_OUTPUT_FILE: /tmp/perf-f100-unified.json
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l contracts/lab/php/SyntheticPostReceiptF100Delivery.php
+          php -l tests/Standalone/F180PostReceiptSnapshotDeliveryTest.php
+          temporary="$(mktemp -d /tmp/perf-f180-XXXXXX)"
+          trap 'rm -rf "$temporary"' EXIT
+          for i in 1 2 3 4; do
+            export "PERF_F180_PUBLIC_$i=$temporary/f180-$i-pub.hex"
+            export "PERF_F180_PACKET_$i=$temporary/f180-$i-signed.json"
+            php portal-f179-signer/apps/portal/preview/tests/emit_perf_capability.php "$temporary/f180-$i-pub.hex" "$(date +%s)" > "$temporary/f180-$i-signed.json"
+            test "$(wc -c < "$temporary/f180-$i-pub.hex")" -eq 64
+            test -s "$temporary/f180-$i-signed.json"
+          done
+          test ! -e "$RUNNER_TEMP/f180-valid.json"
+          php tests/Standalone/F180PostReceiptSnapshotDeliveryTest.php
+          test -s "$RUNNER_TEMP/f180-valid.json"
+          (cd portal-f176-candidate && php apps/portal/tools/f63-render-credential-workbench.php "$RUNNER_TEMP/f180-valid.json") > "$RUNNER_TEMP/f180-portal-f63.html"
+          cmp "$RUNNER_TEMP/f179-portal-f63.html" "$RUNNER_TEMP/f180-portal-f63.html"
+          echo 'F180 PASS: fresh AFTER-receipt F100 JSON renders byte-identical offline Portal F63'
+          if grep -R -E 'PERF_F180_POST_RECEIPT_LAB|SyntheticPostReceiptF100Delivery|F180PostReceiptSnapshotDeliveryTest' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: synthetic F180 delivery exposed to runtime'
+            exit 1
+          fi
+      - name: Prove original Portal F63 renders only F180 checksum-bound synthetic JSON
+        shell: bash
+        env:
+          PORTAL_PERF_SIGNED_LAB: '1'
+          PERF_F29_SIGNED_PORTAL_LAB: '1'
+          PERF_F123_SIGNED_SQL_WORKBENCH_LAB: '1'
+          PERF_F124_SIGNED_NONCE_LAB: '1'
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F180_POST_RECEIPT_LAB: '1'
+          PERF_F181_BOUND_HTML_LAB: '1'
+          PERF_F181_RACE_INJECTION_LAB: '1'
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+          PORTAL_F63_STATIC_HTML_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l contracts/lab/php/SyntheticF181BoundPortalHtml.php
+          php -l tests/Standalone/F181BoundPortalHtmlIntegrityTest.php
+          temporary="$(mktemp -d /tmp/perf-f181-XXXXXX)"
+          trap 'rm -rf "$temporary"' EXIT
+          export PERF_F181_SIGNER_PUBLIC_FILE="$temporary/original-portal-public.hex"
+          export PERF_F181_SIGNER_PACKET_FILE="$temporary/original-portal-signed.json"
+          php portal-f179-signer/apps/portal/preview/tests/emit_perf_capability.php "$PERF_F181_SIGNER_PUBLIC_FILE" "$(date +%s)" > "$PERF_F181_SIGNER_PACKET_FILE"
+          test "$(wc -c < "$PERF_F181_SIGNER_PUBLIC_FILE")" -eq 64
+          test -s "$PERF_F181_SIGNER_PACKET_FILE"
+          php tests/Standalone/F181BoundPortalHtmlIntegrityTest.php
+          cmp "$RUNNER_TEMP/f181-bound-preview.html" "$RUNNER_TEMP/f180-portal-f63.html"
+          grep -q 'DEMONSTRAÇÃO NÃO HOMOLOGADA' "$RUNNER_TEMP/f181-bound-preview.html"
+          if grep -R -E 'PERF_F181_BOUND_HTML_LAB|SyntheticF181BoundPortalHtml|F181BoundPortalHtmlIntegrityTest' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F181 test-only artifact renderer wired to operational app'
+            exit 1
+          fi
+          echo 'F181 PASS: real SQL Portal preview generated as a safe offline HTML artifact'
+      - name: Attach synthetic-only Portal HTML for visual review (no deploy)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagine-performance-portal-offline-demo-f181
+          path: ${{ runner.temp }}/f181-bound-preview.html
+          if-no-files-found: error
+          retention-days: 1
+      - name: Render separate fictional B tenant via the original Portal F63 PHP
+        shell: bash
+        env:
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F182_MULTITENANT_PORTAL_HTML_LAB: '1'
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+          PORTAL_F63_STATIC_HTML_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l tests/Standalone/F182TwoTenantPortalHtmlTest.php
+          php tests/Standalone/F182TwoTenantPortalHtmlTest.php
+          test -s "$RUNNER_TEMP/f182-b-offline.html"
+          grep -q 'DEMONSTRAÇÃO NÃO HOMOLOGADA' "$RUNNER_TEMP/f182-b-offline.html"
+          if grep -R -E 'PERF_F182_MULTITENANT_PORTAL_HTML_LAB|F182TwoTenantPortalHtmlTest' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F182 SQL tenant demo wired into operational Portal'
+            exit 1
+          fi
+      - name: Attach isolated fictional B preview for visual comparison
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagine-performance-portal-offline-demo-tenant-b-f182
+          path: ${{ runner.temp }}/f182-b-offline.html
+          if-no-files-found: error
+          retention-days: 1
+      - name: Reproduce F100 visibility bug then filter unmanaged F93/F97 SQL views
+        shell: bash
+        env:
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F184_MANAGED_VISIBILITY_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l database/f184-lab-migrations/2026_11_11_000001_filter_unmanaged_credential_views.php
+          php -l tests/Standalone/F184UnmanagedCampaignViewsPgTest.php
+          php tests/Standalone/F184UnmanagedCampaignViewsPgTest.php before
+          php artisan migrate --path=database/f184-lab-migrations --force --no-interaction
+          php tests/Standalone/F184UnmanagedCampaignViewsPgTest.php after
+          if grep -R -E 'PERF_F184_MANAGED_VISIBILITY_LAB|F184UnmanagedCampaignViewsPgTest' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F184 test-only SQL scope exposed to runtime'
+            exit 1
+          fi
+      - name: Fence campaign reactivation with immutable historical link and review generations
+        shell: bash
+        env:
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F184_MANAGED_VISIBILITY_LAB: '1'
+          PERF_F185_MANAGEMENT_EPOCH_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l database/f185-lab-migrations/2026_11_11_000001_fence_campaign_management_epochs.php
+          php -l tests/Standalone/F185ManagementEpochReactivationPgTest.php
+          php artisan migrate --path=database/f185-lab-migrations --force --no-interaction
+          php tests/Standalone/F185ManagementEpochReactivationPgTest.php
+          if grep -R -E 'PERF_F185_MANAGEMENT_EPOCH_LAB|F185ManagementEpochReactivationPgTest|perf_f185_advance_campaign_epoch' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F185 synthetic epoch guard exposed to production routes'
+            exit 1
+          fi
+      - name: Block post-reactivation INSERT and DELETE; audit campaign transitions
+        shell: bash
+        env:
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F184_MANAGED_VISIBILITY_LAB: '1'
+          PERF_F185_MANAGEMENT_EPOCH_LAB: '1'
+          PERF_F186_EPOCH_WRITE_AUDIT_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l database/f186-lab-migrations/2026_11_11_000001_fence_scope_writes_and_audit.php
+          php -l tests/Standalone/F186ScopeWriteAndAuditPgTest.php
+          php artisan migrate --path=database/f186-lab-migrations --force --no-interaction
+          php tests/Standalone/F186ScopeWriteAndAuditPgTest.php
+          if grep -R -E 'PERF_F186_EPOCH_WRITE_AUDIT_LAB|F186ScopeWriteAndAuditPgTest|perf_f186_record_management_transition' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: synthetic F186 writer/audit exposed to runtime'
+            exit 1
+          fi
+      - name: Verify actual current Portal F62 and F63 hide old reactivated B reviews
+        shell: bash
+        env:
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+          PERF_F188_POST_REACTIVATION_PORTAL_LAB: '1'
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+          PORTAL_F63_STATIC_HTML_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l tests/Standalone/F188PortalAfterReactivationPrivacyTest.php
+          php tests/Standalone/F188PortalAfterReactivationPrivacyTest.php
+          test -s "$RUNNER_TEMP/f188-current-b.html"
+          if grep -R -E 'F188PortalAfterReactivationPrivacyTest|PERF_F188_POST_REACTIVATION_PORTAL_LAB' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F188 synthetic post-reactivation Portal test exposed to Laravel runtime'
+            exit 1
+          fi
+      - name: Share temporary fictional Portal panel after reactivation
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagine-performance-portal-post-reactivation-demo-f188
+          path: ${{ runner.temp }}/f188-current-b.html
+          if-no-files-found: error
+          retention-days: 1
+      - name: Refuse inactive tenant, pending service, expired and revoked synthetic SQL eligibility
+        shell: bash
+        env:
+          PERF_F189_SERVICE_STATUS_LAB: '1'
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l database/f189-lab-migrations/2026_11_11_000001_login_service_status_probe.php
+          php -l app/Performance/ReadSide/CredentialBoundDemoServiceStatusFence.php
+          php -l tests/Standalone/F189CredentialServiceStatusFencePgTest.php
+          php artisan migrate --path=database/f189-lab-migrations --force --no-interaction
+          php tests/Standalone/F189CredentialServiceStatusFencePgTest.php
+          if grep -R -E 'PERF_F189_SERVICE_STATUS_LAB|CredentialBoundDemoServiceStatusFence|perf_f189_login_service_status' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: synthetic service gate attached to production entrypoint'
+            exit 1
+          fi
+      - name: Deny already-read F100 workbench when service is revoked mid-query
+        shell: bash
+        env:
+          PERF_F190_SERVICE_RACE_LAB: '1'
+          PERF_F189_SERVICE_STATUS_LAB: '1'
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l tests/Standalone/F190ConcurrentServiceRevocationPgTest.php
+          php tests/Standalone/F190ConcurrentServiceRevocationPgTest.php
+          if grep -R -E 'PERF_F190_SERVICE_RACE_LAB|F190ConcurrentServiceRevocationPgTest' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: concurrent service cancellation test exposed to runtime'
+            exit 1
+          fi
+      - name: Force service/tenant/contract ABA during F100 read and require epoch denial
+        shell: bash
+        env:
+          PERF_F191_SERVICE_EPOCH_LAB: '1'
+          PERF_F189_SERVICE_STATUS_LAB: '1'
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l database/f191-lab-migrations/2026_11_11_000001_tenant_service_aba_epochs.php
+          php -l app/Performance/ReadSide/CredentialBoundDemoServiceStatusFence.php
+          php -l tests/Standalone/F191ServiceAbaEpochPgTest.php
+          php artisan migrate --path=database/f191-lab-migrations --force --no-interaction
+          php tests/Standalone/F191ServiceAbaEpochPgTest.php
+          if grep -R -E 'PERF_F191_SERVICE_EPOCH_LAB|F191ServiceAbaEpochPgTest|perf_f191_service_epoch_for_login' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: synthetic F191 ABA authority exposed to runtime'
+            exit 1
+          fi
+      - name: Apply F189/F191 service proof to signed F29/F124/F180 delivery before and after nonce
+        shell: bash
+        env:
+          PORTAL_PERF_SIGNED_LAB: '1'
+          PERF_F192_SIGNED_SERVICE_LAB: '1'
+          PERF_F191_SERVICE_EPOCH_LAB: '1'
+          PERF_F189_SERVICE_STATUS_LAB: '1'
+          PERF_F180_POST_RECEIPT_LAB: '1'
+          PERF_F180_RACE_INJECTION_LAB: '1'
+          PERF_F124_SIGNED_NONCE_LAB: '1'
+          PERF_F123_SIGNED_SQL_WORKBENCH_LAB: '1'
+          PERF_F29_SIGNED_PORTAL_LAB: '1'
+          PERF_F100_CREDENTIAL_WORKBENCH_LAB: '1'
+          PERF_F92_CREDENTIAL_READER_LAB: '1'
+          PERF_F94_CREDENTIAL_CAMPAIGN_LAB: '1'
+          PERF_F98_CREDENTIAL_REVIEW_LAB: '1'
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_test_campaign_registry
+          php -l contracts/lab/php/SyntheticPostReceiptF100Delivery.php
+          php -l tests/Standalone/F192SignedServiceEpochDeliveryTest.php
+          temporary="$(mktemp -d /tmp/perf-f192-XXXXXX)"
+          trap 'rm -rf "$temporary"' EXIT
+          for i in 1 2 3 4 5; do
+            export "PERF_F192_PUBLIC_$i=$temporary/portal-f192-$i-pub.hex"
+            export "PERF_F192_PACKET_$i=$temporary/portal-f192-$i-packet.json"
+            php portal-f179-signer/apps/portal/preview/tests/emit_perf_capability.php "$temporary/portal-f192-$i-pub.hex" "$(date +%s)" > "$temporary/portal-f192-$i-packet.json"
+            test "$(wc -c < "$temporary/portal-f192-$i-pub.hex")" -eq 64
+            test -s "$temporary/portal-f192-$i-packet.json"
+          done
+          php tests/Standalone/F192SignedServiceEpochDeliveryTest.php
+          test -s "$RUNNER_TEMP/f180-f192-valid.json"
+          (cd portal-f176-candidate && php apps/portal/tools/f63-render-credential-workbench.php "$RUNNER_TEMP/f180-f192-valid.json") > "$RUNNER_TEMP/f192-f63-eligible-demo.html"
+          test -s "$RUNNER_TEMP/f192-f63-eligible-demo.html"
+          grep -q 'DEMONSTRAÇÃO NÃO HOMOLOGADA' "$RUNNER_TEMP/f192-f63-eligible-demo.html"
+          if grep -R -E 'PERF_F192_SIGNED_SERVICE_LAB|F192SignedServiceEpochDeliveryTest' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F192 synthetic signed delivery wired to production runtime'
+            exit 1
+          fi
+      - name: Attach read-only synthetic signed/service-eligible Portal preview
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagine-performance-signed-service-demo-f192
+          path: ${{ runner.temp }}/f192-f63-eligible-demo.html
+          if-no-files-found: error
+          retention-days: 1
