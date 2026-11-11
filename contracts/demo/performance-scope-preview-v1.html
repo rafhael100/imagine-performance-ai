@@ -86,7 +86,7 @@ p{margin:0}.muted{color:#6c7791;font-size:13px;line-height:1.6}
   <section id="scope-panel" class="panel"><div class="panel-head"><div><h2>Capacidade sob gestão</h2><p class="muted">Ativas e pausadas ocupam vagas</p></div><button id="method-btn" type="button" class="detail-btn" aria-expanded="false" aria-controls="methodology">Como contar</button></div><div id="channels" class="stack"></div><div id="methodology" class="notice hidden">Uma campanha pausada continua sob gestão até sua retirada formal. Grupos/conjuntos são contados aqui somente como hipótese de demonstração, ainda sujeita a homologação comercial. Substituições ordinárias não geram cobrança automática.</div></section>
   <section id="approvals-panel" class="panel"><div class="panel-head"><div><h2>Revisões simuladas</h2><p class="muted">Sugestões sem execução</p></div><span class="minor">Somente leitura</span></div><div id="approvals"></div></section>
   <section id="campaigns-panel" class="panel full"><div class="panel-head"><div><h2>Campanhas em demonstração</h2><p class="muted">Nenhum anúncio foi publicado ou alterado</p></div><span class="minor" id="campaign-count"></span></div><div id="campaigns"></div></section>
-  <section id="reports-panel" class="panel full"><div class="panel-head"><div><h2>Relatórios e indicadores</h2><p class="muted">Integração externa ainda indisponível</p></div></div><div class="notice">Nenhuma métrica real de impressões, cliques, custo, conversões ou retorno foi consultada. Os relatórios dependem de contratos, autorização, autenticação e validação de dados.</div></section>
+  <section id="reports-panel" class="panel full"><div class="panel-head"><div><h2>Relatórios e indicadores</h2><p class="muted">Integração externa ainda indisponível</p></div></div><div class="notice">Nenhuma métrica real de impressões, cliques, custo, conversões ou retorno foi consultada. Os relatórios dependem de contratos, autorização, autenticação e validação de dados.</div><div id="attention-cards" class="stack" aria-live="polite" style="margin-top:18px"></div></section>
  </div>
  <p class="bottom">Imagine Performance AI · perf.portal.scope-preview.synthetic.v1 · Sem dados reais, login, cookies, integrações ou armazenamento.</p>
 </main>
@@ -106,8 +106,32 @@ function renderMetrics(){const chosen=relevant(data.channels);const c=chosen.red
 function renderChannels(){$('channels').replaceChildren();relevant(data.channels).forEach(x=>{const c=el('div','channel-card');const head=el('div','channel-head');head.append(el('span','',x.label),el('span','','Capacidade fictícia'));c.append(head);[['Campanhas',x.campaigns,''],['Grupos/conjuntos',x.groups,'group']].forEach(([label,cap,typ])=>{const line=el('div','bar-label');line.append(el('span','',label),el('span','',cap.used+' de '+cap.limit));const bar=el('div','bar '+typ);const filled=el('span');filled.style.width=(cap.limit===0?0:Math.min(100,100*cap.used/cap.limit))+'%';bar.append(filled);c.append(line,bar);});$('channels').append(c);});}
 function renderCampaigns(){const list=relevant(data.campaigns);$('campaign-count').textContent=list.length+' demonstrações';$('campaigns').replaceChildren();if(!list.length){$('campaigns').append(el('p','empty','Nenhuma campanha neste filtro.'));return;}list.forEach(x=>{const card=el('div','campaign');card.append(el('div','avatar',x.channel==='meta'?'M':'G'));const body=el('div','campaign-body');body.append(el('div','campaign-title',x.title),el('div','campaign-sub',(x.channel==='meta'?'Meta':'Google Ads')+' · '+x.ref+' · sem publicação'));card.append(body);const state=x.state==='paused_demo'?'Pausada (sob gestão)':x.state==='draft_demo'?'Rascunho':'Ativa (simulação)';card.append(el('span','tag '+(x.state==='paused_demo'?'paused':x.state==='draft_demo'?'draft':''),state));$('campaigns').append(card);});}
 function renderApprovals(){$('approvals').replaceChildren();const list=relevant(data.approvals);if(!list.length){$('approvals').append(el('p','empty','Nenhuma revisão simulada no canal.'));return;}list.forEach(x=>{const a=el('div','approval');a.append(el('strong','',x.title),el('p','',x.status));$('approvals').append(a);});}
+function renderAttention(){
+ const target=$('attention-cards');target.replaceChildren();
+ const state=data.review_attention;
+ if(!state){target.append(el('p','empty','Indicadores fictícios adicionais não habilitados.'));return;}
+ if(state.schema_version!=='perf.portal.attention.synthetic.v1'
+   ||state.read_only!==true||state.contracted!==false
+   ||state.dispatch_enabled!==false||state.billing_enabled!==false
+   ||state.authorization_eligible!==false||state.real_metrics_available!==false){
+   throw new Error('Indicadores fictícios inválidos.');
+ }
+ relevant(state.channels).forEach(ch=>{
+   const card=el('div','channel-card');
+   card.append(el('strong','',ch.label));
+   if(!Array.isArray(ch.alerts)||!ch.alerts.length){
+     card.append(el('p','muted','Sem alertas nesta demonstração.'));
+   }else{
+     ch.alerts.forEach(item=>{
+       if(item.action_enabled!==false)throw new Error('Ação operacional não autorizada.');
+       card.append(el('p','muted',item.title+' · '+item.count+' · Sem ação automática'));
+     });
+   }
+   target.append(card);
+ });
+}
 function renderView(){const panels={overview:['scope','approvals','campaigns','reports'],campaigns:['scope','campaigns'],approvals:['approvals'],reports:['reports']};const labels={overview:'Visão geral',campaigns:'Campanhas sob gestão',approvals:'Revisões e aprovações',reports:'Relatórios'};$('page-title').textContent=labels[view];['scope','approvals','campaigns','reports'].forEach(k=>$(k+'-panel').classList.toggle('hidden',!panels[view].includes(k)));document.querySelectorAll('[data-view]').forEach(b=>{const yes=b.dataset.view===view;b.classList.toggle('active',yes);b.setAttribute('aria-current',yes?'page':'false');});}
-function render(){renderMetrics();renderChannels();renderCampaigns();renderApprovals();renderView();}
+function render(){renderMetrics();renderChannels();renderCampaigns();renderApprovals();renderAttention();renderView();}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.view;renderView();}));
 document.querySelectorAll('[data-channel]').forEach(b=>b.addEventListener('click',()=>{channel=b.dataset.channel;document.querySelectorAll('[data-channel]').forEach(x=>{const active=x===b;x.classList.toggle('active',active);x.setAttribute('aria-pressed',String(active));});render();}));
 $('method-btn').addEventListener('click',()=>{const hidden=$('methodology').classList.toggle('hidden');$('method-btn').setAttribute('aria-expanded',String(!hidden));});

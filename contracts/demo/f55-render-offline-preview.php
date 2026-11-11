@@ -129,6 +129,18 @@ if(getenv('PERF_F151_APPROVAL_LAB')==='1'){
         'dispatch_enabled'=>false,
         'billing_enabled'=>false,
     ];
+    if(getenv('PERF_F154_ATTENTION_LAB')==='1'){
+        require_once dirname(__DIR__,2).'/src/Domain/Performance/F154SyntheticAttentionProjector.php';
+        $attention=(new \Imagine\Performance\Domain\F154SyntheticAttentionProjector())
+            ->build($dto,$projection);
+        if(!is_array($attention)
+           ||$attention['dispatch_enabled']!==false
+           ||$attention['billing_enabled']!==false
+           ||$attention['real_metrics_available']!==false){
+            throw new RuntimeException('F154 operational attention cannot be embedded');
+        }
+        $ui['review_attention']=$attention;
+    }
 }
 $json=json_encode($ui,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES
     |JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR);
