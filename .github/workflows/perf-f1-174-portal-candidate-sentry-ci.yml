@@ -1,0 +1,79 @@
+name: Performance F1-174 - pinned Portal candidate integration readiness sentry
+on:
+  push:
+    branches:
+      - dev/perf-f1-174-portal-candidate-readiness-gate-2026-11-11
+  pull_request:
+    paths:
+      - 'contracts/security/f174-portal-candidate-readiness.json'
+      - 'tests/Standalone/F174PortalCandidateReadinessTest.php'
+      - 'tests/Standalone/F174PortalDashboardContractGapTest.php'
+      - '.github/workflows/perf-f1-174-portal-candidate-sentry-ci.yml'
+permissions:
+  contents: read
+jobs:
+  compare-pinned-portal-sources:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      APP_ENV: testing
+      PERF_F174_READINESS_LAB: '1'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Pin historical original Portal Ed25519 issuer F123
+        uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 739465b5cc5022aae85385e360e1b4b19ab033cd
+          path: portal-f174-historical
+          persist-credentials: false
+          sparse-checkout: |
+            apps/portal/app/Domain/PerformanceBridge/SyntheticCapabilityIssuer.php
+            apps/portal/preview/tests/emit_perf_capability.php
+      - name: Pin Portal PR356 integrated review candidate SHA
+        uses: actions/checkout@v5
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 1427a486434f653e6873ea6f3b37294d781aa316
+          path: portal-f174-candidate
+          persist-credentials: false
+          sparse-checkout: |
+            apps/portal/app/Domain/PerformanceBridge/SyntheticCapabilityIssuer.php
+            apps/portal/app/Domain/Catalog/PerformanceChannel.php
+            apps/portal/app/Domain/PerformanceDashboard/OfflinePerformanceWorkbenchPreview.php
+            apps/portal/app/Domain/PerformanceDashboard/CredentialBoundPerformanceWorkbenchPreview.php
+            apps/portal/app/Domain/PerformanceDashboard/PerformanceCampaignObservationState.php
+            apps/portal/app/Domain/PerformanceDashboard/PerformanceReviewObservationState.php
+            apps/portal/tests/Unit/CredentialBoundPerformanceWorkbenchPreviewStandalone.php
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Confirm two SHA-pinned source trees and fail-closed integration gap
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C portal-f174-historical rev-parse HEAD)" = 739465b5cc5022aae85385e360e1b4b19ab033cd
+          test "$(git -C portal-f174-candidate rev-parse HEAD)" = 1427a486434f653e6873ea6f3b37294d781aa316
+          php -l tests/Standalone/F174PortalCandidateReadinessTest.php
+          php -r 'json_decode(file_get_contents("contracts/security/f174-portal-candidate-readiness.json"),true,32,JSON_THROW_ON_ERROR);echo "F174 manifest JSON valid\n";'
+          php tests/Standalone/F174PortalCandidateReadinessTest.php
+          if grep -R -E 'F174PortalCandidateReadinessTest|PERF_F174_READINESS_LAB' routes/ bootstrap/ app/Providers/ database/migrations/; then
+            echo 'FAIL: F174 source readiness sentry used by runtime'
+            exit 1
+          fi
+      - name: Verify actual current Portal F62 consumer rejects the F166 response shape
+        shell: bash
+        env:
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l tests/Standalone/F174PortalDashboardContractGapTest.php
+          php portal-f174-candidate/apps/portal/tests/Unit/CredentialBoundPerformanceWorkbenchPreviewStandalone.php
+          php tests/Standalone/F174PortalDashboardContractGapTest.php
+          if grep -R -E 'F174PortalDashboardContractGapTest' routes/ bootstrap/ app/Providers/ database/migrations/; then
+            echo 'FAIL: cross-repo dashboard contract test wired to app'
+            exit 1
+          fi

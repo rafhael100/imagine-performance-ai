@@ -1,0 +1,38 @@
+{
+  "schema_version": "perf.portal.integration-readiness.pinned-ci.v1",
+  "integration": "Imagine Portal canonical F29 signed read to Performance F172 PostgreSQL",
+  "checked_at_date": "2026-11-11",
+  "target_status": "NO_GO",
+  "source_repository": "rafhael100/imagine-portal",
+  "historical_issuer": {
+    "ref": "739465b5cc5022aae85385e360e1b4b19ab033cd",
+    "file": "apps/portal/app/Domain/PerformanceBridge/SyntheticCapabilityIssuer.php",
+    "emitter": "apps/portal/preview/tests/emit_perf_capability.php",
+    "expected_exists": true,
+    "validated_by": "F173 PR #281 in disposable CI"
+  },
+  "candidate": {
+    "pr_number": 356,
+    "ref": "1427a486434f653e6873ea6f3b37294d781aa316",
+    "same_issuer_path_expected_exists": false,
+    "known_file": "apps/portal/app/Domain/Catalog/PerformanceChannel.php",
+    "dashboard_file": "apps/portal/app/Domain/PerformanceDashboard/OfflinePerformanceWorkbenchPreview.php",
+    "source_is_pinned_snapshot_only": true
+  },
+  "expected_security_assertions": {
+    "preserve_f29_strict_envelope": true,
+    "preserve_f29_session_mfa": true,
+    "preserve_f29_membership_service_session_revisions": true,
+    "preserve_f29_recovery_epoch": true,
+    "no_fallback_to_f169_short_envelope": true,
+    "require_pg16_rls_tenant": true,
+    "distinguish_f124_from_f170_nonce_ledgers": true,
+    "signer_missing_at_candidate_path_is_open_integration_blocker": true,
+    "runtime_deployment_authorized": false,
+    "mfa_production_verified": false,
+    "portal_iam_verified": false,
+    "portal_s2s_verified": false,
+    "rollback_witness_verified": false,
+    "real_advertiser_consent_verified": false
+  }
+}
