@@ -27,7 +27,7 @@ if (!is_dir($root) && !mkdir($root,0700,true)) {
 }
 $keyPath=$root.'/test-signing-key.json';
 $journalPath=$root.'/separate-signed-authority.jsonl';
-if ($argv[1]??''==='seed') {
+if (($argv[1]??'')==='seed') {
     if (file_exists($keyPath)) throw new RuntimeException('F141 test-only keys must start new');
     $keypair=sodium_crypto_sign_keypair();
     $stored=[
