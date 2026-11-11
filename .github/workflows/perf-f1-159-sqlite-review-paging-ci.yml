@@ -1,0 +1,42 @@
+name: Performance F1-159 - tenant safe SQLite review paging
+on:
+  push:
+    branches:
+      - dev/perf-f1-159-sqlite-review-paging-ci-2026-11-11
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F157SyntheticSqliteReviewStore.php'
+      - 'tests/Standalone/F159SqliteReviewPagerTest.php'
+      - '.github/workflows/perf-f1-159-sqlite-review-paging-ci.yml'
+permissions:
+  contents: read
+jobs:
+  sqlite-readonly-pages:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F157_SQLITE_LAB: '1'
+      PERF_F158_RACE_LAB: '1'
+      PERF_F159_PAGING_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, sqlite3
+          coverage: none
+      - name: Validate paging and concurrent SQLite review regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F157SyntheticSqliteReviewStore.php
+          php -l tests/Standalone/F159SqliteReviewPagerTest.php
+          php tests/Standalone/F157SqliteReviewStoreTest.php
+          php tests/Standalone/F158ConcurrentSqliteReviewTest.php
+          php tests/Standalone/F159SqliteReviewPagerTest.php
+          if grep -R -E 'PERF_F159_PAGING_LAB|F159SqliteReviewPagerTest' routes/ app/ bootstrap/; then
+            echo 'FAIL: synthetic SQLite paging in production application'
+            exit 1
+          fi
