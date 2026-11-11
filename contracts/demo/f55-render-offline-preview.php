@@ -79,6 +79,52 @@ $ui=$dto;
 $ui['campaigns']=$cards;
 // These suggestions remain solely static UI captions, NOT real approvals.
 $ui['approvals']=$previous['approvals'];
+if(getenv('PERF_F151_APPROVAL_LAB')==='1'){
+    require_once dirname(__DIR__,2).'/src/Domain/Performance/F151SyntheticCreativeReviewQueue.php';
+    $reviews=new \\Imagine\\Performance\\Domain\\F151SyntheticCreativeReviewQueue($l);
+    if($reviews->submit($t,'rev-search-demo','cam-search-demo','google_ads',
+            'Revisar peça de pesquisa')!=='submitted_demo'
+        ||$reviews->submit($t,'rev-social-demo','cam-social-demo','meta',
+            'Revisar campanha social')!=='submitted_demo'){
+        throw new RuntimeException('F151 failed to prepare fictional creative reviews');
+    }
+    if($reviews->decide($t,'rev-social-demo',1,'request_changes',
+            'reviewer-demo-maria')!=='changes_requested_demo'){
+        throw new RuntimeException('F151 demo review transition failed');
+    }
+    $projection=$reviews->project($t);
+    if(!is_array($projection)
+       ||($projection['human_approval_verified']??null)!==false
+       ||($projection['dispatch_enabled']??null)!==false
+       ||($projection['billing_enabled']??null)!==false){
+        throw new RuntimeException('F151 operational approval cannot be embedded');
+    }
+    $statusLabels=[
+        'pending_demo'=>'Aguardando revisão fictícia',
+        'changes_requested_demo'=>'Ajustes solicitados (fictício)',
+        'approved_mock_only'=>'Aprovada apenas na simulação',
+        'rejected_mock_only'=>'Rejeitada apenas na simulação',
+    ];
+    $ui['approvals']=[];
+    foreach($projection['reviews'] as $item){
+        $status=$statusLabels[$item['status']]??null;
+        if(!is_string($status))throw new RuntimeException('F151 unknown review state');
+        $ui['approvals'][]=[
+            'title'=>$item['title'],
+            'channel'=>$item['channel'],
+            'status'=>$status,
+            'review_ref'=>$item['review_ref'],
+            'approval_source'=>'none_real',
+        ];
+    }
+    $ui['creative_reviews']=[
+        'schema_version'=>$projection['schema_version'],
+        'summary'=>$projection['summary'],
+        'human_approval_verified'=>false,
+        'dispatch_enabled'=>false,
+        'billing_enabled'=>false,
+    ];
+}
 $json=json_encode($ui,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES
     |JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR);
 $rendered=preg_replace_callback(
