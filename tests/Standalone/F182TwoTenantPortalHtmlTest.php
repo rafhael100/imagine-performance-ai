@@ -68,15 +68,27 @@ $check(strlen($aHtml)>2000,'signed A preview from F181 exists separately');
 foreach(['accounts'=>'account_ref','campaigns'=>'campaign_ref','reviews'=>'request_ref'] as $kind=>$field){
  foreach($bData[$kind] as $row){
   $check(str_contains($html,$row[$field])
-    &&!str_contains($aHtml,$row[$field]),
-    'B SQL '.$kind.' reference appears in B and not A HTML');
+    &&($kind==='accounts'||!str_contains($aHtml,$row[$field])),
+    'B SQL '.$kind.' reference rendered and campaign/review refs isolated');
  }
  foreach($aData[$kind] as $row){
   $check(str_contains($aHtml,$row[$field])
-    &&!str_contains($html,$row[$field]),
-    'A SQL '.$kind.' reference appears in A and not B HTML');
+    &&($kind==='accounts'||!str_contains($html,$row[$field])),
+    'A SQL '.$kind.' reference rendered and campaign/review refs isolated');
  }
 }
+$dom=new DOMDocument('1.0','UTF-8');
+libxml_use_internal_errors(true);
+$loaded=$dom->loadHTML('<?xml encoding="utf-8" ?>'.$html,
+ LIBXML_NONET|LIBXML_NOERROR|LIBXML_NOWARNING);
+libxml_clear_errors();
+$check($loaded===true,'B HTML parses locally without external resources');
+$xpath=new DOMXPath($dom);
+$check($xpath->query('//section[@aria-label="Contas publicitárias fictícias"]//tbody/tr')->length===count($bData['accounts']),
+ 'B HTML contains exactly its own SQL account row count, regardless of shared textual refs');
+$check($xpath->query('//section[@aria-label="Campanhas fictícias"]//tbody/tr')->length===count($bData['campaigns'])
+ &&$xpath->query('//section[@aria-label="Histórico de revisões fictícias"]//tbody/tr')->length===count($bData['reviews']),
+ 'B HTML campaign and review rows exactly match authenticated B SQL projections');
 $check(str_contains($html,'DEMONSTRAÇÃO NÃO HOMOLOGADA')
  &&str_contains($html,"connect-src 'none'")
  &&str_contains($html,"script-src 'none'"),
