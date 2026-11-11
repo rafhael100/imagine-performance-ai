@@ -1,0 +1,69 @@
+name: Performance F1-163 - PHP to PG16 tenant-bound fictional reviews
+on:
+  push:
+    branches:
+      - dev/perf-f1-163-php-pg16-review-bridge-ci-2026-11-11
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F163Pg16SyntheticReviewRepository.php'
+      - 'tests/Standalone/F163Pg16SyntheticReviewBridgeTest.php'
+      - '.github/workflows/perf-f1-163-pg16-php-bridge-ci.yml'
+permissions:
+  contents: read
+jobs:
+  php-pg16-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: perf_f162_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f162_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F162_PG_LAB: '1'
+      PERF_F163_PHP_BRIDGE_LAB: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_f162_ci
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql,pgsql
+          coverage: none
+      - name: Apply only disposable PostgreSQL16 RLS/trigger migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f162_pg16_tenant_review_registry_ci.sql
+      - name: Regress F162 SQL roles, RLS, state transitions and atomic audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F162Pg16TenantReviewRegistryTest.php
+          psql -v ON_ERROR_STOP=1 -c 'TRUNCATE perf_f162.events,perf_f162.reviews RESTART IDENTITY CASCADE'
+      - name: Exercise PHP review service with two actual tenant SQL logins
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F163Pg16SyntheticReviewRepository.php
+          php -l tests/Standalone/F163Pg16SyntheticReviewBridgeTest.php
+          php tests/Standalone/F163Pg16SyntheticReviewBridgeTest.php
+          if grep -R -E 'F163Pg16SyntheticReviewRepository|PERF_F163_PHP_BRIDGE_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL: F163 synthetic adapter referenced by production application'
+            exit 1
+          fi
