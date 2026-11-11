@@ -1,0 +1,40 @@
+name: Performance F1-158 - concurrent SQLite fictional review CAS
+on:
+  push:
+    branches:
+      - dev/perf-f1-158-concurrent-sqlite-review-cas-ci-2026-11-11
+  pull_request:
+    paths:
+      - 'bin/lab/f158-sqlite-review-worker.php'
+      - 'tests/Standalone/F158ConcurrentSqliteReviewTest.php'
+      - '.github/workflows/perf-f1-158-sqlite-review-race-ci.yml'
+permissions:
+  contents: read
+jobs:
+  concurrent-fake-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F157_SQLITE_LAB: '1'
+      PERF_F158_RACE_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, sqlite3
+          coverage: none
+      - name: Validate two truly independent PHP processes and SQLite commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l bin/lab/f158-sqlite-review-worker.php
+          php -l tests/Standalone/F158ConcurrentSqliteReviewTest.php
+          php tests/Standalone/F157SqliteReviewStoreTest.php
+          php tests/Standalone/F158ConcurrentSqliteReviewTest.php
+          if grep -R -E 'F158_RACE_LAB|f158-sqlite-review-worker' routes/ app/ bootstrap/; then
+            echo 'FAIL: SQLite lab worker referenced by product runtime'
+            exit 1
+          fi
