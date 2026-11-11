@@ -181,7 +181,19 @@ final class SyntheticF181BoundPortalHtml
             // Stage EXACT validated bytes into a new private file. Renderer
             // receives this file, not an attacker-controlled mutable path.
             $staged=$runnerTemp.'/.f181-json-'.bin2hex(random_bytes(12)).'.tmp';
-            $handle=@fopen($staged,'x');
+            // F198: private file mode is established at creation time.
+            $previousUmask=umask(0077);
+            try{
+                $handle=@fopen($staged,'x');
+            }finally{
+                umask($previousUmask);
+            }
+            if(is_resource($handle)
+                &&((fileperms($staged) & 0777)!==0600)){
+                fclose($handle);
+                @unlink($staged);
+                return self::denied('temporary_file_not_private');
+            }
             if(!is_resource($handle)){
                 return self::denied('stage_file_unavailable');
             }
@@ -262,7 +274,19 @@ final class SyntheticF181BoundPortalHtml
                     ];
                 }
                 $tmpHtml=$runnerTemp.'/.f181-html-'.bin2hex(random_bytes(12)).'.tmp';
-                $out=@fopen($tmpHtml,'x');
+                // F198: private file mode is established at creation time.
+                $previousUmask=umask(0077);
+                try{
+                    $out=@fopen($tmpHtml,'x');
+                }finally{
+                    umask($previousUmask);
+                }
+                if(is_resource($out)
+                    &&((fileperms($tmpHtml) & 0777)!==0600)){
+                    fclose($out);
+                    @unlink($tmpHtml);
+                    return self::denied('temporary_file_not_private');
+                }
                 if(!is_resource($out)){
                     return self::denied('html_output_unavailable');
                 }

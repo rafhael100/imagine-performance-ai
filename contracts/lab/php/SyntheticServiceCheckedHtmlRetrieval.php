@@ -43,7 +43,8 @@ final class SyntheticServiceCheckedHtmlRetrieval
             ||preg_match('/^f(?:180|181)-[a-z0-9-]{1,64}\.'.
                 preg_quote($extension,'/').'$/D',basename($candidate))!==1
             ||is_link($candidate)||!is_file($candidate)
-            ||realpath($candidate)!==$candidate)return null;
+            ||realpath($candidate)!==$candidate
+            ||(fileperms($candidate) & 0777)!==0600)return null;
         return $candidate;
     }
 
