@@ -20,7 +20,8 @@ final class F145IndependentDispatchBoundary
 {
     public function __construct(
         private readonly F141SignedJournalAuthority $authority,
-        private readonly string $checkpointPath
+        private readonly string $checkpointPath,
+        private readonly string $issuerPublicKey
     ) {
         if (getenv('APP_ENV') !== 'testing'
             || getenv('PERF_F145_LAB') !== '1'
@@ -29,6 +30,9 @@ final class F145IndependentDispatchBoundary
             || getenv('ANCHOR_DB') !== 'perf_f138_anchor_ci'
             || getenv('ORACLE_DB') !== 'perf_f143_oracle_ci') {
             throw new RuntimeException('F145 is a synthetic CI terminal gate only');
+        }
+        if (strlen($issuerPublicKey)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+            throw new RuntimeException('F145 requires distinct Ed25519 admission public key');
         }
         $root=realpath((string)getenv('RUNNER_TEMP'));
         $folder=realpath(dirname($checkpointPath));
@@ -65,7 +69,8 @@ final class F145IndependentDispatchBoundary
         string $tenant,
         string $fingerprint,
         int $epoch,
-        array $sqlRegistration
+        array $sqlRegistration,
+        array $issuerAttestation
     ):array
     {
         $result=static fn(string $status,bool $delivered=false):array=>[
@@ -81,6 +86,27 @@ final class F145IndependentDispatchBoundary
             || ($sqlRegistration['registered']??null)!==true
             || ($sqlRegistration['action_authorized']??null)!==false) {
             return $result('sql_result_untrusted_or_denied');
+        }
+
+        // An untrusted database result cannot mint a dispatch token. A
+        // SEPARATE mock issuer must sign an exact operation, tenant, nonce,
+        // epoch and short expiry; a forged registration flag is not enough.
+        $issuedAt=$issuerAttestation['issued_at']??null;
+        $signatureB64=$issuerAttestation['signature']??null;
+        if (!is_int($issuedAt) || !is_string($signatureB64)
+            || $issuedAt<time()-30 || $issuedAt>time()+5) {
+            return $result('issuer_attestation_missing_or_expired');
+        }
+        $signature=base64_decode($signatureB64,true);
+        $payload=implode('|',[
+            'F145-v1',$operation,$tenant,$fingerprint,
+            (string)$epoch,(string)$issuedAt,
+        ]);
+        if ($signature===false || strlen($signature)!==SODIUM_CRYPTO_SIGN_BYTES
+            || !sodium_crypto_sign_verify_detached(
+                $signature,$payload,$this->issuerPublicKey
+            )) {
+            return $result('issuer_signature_denied');
         }
 
         try {
