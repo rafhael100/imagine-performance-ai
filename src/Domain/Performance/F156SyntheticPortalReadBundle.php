@@ -71,6 +71,7 @@ final class F156SyntheticPortalReadBundle
                         &&(!is_int($count['limit'])||$count['limit']<0
                            ||$count['used']>$count['limit']))
                     ||!array_key_exists('remaining',$count)
+                    ||($count['limit']===null && $count['remaining']!==null)
                     ||($count['limit']!==null
                         &&$count['remaining']!==$count['limit']-$count['used']))
                     return null;
