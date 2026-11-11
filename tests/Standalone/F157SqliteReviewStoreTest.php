@@ -125,7 +125,7 @@ $check($other->revise($a,'rev-f157-search',4,'Novo')
 $check($other->project($a)['review_count']===3,
  'connection restart does not duplicate synthetic review records');
 
-$forbidden=$runner.'/outside.sqlite';
+$forbidden=dirname($runner).'/f157-untrusted.sqlite';
 $check($throws(static fn()=>new F157SyntheticSqliteReviewStore($forbidden,$scope)),
  'SQLite store refuses DB path outside dedicated runner child directory');
 echo "F157 SQLite durable fictional reviews: {$n} PASS / 0 FAIL — NO-GO\n";
