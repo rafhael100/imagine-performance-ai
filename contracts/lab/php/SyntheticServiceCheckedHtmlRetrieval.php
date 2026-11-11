@@ -191,4 +191,102 @@ final class SyntheticServiceCheckedHtmlRetrieval
             return self::refused('offline_retrieval_unavailable_fail_closed');
         }
     }
+
+    /**
+     * F196 CI-only response for HTML that is rendered in memory by F181,
+     * avoiding persistent HTML paths entirely. Source JSON remains a lab
+     * artifact; this is NOT real IAM or an HTTP controller.
+     */
+    public function fetchInline(
+        PDO $tenantSqlConnection,
+        array $f192Receipt,
+        array $inlineRender
+    ):array{
+        if(PHP_SAPI!=='cli'||getenv('APP_ENV')!=='testing'
+            ||getenv('PERF_F196_INLINE_HTML_LAB')!=='1'
+            ||getenv('PERF_F194_OFFLINE_HTML_FETCH_LAB')!=='1'
+            ||getenv('PERF_F193_F63_SERVICE_LAB')!=='1'
+            ||getenv('PGHOST')!=='127.0.0.1'
+            ||getenv('PGPORT')!=='5432'
+            ||getenv('PGDATABASE')!=='perf_test_campaign_registry'){
+            return self::refused('lab_disabled');
+        }
+        try{
+            if(($f192Receipt['schema_version']??null)!==
+                    SyntheticPostReceiptF100Delivery::SCHEMA
+                ||($f192Receipt['status']??null)!==
+                    'post_receipt_readonly_snapshot_only'
+                ||($f192Receipt['receipt_consumed_demo']??null)!==true
+                ||($f192Receipt['portal_identity_authenticated']??null)!==false
+                ||($f192Receipt['can_publish_ads']??null)!==false
+                ||($f192Receipt['can_bill']??null)!==false
+                ||($f192Receipt['ready_for_production']??null)!==false
+                ||($inlineRender['schema_version']??null)!==
+                    SyntheticF181BoundPortalHtml::SCHEMA
+                ||($inlineRender['status']??null)!=='in_memory_f63_ci_only'
+                ||($inlineRender['non_persistent']??null)!==true
+                ||array_key_exists('html_path',$inlineRender)===false
+                ||$inlineRender['html_path']!==null
+                ||($inlineRender['portal_identity_authenticated']??null)!==false
+                ||($inlineRender['can_publish_ads']??null)!==false
+                ||($inlineRender['can_bill']??null)!==false
+                ||($inlineRender['ready_for_production']??null)!==false){
+                return self::refused('unsigned_or_untrusted_inline_handoff');
+            }
+            $runner=realpath((string)getenv('RUNNER_TEMP'));
+            if($runner===false)return self::refused('runner_unavailable');
+            $jsonPath=self::path($f192Receipt['artifact_path']??null,$runner,'json');
+            $jsonHash=$f192Receipt['sha256']??null;
+            $htmlHash=$inlineRender['html_sha256']??null;
+            $html=$inlineRender['html_bytes']??null;
+            if($jsonPath===null||!is_string($jsonHash)
+                ||preg_match('/^[a-f0-9]{64}$/D',$jsonHash)!==1
+                ||!is_string($htmlHash)
+                ||preg_match('/^[a-f0-9]{64}$/D',$htmlHash)!==1
+                ||!is_string($html)||strlen($html)<2000||strlen($html)>150000
+                ||!hash_equals($htmlHash,hash('sha256',$html))
+                ||filesize($jsonPath)<100||filesize($jsonPath)>48000){
+                return self::refused('unsafe_or_modified_inline_handoff');
+            }
+            $json=(string)file_get_contents($jsonPath);
+            if(!hash_equals($jsonHash,hash('sha256',$json))){
+                return self::refused('json_integrity_changed');
+            }
+            $dto=json_decode($json,true,24,JSON_THROW_ON_ERROR);
+            if(!is_array($dto)||!self::stillValid(
+                $tenantSqlConnection,$f192Receipt,$dto
+            )){
+                return self::refused('service_revoked_or_sql_changed');
+            }
+            foreach([
+                '<html lang="pt-BR">',
+                "default-src 'none'",
+                "script-src 'none'",
+                "connect-src 'none'",
+                "form-action 'none'",
+                'DEMONSTRAÇÃO NÃO HOMOLOGADA',
+                'Nenhuma conta publicitária real está conectada'
+            ] as $required){
+                if(!str_contains($html,$required)){
+                    return self::refused('unsafe_inline_html');
+                }
+            }
+            if(preg_match('/<(?:script|form|button|iframe|a|img|link|input)\\b/i',$html)
+                ||preg_match('~https?://~i',$html)){
+                return self::refused('unsafe_inline_html');
+            }
+            if(!hash_equals($jsonHash,(string)hash_file('sha256',$jsonPath))
+                ||!self::stillValid($tenantSqlConnection,$f192Receipt,$dto)){
+                return self::refused('changed_during_inline_read');
+            }
+            return [
+                ...self::refused('offline_html_readonly_preview_only'),
+                'status'=>'offline_html_readonly_preview_only',
+                'content_type'=>'text/html; charset=utf-8',
+                'html'=>$html,
+            ];
+        }catch(Throwable){
+            return self::refused('inline_preview_unavailable_fail_closed');
+        }
+    }
 }
