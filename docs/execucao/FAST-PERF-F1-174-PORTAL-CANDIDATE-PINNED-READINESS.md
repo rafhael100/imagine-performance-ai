@@ -18,3 +18,12 @@ O CI usa **somente PHP e checkout público versionado**, sem banco, Composer, to
 **Próximos passos de integração, condicionais:** revisar o HEAD desejado e aprovado do Portal, localizar ou definir o emissor canônico atualmente mantido, verificar compatibilidade de assinatura e claims de autenticação real, consolidar ledger único de nonce com antirollback fora do mesmo domínio, obter avaliação AppSec/DBA/LGPD e homologar em VPS com dados fictícios.
 
 **P0/HT-R01/SEC-R03/T3 = NO-GO. Sem merge dev/main, deploy, acesso a clientes, contas Ads, cobrança ou despesas.**
+
+
+## Segunda incompatibilidade: contrato atual do dashboard do Portal
+
+O candidato pinado também contém `CredentialBoundPerformanceWorkbenchPreview` (PORTAL F62), que aceita **apenas** `perf.portal.credential-bound-workbench.synthetic.v1` originado do fluxo Performance F100: exige `account_candidates`, vínculos de contas `account_ref`, observações de campanhas e itens `journaled`. O leitor F166 desenvolvido mais tarde fornece `perf.portal.pg16-tenant-review-report.synthetic.v1` com escopo por geração e contagens de quarentena, porém **não dispõe de candidatos de contas/vínculos nem das mesmas observações**.
+
+A nova asserção executa o próprio teste standalone F62 retirado do SHA candidato, verifica que ele aceita sua estrutura original e recusa uma estrutura F166 com todos os campos NO-GO; também recusa a mesma estrutura após alguém falsificar apenas o valor de `schema_version` e adicionar campos vazios de contas. Os estados `approved_demo_no_execution` e `approved_mock_only`, e os canais `meta_ads` e `meta`, são mapeamentos de observação pendentes de decisão — nunca provas de autorização real. Esta etapa **não** cria adaptador nem inventa vínculos de anunciante para forçar compatibilidade.
+
+Próximo corte real é escolher a versão canônica do contrato de read-model entre Portal e Performance e versionar um adaptador somente onde os dados originais e vínculos necessários existirem e forem verificáveis. Até isso ocorrer, a F166 pode ser uma prévia isolada, não um consumidor F62 autenticado.
