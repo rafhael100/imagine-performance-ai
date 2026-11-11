@@ -1,0 +1,11 @@
+# F148 disposable CI lab only. Run with --network none, --read-only,
+# --cap-drop ALL, --security-opt no-new-privileges and non-root UID.
+# Dockerfile cannot enforce the runtime flags: CI MUST assert them.
+FROM php:8.4-cli-alpine
+WORKDIR /app
+COPY src/Lab/F141SignedJournalAuthority.php /app/src/Lab/F141SignedJournalAuthority.php
+COPY src/Lab/F146SyntheticExecutor.php /app/src/Lab/F146SyntheticExecutor.php
+COPY src/Lab/F147StickyQuarantineExecutor.php /app/src/Lab/F147StickyQuarantineExecutor.php
+COPY src/Lab/F148WorkloadConstrainedService.php /app/src/Lab/F148WorkloadConstrainedService.php
+COPY bin/lab/f148_no_egress_service.php /app/bin/lab/f148_no_egress_service.php
+ENTRYPOINT ["php", "/app/bin/lab/f148_no_egress_service.php"]
