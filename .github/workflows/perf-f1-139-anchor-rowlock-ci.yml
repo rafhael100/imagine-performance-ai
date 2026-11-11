@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - 'database/lab-migrations/f139_locked_anchor_admission_ci.sql'
+      - 'database/lab-migrations/f139_anchor_guarded_rowlock_acl_ci.sql'
       - 'tests/Standalone/F139AnchorLockRacePgTest.php'
       - 'database/lab-migrations/f136_witness_atomic_redemption_ci.sql'
       - 'src/Lab/F136OnlineWitnessRedemption.php'
@@ -217,6 +218,8 @@ jobs:
           test "$ANCHOR_DB" = perf_f138_anchor_ci
           psql -X -v ON_ERROR_STOP=1 \
             -c "CREATE ROLE perf_f139_primary_bridge LOGIN PASSWORD 'ci-f139-primary-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
+          PGPORT=5434 PGDATABASE="$ANCHOR_DB" PGPASSWORD="$ANCHOR_PASSWORD" \
+            psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f139_anchor_guarded_rowlock_acl_ci.sql
           psql -X -v ON_ERROR_STOP=1 -f database/lab-migrations/f139_locked_anchor_admission_ci.sql
           php -l src/Lab/F139LockedAnchorRegistration.php
           php -l tests/Standalone/F139AnchorLockRacePgTest.php
