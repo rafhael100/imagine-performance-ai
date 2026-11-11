@@ -23,7 +23,7 @@ try {
     }
     $root=(string)getenv('RUNNER_TEMP');
     $dir=$root.'/f147-executor';
-    if (!is_dir($dir) && !mkdir($dir,0700,true)) {
+    if (!is_dir($dir) && !@mkdir($dir,0700,true) && !is_dir($dir)) {
         throw new RuntimeException('F147 isolated receipt directory unavailable');
     }
     $secret=base64_decode((string)getenv('F146_RECEIPT_SECRET'),true);
