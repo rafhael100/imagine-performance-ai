@@ -68,6 +68,13 @@ $b->exec("INSERT INTO perf_f162.reviews
  'meta','B independente')");
 $projectA=$readerA->read($tenantA);
 $projectB=$readerB->read($tenantB);
+if(!is_array($projectA)||($projectA['active_review_count']??0)!==2){
+ fwrite(STDERR, 'F166 lab A result: '.json_encode([
+   'kind'=>is_array($projectA)?'array':'null',
+   'active_count'=>$projectA['active_review_count']??null,
+   'raw_view_count'=>$a->query('SELECT count(*) FROM perf_f162.active_review_dashboard')->fetchColumn(),
+ ],JSON_THROW_ON_ERROR)."\n");
+}
 $check(is_array($projectA)&&$projectA['active_review_count']===2,
  'A reader sees its two active scoped mock reviews');
 $check(is_array($projectB)&&$projectB['active_review_count']===1,
