@@ -92,7 +92,7 @@ jobs:
       PERF_F141_LAB: '1'
       PERF_F142_LAB: '1'
       PERF_F143_LAB: '1'
-      PERF_F145_LAB: '1'
+      PERF_F144_LAB: '1'
       PERF_F145_LAB: '1'
       PGHOST: '127.0.0.1'
       PGPORT: '5432'
