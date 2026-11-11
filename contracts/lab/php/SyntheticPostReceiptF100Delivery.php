@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Performance\Security;
 
 use App\Performance\ReadSide\CredentialBoundDemoWorkbenchReader;
+use App\Performance\ReadSide\CredentialBoundDemoServiceStatusFence;
 use Closure;
 use PDO;
 use RuntimeException;
@@ -46,6 +47,31 @@ final class SyntheticPostReceiptF100Delivery
         ];
     }
 
+
+    private static function serviceEpoch(PDO $db):?array
+    {
+        $rows=$db->query(
+            'SELECT tenant_epoch,service_epoch '
+            .'FROM public.perf_f191_service_epoch_for_login()'
+        )->fetchAll(PDO::FETCH_ASSOC);
+        if(!is_array($rows)||count($rows)!==1
+            ||!is_array($rows[0])
+            ||array_keys($rows[0])!==['tenant_epoch','service_epoch']){
+            return null;
+        }
+        $out=[];
+        foreach(['tenant_epoch','service_epoch'] as $field){
+            if(!is_string($rows[0][$field])&&!is_int($rows[0][$field])){
+                return null;
+            }
+            $value=(string)$rows[0][$field];
+            if(preg_match('/^[1-9][0-9]{0,6}$/D',$value)!==1
+                ||(int)$value>1000000)return null;
+            $out[$field]=(int)$value;
+        }
+        return $out;
+    }
+
     public function deliver(
         PDO $tenantSqlConnection,
         string $originalPortalSignedEnvelope,
@@ -85,6 +111,31 @@ final class SyntheticPostReceiptF100Delivery
         }
 
         try{
+            // F192: reject an ineligible Portal service BEFORE burning the
+            // one-use F124 nonce. This is a synthetic SQL preflight, never
+            // a customer IAM or externally attested subscription.
+            $serviceRequired=getenv('PERF_F192_SIGNED_SERVICE_LAB')==='1';
+            $serviceEpochBefore=null;
+            if($serviceRequired){
+                if(getenv('PERF_F189_SERVICE_STATUS_LAB')!=='1'
+                    ||getenv('PERF_F191_SERVICE_EPOCH_LAB')!=='1'){
+                    return self::denied('service_status_gate_not_ready');
+                }
+                $pre=(new CredentialBoundDemoServiceStatusFence())
+                    ->read($tenantSqlConnection);
+                $serviceEpochBefore=self::serviceEpoch($tenantSqlConnection);
+                if(($pre['status']??null)!==
+                       'credential_scoped_demo_workbench_only'
+                    ||($pre['credential_binding_confirmed']??null)!==true
+                    ||($pre['portal_identity_authenticated']??null)!==false
+                    ||($pre['authorization_eligible']??null)!==false
+                    ||($pre['dispatch_enabled']??null)!==false
+                    ||($pre['billing_enabled']??null)!==false
+                    ||$serviceEpochBefore===null){
+                    return self::denied('service_ineligible_before_nonce');
+                }
+            }
+
             // F29 checks Ed25519/MFA/revisions; F123 checks the actual SQL
             // login and F100; F124 consumes a nonce via INSERT-only role.
             $signed=$this->signedBridge->preview(
@@ -150,6 +201,23 @@ final class SyntheticPostReceiptF100Delivery
                 ||$fresh['reviews']!==($signed['reviews']??null)
                 ||$fresh['counts']!==($signed['counts']??null)){
                 return self::denied('post_receipt_sql_change_denied');
+            }
+            // F192: F100 itself is not a service/contract authority.
+            // Re-run the bounded service proof AFTER F124 spent the nonce,
+            // and check generations read BEFORE the signed operation.
+            // This catches revocation, revision drift, and local ABA even
+            // if the original three SQL views remain unchanged.
+            if($serviceRequired){
+                $serviceAfter=(new CredentialBoundDemoServiceStatusFence())
+                    ->read($tenantSqlConnection);
+                $serviceEpochAfter=self::serviceEpoch($tenantSqlConnection);
+                if(($serviceAfter['status']??null)!==
+                       'credential_scoped_demo_workbench_only'
+                    ||$serviceAfter!==$fresh
+                    ||$serviceEpochAfter===null
+                    ||$serviceEpochAfter!==$serviceEpochBefore){
+                    return self::denied('post_receipt_service_changed');
+                }
             }
             if($now>=time()+1 ||time()-$now>15){
                 return self::denied('post_receipt_delivery_expired');
