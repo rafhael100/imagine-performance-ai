@@ -1,0 +1,51 @@
+name: Performance F1-204 - executable synthetic-only CSV CLI
+on:
+  push:
+    branches:
+      - dev/perf-f1-204-cli-offline-plan-export-2026-11-11
+  pull_request:
+    paths:
+      - 'tools/perf-export-offline-portfolio-csv.php'
+      - 'contracts/demo/f204-offline-portfolio-request.json'
+      - 'app/Performance/Planning/OfflinePortfolioBudgetCsvExporter.php'
+      - '.github/workflows/perf-f1-204-cli-export-ci.yml'
+permissions:
+  contents: read
+jobs:
+  cli-demo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Export deterministic CSV to stdout only
+        shell: bash
+        env:
+          APP_ENV: testing
+          PERF_F204_CSV_CLI_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l tools/perf-export-offline-portfolio-csv.php
+          php -r 'json_decode(file_get_contents("contracts/demo/f204-offline-portfolio-request.json"),true,20,JSON_THROW_ON_ERROR);'
+          php tools/perf-export-offline-portfolio-csv.php \
+            < contracts/demo/f204-offline-portfolio-request.json > "$RUNNER_TEMP/f204.csv"
+          test "$(wc -l < "$RUNNER_TEMP/f204.csv")" -eq 9
+          grep -Fx 'kind,reference,date,google_ads_centavos,meta_ads_centavos,total_centavos' "$RUNNER_TEMP/f204.csv"
+          grep -Fx 'portfolio,synthetic-aggregate,,79,121,200' "$RUNNER_TEMP/f204.csv"
+          if printf '{"schema_version":"invalid"}' | php tools/perf-export-offline-portfolio-csv.php > "$RUNNER_TEMP/refused.csv"; then
+            echo 'FAIL malformed request accepted'; exit 1
+          fi
+          test ! -s "$RUNNER_TEMP/refused.csv"
+          if env PERF_F204_CSV_CLI_LAB=0 php tools/perf-export-offline-portfolio-csv.php \
+            < contracts/demo/f204-offline-portfolio-request.json > "$RUNNER_TEMP/disabled.csv"; then
+            echo 'FAIL missing lab gate accepted'; exit 1
+          fi
+          test ! -s "$RUNNER_TEMP/disabled.csv"
+          if grep -R 'perf-export-offline-portfolio-csv' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: offline CLI wired into operational Laravel'; exit 1
+          fi
