@@ -91,7 +91,7 @@ $parallel2=$launch($grantA);
 $res1=$finish($parallel1);$res2=$finish($parallel2);
 $statuses=[$res1['status'],$res2['status']];sort($statuses);
 $assert($statuses===['executor_duplicate_denied','synthetic_noop_recorded'],
- 'parallel processes admit only one synthetic A receipt');
+ 'parallel processes admit only one synthetic A receipt: '.implode(',', $statuses));
 $assert(!$res1['action_authorized']&&!$res2['action_authorized'],
  'neither concurrent call authorizes paid media');
 $assert($run($grantA)['status']==='executor_duplicate_denied',
