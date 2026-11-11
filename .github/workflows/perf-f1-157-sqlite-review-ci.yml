@@ -1,0 +1,57 @@
+name: Performance F1-157 - persistent fictional reviews in SQLite CI
+on:
+  push:
+    branches:
+      - dev/perf-f1-157-durable-fictional-reviews-sqlite-2026-11-11
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F157SyntheticSqliteReviewStore.php'
+      - 'tests/Standalone/F157SqliteReviewStoreTest.php'
+      - '.github/workflows/perf-f1-157-sqlite-review-ci.yml'
+permissions:
+  contents: read
+jobs:
+  persisted-review-lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+      PERF_F151_APPROVAL_LAB: '1'
+      PERF_F152_CSV_LAB: '1'
+      PERF_F153_PARITY_LAB: '1'
+      PERF_F154_ATTENTION_LAB: '1'
+      PERF_F155_FILTER_LAB: '1'
+      PERF_F156_PORTAL_BUNDLE_LAB: '1'
+      PERF_F157_SQLITE_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, sqlite3
+          coverage: none
+      - name: Validate persistent fictional reviews with real SQLite transactions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -m | grep -q pdo_sqlite -i
+          php -l src/Domain/Performance/F157SyntheticSqliteReviewStore.php
+          php -l tests/Standalone/F157SqliteReviewStoreTest.php
+          php tests/Standalone/F157SqliteReviewStoreTest.php
+      - name: Existing offline functional regressions (no Ads integration)
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F151CreativeReviewQueueTest.php
+          php tests/Standalone/F152CreativeReviewCsvTest.php
+          php tests/Standalone/F153OfflinePreviewCsvParityTest.php
+          php tests/Standalone/F154AttentionPanelTest.php
+          php tests/Standalone/F155OfflineReviewStatusFilterTest.php
+          php tests/Standalone/F156PortalReadBundleTest.php
+          if grep -R -E 'F157SyntheticSqliteReviewStore|PERF_F157_SQLITE_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: SQLite lab store exposed in application routes'
+            exit 1
+          fi
