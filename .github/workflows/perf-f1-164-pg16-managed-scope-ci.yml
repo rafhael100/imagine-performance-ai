@@ -1,0 +1,71 @@
+name: Performance F1-164 - SQL-managed campaign scope guard
+on:
+  push:
+    branches:
+      - dev/perf-f1-164-pg16-managed-campaign-boundary-2026-11-11
+  pull_request:
+    paths:
+      - 'database/lab-migrations/f164_pg16_managed_campaign_boundary_ci.sql'
+      - 'tests/Standalone/F164Pg16ManagedCampaignBoundaryTest.php'
+      - '.github/workflows/perf-f1-164-pg16-managed-scope-ci.yml'
+permissions:
+  contents: read
+jobs:
+  database-scope-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: perf_f162_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f162_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F162_PG_LAB: '1'
+      PERF_F163_PHP_BRIDGE_LAB: '1'
+      PERF_F164_PG_SCOPE_LAB: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_f162_ci
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql,pgsql
+          coverage: none
+      - name: Apply only disposable PostgreSQL migrations F162 and F164
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f162_pg16_tenant_review_registry_ci.sql
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f164_pg16_managed_campaign_boundary_ci.sql
+      - name: Verify F162 and F163 SQL/PHP privileges with new campaign trigger active
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F162Pg16TenantReviewRegistryTest.php
+          psql -v ON_ERROR_STOP=1 -c 'TRUNCATE perf_f162.events,perf_f162.reviews RESTART IDENTITY CASCADE'
+          php tests/Standalone/F163Pg16SyntheticReviewBridgeTest.php
+      - name: Reject raw SQL attempts to bypass campaign management and retirement
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tests/Standalone/F164Pg16ManagedCampaignBoundaryTest.php
+          php tests/Standalone/F164Pg16ManagedCampaignBoundaryTest.php
+          if grep -R -E 'f164_pg16_managed_campaign_boundary|PERF_F164_PG_SCOPE_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL: synthetic SQL migration referenced by product app'
+            exit 1
+          fi
