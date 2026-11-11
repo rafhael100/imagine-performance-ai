@@ -177,8 +177,7 @@ foreach([
  'app/Domain/PerformanceDashboard/PerformanceReviewObservationState.php',
  'app/Domain/PerformanceDashboard/CredentialBoundPerformanceWorkbenchPreview.php',
 ] as $path)require_once $portal.'/'.$path;
-$preview=\App\Domain\PerformanceDashboard\CredentialBoundPerformanceWorkbenchPreview
- ::fromDto($canonicalSql);
+$preview=\App\Domain\PerformanceDashboard\CredentialBoundPerformanceWorkbenchPreview::fromDto($canonicalSql);
 $check($preview!==null
  &&$preview->hasPortalIdentity()===false
  &&$preview->canPublishAds()===false
