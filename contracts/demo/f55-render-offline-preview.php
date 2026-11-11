@@ -119,6 +119,7 @@ if(getenv('PERF_F151_APPROVAL_LAB')==='1'){
             'channel'=>$item['channel'],
             'status'=>$status,
             'review_ref'=>$item['review_ref'],
+            'state'=>$item['status'],
             'approval_source'=>'none_real',
         ];
     }
