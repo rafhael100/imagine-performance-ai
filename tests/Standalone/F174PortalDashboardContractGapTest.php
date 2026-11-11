@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use App\Domain\PerformanceDashboard\CredentialBoundPerformanceWorkbenchPreview as PortalPreview;
+
 /**
  * F174 dashboard cross-contract denial: the latest pinned Portal candidate's
  * real F62 consumer accepts its own F100-shaped DTO but MUST reject F166
@@ -25,7 +27,6 @@ foreach($files as $file){
  if(!is_file($portal.'/'.$file))throw new RuntimeException('F174 Portal candidate source missing: '.$file);
  require_once $portal.'/'.$file;
 }
-use App\Domain\PerformanceDashboard\CredentialBoundPerformanceWorkbenchPreview as PortalPreview;
 
 $n=0;
 $check=static function(bool $ok,string $why)use(&$n):void{
@@ -120,7 +121,7 @@ $check(!str_contains($f166Text,"'account_ref'")
 $check(str_contains($consumerText,"'approved_demo_no_execution'")
  &&str_contains($f166Text,"'approved_mock_only'"),
  'approval observation labels differ; never translate to real human authorization');
-$check(str_contains($consumerText,"'meta_ads'")
+$check(str_contains(file_get_contents($portal.'/app/Domain/Catalog/PerformanceChannel.php'),"'meta_ads'")
  &&str_contains($f166Text,"'meta'"),
  'channel enums have a separate Portal/Performance mapping contract');
 $check($f166Sample['iam_verified']===false
