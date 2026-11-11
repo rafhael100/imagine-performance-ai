@@ -7,6 +7,7 @@ on:
     paths:
       - 'contracts/security/f174-portal-candidate-readiness.json'
       - 'tests/Standalone/F174PortalCandidateReadinessTest.php'
+      - 'tests/Standalone/F174PortalDashboardContractGapTest.php'
       - '.github/workflows/perf-f1-174-portal-candidate-sentry-ci.yml'
 permissions:
   contents: read
@@ -42,6 +43,10 @@ jobs:
             apps/portal/app/Domain/PerformanceBridge/SyntheticCapabilityIssuer.php
             apps/portal/app/Domain/Catalog/PerformanceChannel.php
             apps/portal/app/Domain/PerformanceDashboard/OfflinePerformanceWorkbenchPreview.php
+            apps/portal/app/Domain/PerformanceDashboard/CredentialBoundPerformanceWorkbenchPreview.php
+            apps/portal/app/Domain/PerformanceDashboard/PerformanceCampaignObservationState.php
+            apps/portal/app/Domain/PerformanceDashboard/PerformanceReviewObservationState.php
+            apps/portal/tests/Unit/CredentialBoundPerformanceWorkbenchPreviewStandalone.php
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -57,5 +62,18 @@ jobs:
           php tests/Standalone/F174PortalCandidateReadinessTest.php
           if grep -R -E 'F174PortalCandidateReadinessTest|PERF_F174_READINESS_LAB' routes/ bootstrap/ app/Providers/ database/migrations/; then
             echo 'FAIL: F174 source readiness sentry used by runtime'
+            exit 1
+          fi
+      - name: Verify actual current Portal F62 consumer rejects the F166 response shape
+        shell: bash
+        env:
+          PORTAL_F62_CREDENTIAL_WORKBENCH_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l tests/Standalone/F174PortalDashboardContractGapTest.php
+          php portal-f174-candidate/apps/portal/tests/Unit/CredentialBoundPerformanceWorkbenchPreviewStandalone.php
+          php tests/Standalone/F174PortalDashboardContractGapTest.php
+          if grep -R -E 'F174PortalDashboardContractGapTest' routes/ bootstrap/ app/Providers/ database/migrations/; then
+            echo 'FAIL: cross-repo dashboard contract test wired to app'
             exit 1
           fi
