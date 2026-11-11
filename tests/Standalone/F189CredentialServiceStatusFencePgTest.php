@@ -167,7 +167,8 @@ $admin->exec("UPDATE public.performance_tenants
  SET status='active' WHERE id='{$tenant}'::uuid");
 
 $put('ac890000-0000-4000-8000-000000000002',
- 'revoked','synthetic_ci_only',$revision,date('Y-m-d H:i:sP',time()+1));
+ 'revoked','synthetic_ci_only','demo-revision-f189-revoked',
+ date('Y-m-d H:i:sP',time()+1));
 $deny($b,'newer revocation snapshot outranks earlier eligible snapshot');
 $check($read($a)['status']!=='credential_scoped_demo_workbench_only',
  'B positive fixture never makes inactive A eligible');
