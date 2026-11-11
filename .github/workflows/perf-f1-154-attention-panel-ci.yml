@@ -1,0 +1,57 @@
+name: Performance F1-154 - synthetic backlog and capacity attention panel
+on:
+  push:
+    branches:
+      - dev/perf-f1-154-offline-review-attention-panel-2026-11-10
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F154SyntheticAttentionProjector.php'
+      - 'contracts/demo/performance-scope-preview-v1.html'
+      - 'contracts/demo/f55-render-offline-preview.php'
+      - 'tests/Standalone/F154AttentionPanelTest.php'
+      - '.github/workflows/perf-f1-154-attention-panel-ci.yml'
+permissions:
+  contents: read
+jobs:
+  offline-reports:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+      PERF_F151_APPROVAL_LAB: '1'
+      PERF_F152_CSV_LAB: '1'
+      PERF_F153_PARITY_LAB: '1'
+      PERF_F154_ATTENTION_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Assert fictional tenant-scope and review indicators stay NO-GO
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F154SyntheticAttentionProjector.php
+          php -l contracts/demo/f55-render-offline-preview.php
+          php -l tests/Standalone/F154AttentionPanelTest.php
+          php tests/Standalone/F151CreativeReviewQueueTest.php
+          php tests/Standalone/F152CreativeReviewCsvTest.php
+          php tests/Standalone/F153OfflinePreviewCsvParityTest.php
+          php tests/Standalone/F154AttentionPanelTest.php
+      - name: Render offline Reports tab with no live advertising metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php contracts/demo/f55-render-offline-preview.php > "$RUNNER_TEMP/f154-attention-demo.html"
+          test -s "$RUNNER_TEMP/f154-attention-demo.html"
+          grep -q 'id="attention-cards"' "$RUNNER_TEMP/f154-attention-demo.html"
+          grep -q 'review_attention' "$RUNNER_TEMP/f154-attention-demo.html"
+          grep -q 'Sem ação automática' "$RUNNER_TEMP/f154-attention-demo.html"
+          if grep -R -E 'F154SyntheticAttentionProjector|PERF_F154_ATTENTION_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: fictional attention projection exposed via application route'
+            exit 1
+          fi
