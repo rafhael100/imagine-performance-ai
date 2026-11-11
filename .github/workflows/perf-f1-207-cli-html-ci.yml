@@ -1,0 +1,58 @@
+name: Performance F1-207 - executable static noninteractive portfolio demo
+on:
+  push:
+    branches:
+      - dev/perf-f1-207-cli-portfolio-html-demo-2026-11-11
+  pull_request:
+    paths:
+      - 'tools/perf-render-offline-portfolio-html.php'
+      - 'contracts/demo/f207-offline-portfolio-html-request.json'
+      - 'app/Performance/Planning/OfflinePortfolioHtmlPreview.php'
+      - '.github/workflows/perf-f1-207-cli-html-ci.yml'
+permissions:
+  contents: read
+jobs:
+  static-demo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: CLI HTML is synthetic, noninteractive and gated
+        shell: bash
+        env:
+          APP_ENV: testing
+          PERF_F207_HTML_CLI_LAB: '1'
+        run: |
+          set -euo pipefail
+          php -l tools/perf-render-offline-portfolio-html.php
+          php tools/perf-render-offline-portfolio-html.php \
+            < contracts/demo/f207-offline-portfolio-html-request.json > "$RUNNER_TEMP/f207.html"
+          test -s "$RUNNER_TEMP/f207.html"
+          grep -q '<!DOCTYPE html>' "$RUNNER_TEMP/f207.html"
+          grep -q 'DEMONSTRAÇÃO NÃO HOMOLOGADA' "$RUNNER_TEMP/f207.html"
+          grep -q 'Content-Security-Policy' "$RUNNER_TEMP/f207.html"
+          grep -q 'scenario-demo-google-meta-a' "$RUNNER_TEMP/f207.html"
+          grep -q 'scenario-demo-google-meta-b' "$RUNNER_TEMP/f207.html"
+          if grep -Eiq '<(script|iframe|form|button|a|img|link)[ >]' "$RUNNER_TEMP/f207.html"; then
+            echo 'FAIL executable or external HTML controls'
+            exit 1
+          fi
+          if printf '{"schema_version":"invalid"}' | php tools/perf-render-offline-portfolio-html.php > "$RUNNER_TEMP/refused.html"; then
+            echo 'FAIL invalid JSON accepted'; exit 1
+          fi
+          test ! -s "$RUNNER_TEMP/refused.html"
+          if env PERF_F207_HTML_CLI_LAB=0 php tools/perf-render-offline-portfolio-html.php \
+            < contracts/demo/f207-offline-portfolio-html-request.json > "$RUNNER_TEMP/off.html"; then
+            echo 'FAIL disabled CLI returned successful HTML'; exit 1
+          fi
+          test ! -s "$RUNNER_TEMP/off.html"
+          if grep -R 'perf-render-offline-portfolio-html' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL offline HTML wired into Laravel'
+            exit 1
+          fi
