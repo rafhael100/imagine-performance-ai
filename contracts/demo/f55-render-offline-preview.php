@@ -80,19 +80,24 @@ $ui['campaigns']=$cards;
 // These suggestions remain solely static UI captions, NOT real approvals.
 $ui['approvals']=$previous['approvals'];
 if(getenv('PERF_F151_APPROVAL_LAB')==='1'){
-    require_once dirname(__DIR__,2).'/src/Domain/Performance/F151SyntheticCreativeReviewQueue.php';
-    $reviews=new \Imagine\Performance\Domain\F151SyntheticCreativeReviewQueue($l);
-    if($reviews->submit($t,'rev-search-demo','cam-search-demo','google_ads',
-            'Revisar peça de pesquisa')!=='submitted_demo'
-        ||$reviews->submit($t,'rev-social-demo','cam-social-demo','meta',
-            'Revisar campanha social')!=='submitted_demo'){
-        throw new RuntimeException('F151 failed to prepare fictional creative reviews');
-    }
-    if($reviews->decide($t,'rev-social-demo',1,'request_changes',
-            'reviewer-demo-maria')!=='changes_requested_demo'){
-        throw new RuntimeException('F151 demo review transition failed');
-    }
-    $projection=$reviews->project($t);
+    if(getenv('PERF_F153_PARITY_LAB')==='1'){
+        require_once dirname(__DIR__,2).'/src/Domain/Performance/F153OfflineReviewFixtureFactory.php';
+        $projection=\Imagine\Performance\Domain\F153OfflineReviewFixtureFactory::build($l,$t);
+    }else{
+        require_once dirname(__DIR__,2).'/src/Domain/Performance/F151SyntheticCreativeReviewQueue.php';
+        $reviews=new \Imagine\Performance\Domain\F151SyntheticCreativeReviewQueue($l);
+        if($reviews->submit($t,'rev-search-demo','cam-search-demo','google_ads',
+                'Revisar peça de pesquisa')!=='submitted_demo'
+            ||$reviews->submit($t,'rev-social-demo','cam-social-demo','meta',
+                'Revisar campanha social')!=='submitted_demo'){
+            throw new RuntimeException('F151 failed to prepare fictional creative reviews');
+        }
+        if($reviews->decide($t,'rev-social-demo',1,'request_changes',
+                'reviewer-demo-maria')!=='changes_requested_demo'){
+            throw new RuntimeException('F151 demo review transition failed');
+        }
+        $projection=$reviews->project($t);
+        }
     if(!is_array($projection)
        ||($projection['human_approval_verified']??null)!==false
        ||($projection['dispatch_enabled']??null)!==false
