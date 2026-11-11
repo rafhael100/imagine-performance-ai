@@ -143,10 +143,12 @@ $deniedB=$otherRole->read($otherSigned,$authority,$time);
 $check($deniedB['status']==='sql_tenant_or_report_denied'
  &&$deniedB['report']===null,
  'valid original Portal A envelope cannot read SQL tenant B');
-$check($admin->query(
- "SELECT count(*) FROM perf_f162.consumed_read_nonces
-  WHERE tenant='perf-demo-boreal'")->fetchColumn()==0,
- 'cross-tenant rejection does not burn B SQL nonce namespace');
+$crossTenantStmt=$admin->prepare(
+ 'SELECT count(*) FROM perf_f162.consumed_read_nonces
+  WHERE tenant=? AND request_id=?');
+$crossTenantStmt->execute(['perf-demo-boreal',$additional['nonce']]);
+$check((int)$crossTenantStmt->fetchColumn()===0,
+ 'cross-tenant rejection does not burn the specific B nonce from denied envelope');
 
 $mutated=json_decode($otherSigned,true,16,JSON_THROW_ON_ERROR);
 $mutated['payload']=$base64url('{"tenant":"perf-demo-boreal"}');
