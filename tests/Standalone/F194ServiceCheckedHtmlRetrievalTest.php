@@ -143,7 +143,8 @@ $inline=(new SyntheticF181BoundPortalHtml())->render(
  $delivery,$json,':memory:',$a,true
 );
 $check($inline['status']==='in_memory_f63_ci_only'
- &&($inline['html_path']??'missing')===null
+ &&array_key_exists('html_path',$inline)
+ &&$inline['html_path']===null
  &&($inline['non_persistent']??false)===true
  &&is_string($inline['html_bytes']??null)
  &&hash('sha256',$inline['html_bytes'])===$inline['html_sha256'],
