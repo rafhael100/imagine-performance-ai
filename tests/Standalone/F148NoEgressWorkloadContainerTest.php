@@ -107,7 +107,7 @@ $writeEnv=static function(array $vars)use($envFile):void {
 };
 $writeEnv($environment);
 $baseArgs=[
- 'docker','run','--rm','--network','none','--read-only',
+ 'docker','run','--rm','--interactive','--network','none','--read-only',
  '--cap-drop','ALL','--security-opt','no-new-privileges',
  '--pids-limit','64','--user',getmyuid().':'.getmygid(),
  '--mount','type=bind,src='.$hostSandbox.',dst=/sandbox',
