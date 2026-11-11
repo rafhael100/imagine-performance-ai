@@ -56,7 +56,9 @@ final class F146TerminalGrantIssuer
             || !hash_equals($mark['head'],$state['head'])
             || $state['epoch']!==$generation
             || !isset($state['operations'][$operation])
-            || !isset($state['seen'][$fingerprint])) {
+            || !isset($state['seen'][$fingerprint])
+            || ($state['bindings'][$operation]['tenant']??null)!==$tenant
+            || ($state['bindings'][$operation]['fingerprint']??null)!==$fingerprint) {
             throw new RuntimeException('F146 unverified or stale terminal state');
         }
         $stamp=$issuedAt??time();
