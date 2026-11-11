@@ -1,0 +1,34 @@
+name: Performance F1-206 - reproducible synthetic CSV HTML digest bundle
+on:
+  push:
+    branches:
+      - dev/perf-f1-206-reproducible-offline-artifact-manifest-2026-11-11
+  pull_request:
+    paths:
+      - 'app/Performance/Planning/OfflinePortfolioArtifactManifest.php'
+      - 'tests/Standalone/F206OfflinePortfolioArtifactManifestTest.php'
+      - '.github/workflows/perf-f1-206-artifact-manifest-ci.yml'
+permissions:
+  contents: read
+jobs:
+  reproducible-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Verify local digest parity, no external authorization
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Planning/OfflinePortfolioArtifactManifest.php
+          php -l tests/Standalone/F206OfflinePortfolioArtifactManifestTest.php
+          php tests/Standalone/F206OfflinePortfolioArtifactManifestTest.php
+          if grep -R 'OfflinePortfolioArtifactManifest' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL synthetic digest bundle wired into production runtime'
+            exit 1
+          fi
