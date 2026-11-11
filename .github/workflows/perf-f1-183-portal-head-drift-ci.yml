@@ -1,0 +1,67 @@
+name: Performance F1-183 - live Portal PR candidate ref drift gate
+on:
+  push:
+    branches:
+      - dev/perf-f1-183-portal-pr-head-drift-guard-2026-11-11
+  pull_request:
+    paths:
+      - 'scripts/ci/f183-portal-pr-head-guard.php'
+      - 'contracts/security/f174-portal-candidate-readiness.json'
+      - '.github/workflows/perf-f1-183-portal-head-drift-ci.yml'
+permissions:
+  contents: read
+jobs:
+  verify-live-portal-pr-candidate-ref:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      APP_ENV: testing
+      PERF_F183_PORTAL_PIN_LAB: '1'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Syntax and negative validation of versioned Portal contract pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/ci/f183-portal-pr-head-guard.php
+          EXPECTED="$(php -r '$c=json_decode(file_get_contents("contracts/security/f174-portal-candidate-readiness.json"),true,32,JSON_THROW_ON_ERROR);echo $c["candidate"]["ref"];')"
+          test "${#EXPECTED}" -eq 40
+          printf '%s\trefs/pull/356/head\n' "$EXPECTED" |
+            php scripts/ci/f183-portal-pr-head-guard.php
+          if printf '%040d\trefs/pull/356/head\n' 0 |
+             php scripts/ci/f183-portal-pr-head-guard.php; then
+            echo 'FAIL F183: changed Portal SHA was accepted'
+            exit 1
+          else
+            test "$?" -eq 3
+          fi
+          if php scripts/ci/f183-portal-pr-head-guard.php < /dev/null; then
+            echo 'FAIL F183: empty remote ref was accepted'
+            exit 1
+          else
+            test "$?" -eq 3
+          fi
+          if APP_ENV=production php scripts/ci/f183-portal-pr-head-guard.php < /dev/null; then
+            echo 'FAIL F183: production mode accepted CI-only pin parser'
+            exit 1
+          else
+            test "$?" -eq 2
+          fi
+      - name: Consult real GitHub PR356 HEAD without tokens, refuse changed contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          git ls-remote --exit-code https://github.com/rafhael100/imagine-portal.git refs/pull/356/head > "$RUNNER_TEMP/f183-live-pr356-head.txt"
+          test "$(wc -l < "$RUNNER_TEMP/f183-live-pr356-head.txt")" -eq 1
+          php scripts/ci/f183-portal-pr-head-guard.php < "$RUNNER_TEMP/f183-live-pr356-head.txt"
+          if grep -R -E 'PERF_F183_PORTAL_PIN_LAB|f183-portal-pr-head-guard' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: CI-only ref gate exposed to application runtime'
+            exit 1
+          fi
