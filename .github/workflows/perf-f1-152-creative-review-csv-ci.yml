@@ -1,0 +1,54 @@
+name: Performance F1-152 - safe fictional creative review CSV
+on:
+  push:
+    branches:
+      - dev/perf-f1-152-creative-reviews-safe-csv-2026-11-10
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F152SyntheticCreativeReviewCsvExporter.php'
+      - 'src/Domain/Performance/F151SyntheticCreativeReviewQueue.php'
+      - 'contracts/demo/f152-export-creative-reviews.php'
+      - 'tests/Standalone/F152CreativeReviewCsvTest.php'
+      - '.github/workflows/perf-f1-152-creative-review-csv-ci.yml'
+permissions:
+  contents: read
+jobs:
+  safe-csv:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F53_PORTAL_PREVIEW_LAB: '1'
+      PERF_F55_RENDER_LAB: '1'
+      PERF_F151_APPROVAL_LAB: '1'
+      PERF_F152_CSV_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Test review queue and safety of offline CSV
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F152SyntheticCreativeReviewCsvExporter.php
+          php -l contracts/demo/f152-export-creative-reviews.php
+          php -l tests/Standalone/F152CreativeReviewCsvTest.php
+          php tests/Standalone/F151CreativeReviewQueueTest.php
+          php tests/Standalone/F152CreativeReviewCsvTest.php
+      - name: Produce synthetic reports without publishing customer data
+        shell: bash
+        run: |
+          set -euo pipefail
+          php contracts/demo/f152-export-creative-reviews.php > "$RUNNER_TEMP/reviews-f152.csv"
+          php contracts/demo/f55-render-offline-preview.php > "$RUNNER_TEMP/scope-f151.html"
+          test -s "$RUNNER_TEMP/reviews-f152.csv"
+          test -s "$RUNNER_TEMP/scope-f151.html"
+          grep -q 'SEM COBRANCA' "$RUNNER_TEMP/reviews-f152.csv"
+          grep -q 'rev-social-demo' "$RUNNER_TEMP/reviews-f152.csv"
+          if grep -R -E 'F152SyntheticCreativeReviewCsvExporter|PERF_F152_CSV_LAB' routes/ app/ bootstrap/; then
+            echo 'FAIL: F152 synthetic export exposed to app runtime'
+            exit 1
+          fi
