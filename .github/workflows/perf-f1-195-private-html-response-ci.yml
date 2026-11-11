@@ -1,0 +1,36 @@
+name: Performance F1-195 - private HTML response mapping, fail closed
+on:
+  push:
+    branches:
+      - dev/perf-f1-195-private-response-boundary-2026-11-11
+  pull_request:
+    paths:
+      - 'contracts/lab/php/SyntheticPrivateHtmlResponse.php'
+      - 'tests/Standalone/F195PrivateHtmlResponseTest.php'
+      - '.github/workflows/perf-f1-195-private-html-response-ci.yml'
+permissions:
+  contents: read
+jobs:
+  pure-response-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo
+      - name: Parse and test private non-cacheable mapping
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l contracts/lab/php/SyntheticPrivateHtmlResponse.php
+          php -l tests/Standalone/F195PrivateHtmlResponseTest.php
+          php tests/Standalone/F195PrivateHtmlResponseTest.php
+          if grep -R 'SyntheticPrivateHtmlResponse' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: CI-only boundary wired to operational app'
+            exit 1
+          fi
