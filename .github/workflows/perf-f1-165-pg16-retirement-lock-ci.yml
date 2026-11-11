@@ -1,0 +1,76 @@
+name: Performance F1-165 - PostgreSQL campaign retirement locks and audit
+on:
+  push:
+    branches:
+      - dev/perf-f1-165-pg16-campaign-retirement-lock-audit-2026-11-11
+  pull_request:
+    paths:
+      - 'database/lab-migrations/f165_pg16_campaign_retirement_lock_audit_ci.sql'
+      - 'tests/Standalone/F165Pg16CampaignRetirementLockAuditTest.php'
+      - '.github/workflows/perf-f1-165-pg16-retirement-lock-ci.yml'
+permissions:
+  contents: read
+jobs:
+  pg16-campaign-retirement-lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: perf_f162_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_f162_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      PERF_F52_SCOPE_LAB: '1'
+      PERF_F162_PG_LAB: '1'
+      PERF_F163_PHP_BRIDGE_LAB: '1'
+      PERF_F164_PG_SCOPE_LAB: '1'
+      PERF_F165_CAMPAIGN_LOCK_LAB: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_f162_ci
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql,pgsql
+          coverage: none
+      - name: Create only synthetic PG16 tenants, campaign registry and scope audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PGDATABASE" = perf_f162_ci
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f162_pg16_tenant_review_registry_ci.sql
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f164_pg16_managed_campaign_boundary_ci.sql
+          psql -v ON_ERROR_STOP=1 -f database/lab-migrations/f165_pg16_campaign_retirement_lock_audit_ci.sql
+      - name: Regress F162 F163 and F164 tenant scope security
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F162Pg16TenantReviewRegistryTest.php
+          psql -v ON_ERROR_STOP=1 -c 'TRUNCATE perf_f162.events,perf_f162.reviews RESTART IDENTITY CASCADE'
+          php tests/Standalone/F163Pg16SyntheticReviewBridgeTest.php
+          php tests/Standalone/F164Pg16ManagedCampaignBoundaryTest.php
+      - name: Prove two-way lock serialization and management audit trail
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tests/Standalone/F165Pg16CampaignRetirementLockAuditTest.php
+          php tests/Standalone/F165Pg16CampaignRetirementLockAuditTest.php
+          if grep -R -E 'f165_pg16_campaign_retirement_lock_audit|PERF_F165_CAMPAIGN_LOCK_LAB' app/ routes/ bootstrap/ database/migrations/; then
+            echo 'FAIL: F165 laboratory migration referenced in application runtime'
+            exit 1
+          fi
