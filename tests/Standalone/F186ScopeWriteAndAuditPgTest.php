@@ -34,16 +34,17 @@ $refused=static function(callable $statement,array $states=['42501']):bool{
 };
 $campaignId=$admin->query(
  "SELECT id FROM public.performance_managed_campaigns
-  WHERE campaign_ref='cam-demo-f89-a'"
+  WHERE campaign_ref='cam-demo-f89-b'"
 )->fetchColumn();
 $check(is_string($campaignId)&&strlen($campaignId)===36,
  'original A fixture campaign exists and has a stable UUID');
 $preA=$reader->read($a);
 $preB=$reader->read($b);
-$check($preA['counts']['linked_campaigns']===1
- &&$preA['counts']['visible_reviews']===1
- &&$preB['counts']['linked_campaigns']===1,
- 'after F185 regression A and B both have one fixture campaign');
+$check($preA['counts']['linked_campaigns']===0
+ &&$preA['counts']['visible_reviews']===0
+ &&$preB['counts']['linked_campaigns']===1
+ &&$preB['counts']['visible_reviews']===1,
+ 'F185 has tombstoned A, while original B remains first-generation and visible');
 $check((int)$admin->query(
  'SELECT count(*) FROM public.performance_f186_management_transition_audit'
 )->fetchColumn()===0,
@@ -108,11 +109,11 @@ $check((int)$admin->query(
   WHERE id='{$newIntent}'::uuid AND review_state='awaiting_approval'"
 )->fetchColumn()===1,
  'new first-generation review request is pending, never preapproved');
-$check((int)$a->query(
+$check((int)$b->query(
  "SELECT count(*) FROM public.perf_f93_demo_campaign_account_read
   WHERE campaign_ref='cam-demo-f186-new'"
 )->fetchColumn()===1
- &&(int)$a->query(
+ &&(int)$b->query(
  "SELECT count(*) FROM public.perf_f97_demo_review_read
   WHERE campaign_ref='cam-demo-f186-new'"
 )->fetchColumn()===1,
@@ -187,7 +188,7 @@ $check($refused(static fn()=>$admin->exec(
   WHERE campaign_id='{$campaignId}'::uuid"
 ),['42501','P0001']), 'old reviewed intent cannot be deleted or replaced by a new approval');
 
-$after=$reader->read($a);
+$after=$reader->read($b);
 $check($after['status']==='credential_scoped_demo_workbench_only'
  &&$after['counts']['linked_campaigns']===1
  &&$after['counts']['visible_reviews']===1
@@ -197,8 +198,8 @@ $check($after['status']==='credential_scoped_demo_workbench_only'
 $check($after['dispatch_enabled']===false&&$after['billing_enabled']===false
  &&$after['ready_for_production']===false,
  'F186 scope write restrictions cannot enable paid media or billing');
-$check($reader->read($b)===$preB,
- 'B SQL tenant scope remains stable throughout A write/audit experiment');
+$check($reader->read($a)===$preA,
+ 'previously tombstoned tenant A remains unchanged throughout B write/audit experiment');
 $check(!$a->inTransaction()&&!$b->inTransaction(),
  'both F100 readers close their transactions');
 echo "F186 write-side epoch and local audit: {$n} PASS / 0 FAIL — CI-only NO-GO\n";
