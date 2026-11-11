@@ -98,6 +98,10 @@ $check($admin->query("SELECT count(*) FROM pg_views
  WHERE schemaname='perf_f162' AND viewname='retired_review_counts'")
  ->fetchColumn()==1,
  'disposable view instrumentation installed under original SQL name');
+$delayedBaseline=$readerA->read($tenant);
+$check(is_array($delayedBaseline)
+ &&$delayedBaseline['active_review_count']===1,
+ 'instrumented slow view alone preserves successful baseline result');
 
 $child=proc_open([PHP_BINARY,__FILE__,'--worker'],
  [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],
