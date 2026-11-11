@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Imagine Performance AI F156 offline synthetic Portal read bundle",
+  "description": "Offline fixture only. This schema does not authenticate callers or authorize any Ads, money or production.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source",
+    "tenant_ref",
+    "read_only",
+    "contracted",
+    "iam_verified",
+    "s2s_verified",
+    "authorization_eligible",
+    "human_approval_verified",
+    "dispatch_enabled",
+    "billing_enabled",
+    "ready_for_production",
+    "real_metrics_available",
+    "campaign_capacity",
+    "creative_reviews",
+    "attention",
+    "review_count_demo"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "perf.portal.performance-dashboard.synthetic.v1"
+    },
+    "source": {
+      "const": "offline_fixture_only"
+    },
+    "tenant_ref": {
+      "type": "string",
+      "pattern": "^perf-demo-[a-z0-9-]{1,60}$"
+    },
+    "read_only": {
+      "const": true
+    },
+    "contracted": {
+      "const": false
+    },
+    "iam_verified": {
+      "const": false
+    },
+    "s2s_verified": {
+      "const": false
+    },
+    "authorization_eligible": {
+      "const": false
+    },
+    "human_approval_verified": {
+      "const": false
+    },
+    "dispatch_enabled": {
+      "const": false
+    },
+    "billing_enabled": {
+      "const": false
+    },
+    "ready_for_production": {
+      "const": false
+    },
+    "real_metrics_available": {
+      "const": false
+    },
+    "campaign_capacity": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "channel",
+          "campaigns",
+          "groups",
+          "commercial_approved"
+        ],
+        "properties": {
+          "channel": {
+            "enum": [
+              "google_ads",
+              "meta"
+            ]
+          },
+          "campaigns": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "used",
+              "limit",
+              "remaining"
+            ],
+            "properties": {
+              "used": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "remaining": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              }
+            }
+          },
+          "groups": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "used",
+              "limit",
+              "remaining"
+            ],
+            "properties": {
+              "used": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "remaining": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              }
+            }
+          },
+          "commercial_approved": {
+            "const": false
+          }
+        }
+      }
+    },
+    "creative_reviews": {
+      "type": "array",
+      "maxItems": 25,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "review_ref",
+          "campaign_ref",
+          "channel",
+          "title",
+          "status",
+          "version",
+          "human_approval_verified",
+          "action_authorized"
+        ],
+        "properties": {
+          "review_ref": {
+            "type": "string",
+            "pattern": "^rev-[a-z0-9-]{1,60}$"
+          },
+          "campaign_ref": {
+            "type": "string",
+            "pattern": "^cam-[a-z0-9-]{1,60}$"
+          },
+          "channel": {
+            "enum": [
+              "google_ads",
+              "meta"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "status": {
+            "enum": [
+              "pending_demo",
+              "changes_requested_demo",
+              "approved_mock_only",
+              "rejected_mock_only"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "human_approval_verified": {
+            "const": false
+          },
+          "action_authorized": {
+            "const": false
+          }
+        }
+      }
+    },
+    "attention": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "channel",
+          "pending_demo",
+          "changes_requested_demo",
+          "alerts"
+        ],
+        "properties": {
+          "channel": {
+            "enum": [
+              "google_ads",
+              "meta"
+            ]
+          },
+          "pending_demo": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "changes_requested_demo": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "alerts": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "code",
+                "title",
+                "count",
+                "action_enabled"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "action_enabled": {
+                  "const": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "review_count_demo": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 25
+    }
+  }
+}
