@@ -82,8 +82,6 @@ $count=static fn():int=>(int)$admin->query(
 )->fetchColumn();
 $prior=$count();
 $tenant='88888888-8888-4888-8888-888888888888';
-$check($fetcher->fetchInline($a,$delivery,$inline)['html']===null,
- 'F196 inline render remains invalid after service ABA reactivation');
 $check((new CredentialBoundDemoServiceStatusFence())->read($a)['status']
  ==='credential_scoped_demo_workbench_only',
  'A remains synthetically eligible before signed preview retrieval');
@@ -220,6 +218,8 @@ $reopened=$fetcher->fetch($a,$delivery,$rendered);
 $check($reopened['status']==='service_revoked_or_sql_changed'
  &&$reopened['html']===null,
  're-enabled status cannot reuse prior F191 epoch for an old HTML artifact');
+$check($fetcher->fetchInline($a,$delivery,$inline)['html']===null,
+ 'F196 inline render remains invalid after service ABA reactivation');
 $check((new CredentialBoundDemoServiceStatusFence())->read($a)['status']
  ==='credential_scoped_demo_workbench_only',
  'a new synthetic status read may succeed, but the OLD signed artifact stays revoked');
