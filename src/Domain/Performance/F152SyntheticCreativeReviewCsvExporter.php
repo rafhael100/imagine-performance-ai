@@ -10,14 +10,16 @@ namespace Imagine\Performance\Domain;
 final class F152SyntheticCreativeReviewCsvExporter
 {
     /** @return string|null */
-    public function export(?array $dto):?string
+    public function export(?array $dto,string $expectedTenant):?string
     {
         if(PHP_SAPI!=='cli'||getenv('APP_ENV')!=='testing'
             ||getenv('PERF_F151_APPROVAL_LAB')!=='1'
             ||getenv('PERF_F152_CSV_LAB')!=='1'){
             return null;
         }
+        if(!preg_match('/^perf-demo-[a-z0-9-]{1,60}$/D',$expectedTenant))return null;
         if(!is_array($dto)
+            ||($dto['tenant_ref']??null)!==$expectedTenant
             ||($dto['schema_version']??null)!=='perf.portal.creative-reviews.synthetic.v1'
             ||($dto['source']??null)!=='in_memory_fixture_only'
             ||($dto['read_only']??null)!==true
