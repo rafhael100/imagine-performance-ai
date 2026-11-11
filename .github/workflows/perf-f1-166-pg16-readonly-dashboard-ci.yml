@@ -71,6 +71,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -c 'TRUNCATE perf_f162.events,perf_f162.reviews RESTART IDENTITY CASCADE'
           php -l src/Domain/Performance/F166Pg16ReadOnlyDashboard.php
           php -l tests/Standalone/F166Pg16ReadOnlyDashboardTest.php
           php tests/Standalone/F166Pg16ReadOnlyDashboardTest.php
