@@ -141,8 +141,9 @@ $check=static function(bool $ok,string $msg)use(&$n):void {
 $a=$grant('operation_1481','tenant_demo_A',$fingerprint('A'));
 $wA=$workload($a);
 $requestA=['grant'=>$a,'workload'=>$wA,'fault'=>'none'];
-$check($run(['grant'=>$a,'workload'=>[],'fault'=>'none'])['status']
- ==='invalid_workload_contract','bare SQL or grant alone cannot call no-op executor');
+$untrusted=$run(['grant'=>$a,'workload'=>[],'fault'=>'none']);
+$check($untrusted['status']==='invalid_workload_contract',
+ 'bare SQL or grant alone cannot call no-op executor: got '.($untrusted['status']??'no_status'));
 $check($run($requestA)['status']==='synthetic_noop_recorded',
  'valid independent workload and grant create one no-op receipt');
 $check($run($requestA)['status']==='executor_duplicate_denied',
