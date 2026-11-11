@@ -11,6 +11,9 @@ require_once dirname(__DIR__,2).'/contracts/lab/php/SyntheticPrivateHtmlResponse
 use App\Performance\Security\SyntheticServiceCheckedHtmlRetrieval as Retrieval;
 use App\Performance\Security\SyntheticPrivateHtmlResponse as Response;
 
+// The public mapper exists only for bounded standalone negative tests.
+putenv('APP_ENV=testing');
+putenv('PERF_F197_TEST_ONLY_MAPPER=1');
 $n=0;
 $assert=static function(bool $ok,string $reason)use(&$n):void{
     ++$n;
@@ -89,4 +92,17 @@ $assert($bad['status_code']===403
 $assert(array_keys($bad)===[
     'status_code','headers','body','synthetic_only','ready_for_production'
 ], 'response contract exposes only enumerated safe fields');
-echo "F195 private response boundary: {$n} PASS / 0 FAIL; NO HTTP ROUTE / NO-GO\n";
+// F197: fully valid-looking raw-array proof must never be a public API.
+putenv('PERF_F197_TEST_ONLY_MAPPER=0');
+$publicDenied=Response::fromCheckedRetrieval($allowed);
+$assert($publicDenied['status_code']===403
+    &&$publicDenied['body']==='Preview unavailable',
+    'forged valid-shaped HTML fails closed when standalone mapper flag is off');
+putenv('PERF_F197_TEST_ONLY_MAPPER=1');
+putenv('APP_ENV=production');
+$prodDenied=Response::fromCheckedRetrieval($allowed);
+$assert($prodDenied['status_code']===403
+    &&$prodDenied['headers']['Content-Type']==='text/plain; charset=utf-8',
+    'even explicit test flag cannot enable raw mapper in production mode');
+putenv('APP_ENV=testing');
+echo "F195/F197 private response boundary: {$n} PASS / 0 FAIL; NO HTTP ROUTE / NO-GO\n";
