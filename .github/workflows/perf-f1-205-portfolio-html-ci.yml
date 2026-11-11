@@ -1,0 +1,34 @@
+name: Performance F1-205 - safe no-script synthetic portfolio HTML
+on:
+  push:
+    branches:
+      - dev/perf-f1-205-portfolio-html-preview-2026-11-11
+  pull_request:
+    paths:
+      - 'app/Performance/Planning/OfflinePortfolioHtmlPreview.php'
+      - 'tests/Standalone/F205OfflinePortfolioHtmlPreviewTest.php'
+      - '.github/workflows/perf-f1-205-portfolio-html-ci.yml'
+permissions:
+  contents: read
+jobs:
+  render-static-html:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Strict CSP and non-homologated HTML test
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Planning/OfflinePortfolioHtmlPreview.php
+          php -l tests/Standalone/F205OfflinePortfolioHtmlPreviewTest.php
+          php tests/Standalone/F205OfflinePortfolioHtmlPreviewTest.php
+          if grep -R 'OfflinePortfolioHtmlPreview' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL synthetic HTML connected to operational routes'
+            exit 1
+          fi
