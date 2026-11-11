@@ -150,7 +150,7 @@ $views=$admin->query("SELECT c.relname,c.reloptions FROM pg_class AS c
 $check(count($views)===3
  &&count(array_filter($views,
   static fn(array $row):bool=>str_contains((string)$row['reloptions'],
-   'security_invoker=true'))===3,
+   'security_invoker=true')))===3,
  'all three PG16 views explicitly run with security_invoker');
 $admin->exec('REVOKE SELECT ON perf_f162.campaign_events FROM perf_f162_a');
 $check($readerA->read($tenantA)===null,
