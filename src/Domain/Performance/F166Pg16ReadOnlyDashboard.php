@@ -118,6 +118,9 @@ final class F166Pg16ReadOnlyDashboard
                 'campaign_scope_events_demo'=>$activity,
             ];
         }catch(PDOException $e){
+            if(getenv('PERF_F166_READ_DASHBOARD_LAB')==='1'){
+                fwrite(STDERR,'F166 query denial SQLSTATE='.$e->getCode()."\n");
+            }
             return null;
         }
     }
