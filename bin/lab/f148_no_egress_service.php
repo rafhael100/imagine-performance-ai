@@ -67,6 +67,11 @@ try {
     if (!is_array($request)) throw new RuntimeException('F148 invalid JSON');
     $result=$service->handle($request);
 } catch(Throwable $e) {
+    // Lab-only coarse diagnostic, no exception message or runtime secrets.
+    // Throwable class helps isolate missing PHP extensions from access denial.
+    if (getenv('PERF_F148_LAB')==='1') {
+        fwrite(STDERR, "F148 boot diagnostic: ".get_class($e)."\n");
+    }
     $result=$denied;
 }
 echo json_encode($result,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
