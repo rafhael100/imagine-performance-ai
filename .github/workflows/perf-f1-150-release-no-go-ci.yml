@@ -1,0 +1,37 @@
+name: Performance F1-150 - release NO-GO evidence contract
+on:
+  push:
+    branches:
+      - dev/perf-f1-150-release-evidence-deny-by-default-2026-11-10
+  pull_request:
+    paths:
+      - 'src/Domain/Performance/F150ReleaseEvidenceGate.php'
+      - 'contracts/release/f150-lab-gate-evidence.json'
+      - 'bin/lab/f150-release-evidence.php'
+      - 'tests/Standalone/F150ReleaseEvidenceGateTest.php'
+      - '.github/workflows/perf-f1-150-release-no-go-ci.yml'
+permissions:
+  contents: read
+jobs:
+  fail-closed-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      APP_ENV: testing
+      PERF_F150_RELEASE_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate gate and manifest with no infrastructure or secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Performance/F150ReleaseEvidenceGate.php
+          php -l bin/lab/f150-release-evidence.php
+          php -l tests/Standalone/F150ReleaseEvidenceGateTest.php
+          php tests/Standalone/F150ReleaseEvidenceGateTest.php
+          php bin/lab/f150-release-evidence.php > "$RUNNER_TEMP/perf-f150-no-go.json"
+          php -r '$x=json_decode(file_get_contents($argv[1]),true,32,JSON_THROW_ON_ERROR); if($x["release"]!=="NO_GO"||$x["can_enable_ads"]!==false||$x["can_bill"]!==false||count($x["gates"])!==12)exit(3); echo "F150 final artifact NO_GO PASS\n";' "$RUNNER_TEMP/perf-f150-no-go.json"
+          if grep -R -E 'F150ReleaseEvidenceGate|PERF_F150_RELEASE_LAB' routes/ app/ bootstrap/; then
+            echo 'F150 lab-only gate unexpectedly used by product runtime'
+            exit 1
+          fi
