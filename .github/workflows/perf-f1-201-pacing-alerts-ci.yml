@@ -1,0 +1,36 @@
+name: Performance F1-201 - synthetic pacing notices fail closed
+on:
+  push:
+    branches:
+      - dev/perf-f1-201-offline-pacing-alerts-2026-11-11
+  pull_request:
+    paths:
+      - 'app/Performance/Planning/OfflineBudgetScenarioPreview.php'
+      - 'app/Performance/Planning/OfflineBudgetPacingMonitor.php'
+      - 'app/Performance/Planning/OfflineBudgetPacingAlerts.php'
+      - 'tests/Standalone/F201OfflineBudgetPacingAlertsTest.php'
+      - '.github/workflows/perf-f1-201-pacing-alerts-ci.yml'
+permissions:
+  contents: read
+jobs:
+  offline-alerts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Pure integer thresholds and deny runtime wiring
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Planning/OfflineBudgetPacingAlerts.php
+          php -l tests/Standalone/F201OfflineBudgetPacingAlertsTest.php
+          php tests/Standalone/F201OfflineBudgetPacingAlertsTest.php
+          if grep -R 'OfflineBudgetPacingAlerts' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: offline notice accidentally wired into operational app'
+            exit 1
+          fi
