@@ -42,6 +42,26 @@ final class SyntheticPrivateHtmlResponse
     }
 
     /**
+     * F196 CI-only: original Portal F63 renders directly into a response
+     * buffer. No HTML path is ever emitted by this method.
+     * Every request performs a fresh service/epoch/F100 check via F194.
+     * Still not real Portal IAM or a public HTTP endpoint.
+     */
+    public function serveInline(
+        PDO $tenantSqlConnection,
+        array $receipt,
+        string $f100JsonPath
+    ):array{
+        $inline=(new SyntheticF181BoundPortalHtml())->render(
+            $receipt,$f100JsonPath,':memory:',$tenantSqlConnection,true
+        );
+        $retrieved=(new SyntheticServiceCheckedHtmlRetrieval())->fetchInline(
+            $tenantSqlConnection,$receipt,$inline
+        );
+        return self::fromCheckedRetrieval($retrieved);
+    }
+
+    /**
      * Pure response mapper for standalone negative tests. Input must be the
      * exact F194 success contract; a caller-provided raw HTML value does NOT
      * turn this method into authorization.

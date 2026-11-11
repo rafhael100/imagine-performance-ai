@@ -16,6 +16,7 @@ foreach([
  'contracts/lab/php/SyntheticPostReceiptF100Delivery.php',
  'contracts/lab/php/SyntheticF181BoundPortalHtml.php',
  'contracts/lab/php/SyntheticServiceCheckedHtmlRetrieval.php',
+ 'contracts/lab/php/SyntheticPrivateHtmlResponse.php',
 ] as $path)require_once $root.'/'.$path;
 
 use App\Performance\Security\SyntheticCurrentAuthority;
@@ -26,6 +27,7 @@ use App\Performance\Security\SyntheticDurableSignedSqlPreviewBridge;
 use App\Performance\Security\SyntheticPostReceiptF100Delivery;
 use App\Performance\Security\SyntheticF181BoundPortalHtml;
 use App\Performance\Security\SyntheticServiceCheckedHtmlRetrieval;
+use App\Performance\Security\SyntheticPrivateHtmlResponse;
 use App\Performance\ReadSide\CredentialBoundDemoWorkbenchReader;
 use App\Performance\ReadSide\CredentialBoundDemoServiceStatusFence;
 
@@ -128,6 +130,42 @@ $check($fetcher->fetch($a,$delivery,$rendered)===$first
  &&$count()===$prior+1,
  'repeat safe retrieval needs no replay of original one-use signed nonce');
 
+// F196: render the original Portal F63 again without ever creating an HTML file.
+putenv('PERF_F196_INLINE_HTML_LAB=1');
+$beforeHtmlFiles=glob($tmp.'/*.html');
+$inline=(new SyntheticF181BoundPortalHtml())->render(
+ $delivery,$json,':memory:',$a,true
+);
+$check($inline['status']==='in_memory_f63_ci_only'
+ &&array_key_exists('html_path',$inline)
+ &&$inline['html_path']===null
+ &&($inline['non_persistent']??false)===true
+ &&is_string($inline['html_bytes']??null)
+ &&hash('sha256',$inline['html_bytes'])===$inline['html_sha256'],
+ 'real Portal F63 returns verifiable in-memory HTML only');
+$check(glob($tmp.'/*.html')===$beforeHtmlFiles,
+ 'no additional HTML file is persisted for inline preview');
+$inMem=$fetcher->fetchInline($a,$delivery,$inline);
+$check($inMem['status']==='offline_html_readonly_preview_only'
+ &&$inMem['html']===$inline['html_bytes'],
+ 'read-time SQL epoch and F100 checks authorize only the current demo A');
+$inMemOther=$fetcher->fetchInline($b,$delivery,$inline);
+$check($inMemOther['html']===null
+ &&$inMemOther['status']==='service_revoked_or_sql_changed',
+ 'tenant B cannot read tenant A ephemeral HTML');
+$response=(new SyntheticPrivateHtmlResponse())->serveInline($a,$delivery,$json);
+$check($response['status_code']===200
+ &&$response['headers']['Content-Type']==='text/html; charset=utf-8'
+ &&str_contains($response['headers']['Cache-Control'],'no-store')
+ &&str_contains($response['body'],'DEMONSTRAÇÃO NÃO HOMOLOGADA'),
+ 'no-disk F63 response returns non-cacheable private HTML only');
+$check(glob($tmp.'/*.html')===$beforeHtmlFiles &&$count()===$prior+1,
+ 'inline requests neither create HTML artifacts nor consume extra nonces');
+$mutatedInline=$inline;
+$mutatedInline['html_bytes'].='<!-- malicious append -->';
+$check($fetcher->fetchInline($a,$delivery,$mutatedInline)['html']===null,
+ 'inline HTML byte mutation is rejected despite original proof');
+
 $other=$fetcher->fetch($b,$delivery,$rendered);
 $check($other['status']==='service_revoked_or_sql_changed'
  &&$other['html']===null,
@@ -169,12 +207,20 @@ $check(is_file($html)&&file_get_contents($html)===$originalHtml,
  'EXPECTED NEGATIVE: CI file remains directly readable outside per-fetch guard');
 $check($count()===$prior+1,
  'denied retrieval does not mint or consume any new Portal nonce');
+$check($fetcher->fetchInline($a,$delivery,$inline)['html']===null,
+ 'F196 old inline render is refused after cancellation');
+$revokedResponse=(new SyntheticPrivateHtmlResponse())->serveInline($a,$delivery,$json);
+$check($revokedResponse['status_code']===403
+ &&$revokedResponse['body']==='Preview unavailable',
+ 'F196 no-disk response is denied after service cancellation');
 $admin->exec("UPDATE public.portal_service_links SET link_status='active'
  WHERE tenant_id='{$tenant}'::uuid AND portal_service_ref='svc-demo-f88'");
 $reopened=$fetcher->fetch($a,$delivery,$rendered);
 $check($reopened['status']==='service_revoked_or_sql_changed'
  &&$reopened['html']===null,
  're-enabled status cannot reuse prior F191 epoch for an old HTML artifact');
+$check($fetcher->fetchInline($a,$delivery,$inline)['html']===null,
+ 'F196 inline render remains invalid after service ABA reactivation');
 $check((new CredentialBoundDemoServiceStatusFence())->read($a)['status']
  ==='credential_scoped_demo_workbench_only',
  'a new synthetic status read may succeed, but the OLD signed artifact stays revoked');
