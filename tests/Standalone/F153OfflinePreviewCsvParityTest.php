@@ -80,8 +80,8 @@ $check($parity->compare($html,str_replace('rev-social-demo','rev-falso',
 $check($parity->compare($html,str_replace('Ajustes ficticios solicitados',
  'Aprovada somente em teste',$csv))===null,
  'status disagreement between HTML and CSV rejected');
-$check($parity->compare($html,str_replace(
- '"approval_source":"none_real"','"approval_source":"portal_live"',$html))===null,
+$check($parity->compare(str_replace(
+ '"approval_source":"none_real"','"approval_source":"portal_live"',$html),$csv)===null,
  'HTML cannot claim real approval source');
 $check($parity->compare(str_replace('"dispatch_enabled":false',
  '"dispatch_enabled":true',$html),$csv)===null,
