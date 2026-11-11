@@ -1,0 +1,13 @@
+# FAST-PERF F1-170 — nonce de leitura assinada, exclusivo por empresa e requisição
+
+**Base F169 / PR #277. DRAFT, PostgreSQL16 descartável, produção NO-GO.**
+
+F169 validava a assinatura Ed25519 e a empresa do login PostgreSQL, porém aceitava reuso da mesma solicitação de leitura durante seu TTL. A F170 adiciona `F170NonceBoundPortalReadGateway` e a migration sintética `f170_pg16_signed_read_nonces_ci.sql`. A tabela `consumed_read_nonces` tem chave primária (tenant, request_id), RLS ENABLE/FORCE e nenhuma permissão direta de SELECT/INSERT/UPDATE/DELETE para as roles de tenant A/B. Uma **role distinta `perf_f170_gateway`**, criada só no CI, recebe apenas USAGE no schema e EXECUTE da função SECURITY DEFINER `f170_consume_signed_read_nonce`. Ela própria não pode ler a tabela de nonces.
+
+O fluxo segue a ordem: (1) assinatura Ed25519, escopo, público fixado, tempo e tenant RLS são verificados por F169; (2) somente após sucesso, uma conexão separada da role gateway chama a função SQL de consumo, que valida tenant/ID/TTL e faz `INSERT ... ON CONFLICT DO NOTHING`; (3) só retorna o DTO de leitura se exatamente uma linha nova foi inserida. Tentativa repetida recebe `replay_or_nonce_denied` com `report=null`. Quando a função/rede SQL está indisponível, falha fechada e não devolve os dados do leitor F166. Nenhum fluxo ativa Ads ou cobrança.
+
+O CI prova que nem login A/B nem gateway podem acessar a tabela diretamente, que a role superuser não pode ser usada como identity gateway no PHP, que assinatura inválida ou escopo de mídia paga não queimam um nonce, que B tem namespace isolado, que revogação do GRANT da função bloqueia leitura e permite depois retomar somente a requisição não consumida, e que **dois processos PHP simultâneos** usando a mesma assinatura resultam em um único consumo bem-sucedido e uma recusa por replay. As regressões F162–F169 são executadas antes.
+
+**Vulnerabilidade conhecida demonstrada:** um superusuário consegue apagar o registro de nonce do mesmo PostgreSQL e reutilizar a assinatura ainda válida; não há âncora externa antirrollback, persistência WORM ou autoridade independente. O armazenamento cresce e ainda falta rotina segura de retenção/limpeza. O serviço gateway possui senha de laboratório hardcoded e não representa workload identity Portal. Uma role gateway comprometida poderia pré-reservar IDs de nonce; a função não verifica Ed25519 no banco, e a confiança reside na aplicação que controla seu acesso. Todo histórico, MFA, consentimento, empresa real e serviço elegível ainda dependem de IAM/KMS/infra e DBA/AppSec independentes.
+
+**P0 / HT-R01 / SEC-R03 / T3 seguem NO-GO; sem merge main, VPS, deploy, clientes, contas publicitárias, anúncio, pagamento ou despesa.**
