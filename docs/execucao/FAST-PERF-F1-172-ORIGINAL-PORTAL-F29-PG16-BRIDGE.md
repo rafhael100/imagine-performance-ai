@@ -1,0 +1,15 @@
+# FAST-PERF F1-172 — adaptador de compatibilidade com o envelope original do Portal
+
+**Base F171 PR #279. Status: CI-only / DRAFT / NO-GO.**
+
+F171 comprovou criptograficamente que a assinatura original F29 do Portal e o protocolo simplificado F169/F170 não são compatíveis. Em vez de inventar um terceiro emissor, F172 implementa **um adaptador A-específico de laboratório** que **usa a classe F29 real e seu envelope original**, preservando domínio Ed25519, versionamento exato, vínculo de serviço/sessão e guardas MFA + membership/service/session revision e recovery epoch. O adaptador não reescreve claims nem confia em um envelope simplificado.
+
+Fluxo demonstrativo: `SignedPortalCapabilityGate::check` F29 aceita o envelope original somente com `SyntheticCurrentAuthority` sintético compatível, atual e não revogado. **Depois** o adaptador extrai nonce e TTL da assinatura já verificada, compara referências fixas do fixture `perf-demo-a`/`svc-demo-a` e chama `F166Pg16ReadOnlyDashboard` usando uma sessão PostgreSQL A, que deriva tenant SQL `perf-demo-aurora` por `session_user` e aplica RLS. Só após a leitura autorizada em laboratório o nonce é gravado pela role F170 gateway (sem SELECT de tabela) e uma resposta somente leitura é entregue; replay com uma nova instância PHP também falha pelo índice SQL único.
+
+**O mapeamento `perf-demo-a` → `perf-demo-aurora` é uma equivalência fixa de dois fixtures**, não uma migração de identidades, consulta IAM nem relação user/company comprovada. O emissor original real é o código já implementado no repositório Portal e usado na F123, mas os testes F172 usam uma chave Ed25519 efêmera gerada no CI e um envelope construído conforme F29. O adaptador não amplia o suporte para B e não pode ser registrado em HTTP.
+
+Testes de integração verificam o verificador original F29 antes do adaptador, recebimento e recusa por nonce (inclusive após reinicialização PHP), identidade SQL B incompatível, MFA revogado, serviço inativo, versões de serviço/recuperação desatualizadas, assinatura alterada, chave pública diferente, expiração, formato alternativo F169 e inexistência de escrita de nonce em falhas. Também comparam que o ledger original **F124 está em outra base e namespace**, portanto não é compartilhado com F170: ele ainda requer plano de convergência e antirollback, sem dupla promoção.
+
+**Próximo gate:** substituir identidade/autoridade F29 caller-constructible por fonte S2S/IAM Portal autenticada com entitlement de serviço ativo, versão e revogação consultada de forma independente; selecionar uma única autoridade de nonce durável (não tabelas separadas), gerenciar chaves e recuperar após restores. Só então fazer integração testada contra **o emissor instalado realmente no Portal**, com revisão independente AppSec/DBA. Este CI não produz identidade Portal real, prova de sessão, consentimento Google/Meta ou garantia antirrollback offsite.
+
+**P0/HT-R01/SEC-R03/T3 = NO-GO. Nenhuma migration operacional, merge em dev/main, deploy, VPS, clientes, Ads, cobrança ou despesa.**
