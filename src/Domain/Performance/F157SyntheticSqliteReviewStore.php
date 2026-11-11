@@ -225,6 +225,72 @@ final class F157SyntheticSqliteReviewStore
         ];
     }
 
+    /**
+     * F159: deterministic keyset pagination for an OFFLINE synthetic reader.
+     * The explicit tenant argument is NOT Portal IAM; no route may use this.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function page(
+        string $tenant, ?string $status=null, ?string $channel=null,
+        int $limit=5, ?string $afterRef=null
+    ):?array {
+        if(!preg_match('/^perf-demo-[a-z0-9-]{1,60}$/D',$tenant)
+            ||$limit<1||$limit>10
+            ||($status!==null&&!in_array($status,[
+                'pending_demo','changes_requested_demo',
+                'approved_mock_only','rejected_mock_only'
+            ],true))
+            ||($channel!==null&&!in_array($channel,['google_ads','meta'],true))
+            ||($afterRef!==null
+                &&!preg_match('/^rev-[a-z0-9-]{1,60}$/D',$afterRef)))return null;
+
+        $where=['tenant=?'];
+        $params=[$tenant];
+        if($status!==null){$where[]='status=?';$params[]=$status;}
+        if($channel!==null){$where[]='channel=?';$params[]=$channel;}
+        if($afterRef!==null){$where[]='reference>?';$params[]=$afterRef;}
+        $query='SELECT reference,campaign,channel,title,status,version
+            FROM f157_reviews WHERE '.implode(' AND ',$where).
+            ' ORDER BY reference COLLATE BINARY ASC LIMIT ?';
+        $stmt=$this->db->prepare($query);
+        foreach($params as $i=>$param)$stmt->bindValue($i+1,$param,PDO::PARAM_STR);
+        $stmt->bindValue(count($params)+1,$limit+1,PDO::PARAM_INT);
+        $stmt->execute();
+        $rows=$stmt->fetchAll();
+        $hasMore=count($rows)>$limit;
+        $rows=array_slice($rows,0,$limit);
+        $items=[];
+        foreach($rows as $row) {
+            if(!preg_match('/^rev-[a-z0-9-]{1,60}$/D',$row['reference'])
+                ||!preg_match('/^cam-[a-z0-9-]{1,60}$/D',$row['campaign'])
+                ||!is_string($row['title'])||$row['title']===''
+                ||strlen($row['title'])>100
+                ||preg_match('/[<>\x00-\x1f\x7f]/',$row['title'])
+                ||$this->scope->campaignChannel($tenant,$row['campaign'])!==$row['channel']
+                ||(int)$row['version']<1)return null;
+            $items[]=[
+                'review_ref'=>$row['reference'],'campaign_ref'=>$row['campaign'],
+                'channel'=>$row['channel'],'title'=>$row['title'],
+                'status'=>$row['status'],'version'=>(int)$row['version'],
+                'action_authorized'=>false,'human_approval_verified'=>false,
+                'billing_enabled'=>false,
+            ];
+        }
+        return [
+            'schema_version'=>'perf.portal.review-page.sqlite-lab.v1',
+            'source'=>'sqlite_runner_fixture_only','tenant_ref'=>$tenant,
+            'read_only'=>true,'contracted'=>false,
+            'iam_verified'=>false,'s2s_verified'=>false,
+            'human_approval_verified'=>false,'authorization_eligible'=>false,
+            'dispatch_enabled'=>false,'billing_enabled'=>false,
+            'ready_for_production'=>false,'limit'=>$limit,
+            'status_filter'=>$status,'channel_filter'=>$channel,
+            'next_cursor'=>$hasMore?end($items)['review_ref']:null,
+            'has_more'=>$hasMore,'count'=>count($items),'items'=>$items,
+        ];
+    }
+
     /** @return list<array<string,mixed>> */
     public function events(string $tenant):array
     {
