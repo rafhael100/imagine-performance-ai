@@ -28,6 +28,10 @@ on:
       - 'tests/Standalone/F136OnlineWitnessRedemptionPgTest.php'
       - 'src/Lab/F139LockedAnchorRegistration.php'
       - '.github/workflows/perf-f1-148-no-egress-workload-ci.yml'
+      - 'src/Lab/F148WorkloadConstrainedService.php'
+      - 'bin/lab/f148_no_egress_service.php'
+      - 'Dockerfile.f148.no-egress.lab'
+      - 'tests/Standalone/F148NoEgressWorkloadContainerTest.php'
 permissions:
   contents: read
 jobs:
@@ -412,3 +416,18 @@ jobs:
             echo 'FAIL: F147 synthetic-only quarantine exposed in application runtime'
             exit 1
           fi
+      - name: Build minimal laboratory executor image
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = testing
+          test "$PERF_F148_LAB" = 1
+          php -l src/Lab/F148WorkloadConstrainedService.php
+          php -l bin/lab/f148_no_egress_service.php
+          php -l tests/Standalone/F148NoEgressWorkloadContainerTest.php
+          docker build -f Dockerfile.f148.no-egress.lab -t perf-f148-no-egress-lab:ci .
+      - name: Run independent workload-authenticated no-op receipts in sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/Standalone/F148NoEgressWorkloadContainerTest.php
