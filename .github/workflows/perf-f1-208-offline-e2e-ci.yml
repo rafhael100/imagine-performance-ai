@@ -1,0 +1,47 @@
+name: Performance F1-208 - end-to-end offline CSV HTML digest and alert parity
+on:
+  push:
+    branches:
+      - dev/perf-f1-208-offline-acceptance-e2e-2026-11-11
+  pull_request:
+    paths:
+      - 'tests/Standalone/F208OfflineCampaignAcceptanceE2ETest.php'
+      - 'tools/perf-export-offline-portfolio-csv.php'
+      - 'tools/perf-render-offline-portfolio-html.php'
+      - 'contracts/demo/f204-offline-portfolio-request.json'
+      - 'contracts/demo/f207-offline-portfolio-html-request.json'
+      - '.github/workflows/perf-f1-208-offline-e2e-ci.yml'
+permissions:
+  contents: read
+jobs:
+  cross-artifact-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      APP_ENV: testing
+      PERF_F204_CSV_CLI_LAB: '1'
+      PERF_F207_HTML_CLI_LAB: '1'
+      PERF_F208_OFFLINE_E2E_LAB: '1'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Generate both original demo CLI outputs and cross-validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tests/Standalone/F208OfflineCampaignAcceptanceE2ETest.php
+          php tools/perf-export-offline-portfolio-csv.php \
+            < contracts/demo/f204-offline-portfolio-request.json > "$RUNNER_TEMP/f208-cli.csv"
+          php tools/perf-render-offline-portfolio-html.php \
+            < contracts/demo/f207-offline-portfolio-html-request.json > "$RUNNER_TEMP/f208-cli.html"
+          php tests/Standalone/F208OfflineCampaignAcceptanceE2ETest.php \
+            "$RUNNER_TEMP/f208-cli.csv" "$RUNNER_TEMP/f208-cli.html"
+          if grep -R 'F208OfflineCampaignAcceptanceE2ETest' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL synthetic end-to-end tests wired into operational product'
+            exit 1
+          fi
