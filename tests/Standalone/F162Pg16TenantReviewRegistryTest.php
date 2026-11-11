@@ -144,12 +144,14 @@ $check($a->query("SELECT count(*) FROM perf_f162.events
 $admin->exec('DROP TRIGGER f162_ci_fault ON perf_f162.events');
 $admin->exec('DROP FUNCTION perf_f162.synthetic_event_outage()');
 
-$metadata=$admin->query("SELECT relname,relrowsecurity,relforcerowsecurity
+$metadata=$admin->query("SELECT relname,
+ CASE WHEN relrowsecurity THEN 1 ELSE 0 END AS rls_on,
+ CASE WHEN relforcerowsecurity THEN 1 ELSE 0 END AS force_on
  FROM pg_class WHERE oid IN ('perf_f162.reviews'::regclass,'perf_f162.events'::regclass)
  ORDER BY relname")->fetchAll();
-$check(count($metadata)===2 && $metadata[0]['relrowsecurity']===true
- &&$metadata[0]['relforcerowsecurity']===true
- &&$metadata[1]['relrowsecurity']===true
- &&$metadata[1]['relforcerowsecurity']===true,
+$check(count($metadata)===2 && $metadata[0]['rls_on']==1
+ &&$metadata[0]['force_on']==1
+ &&$metadata[1]['rls_on']==1
+ &&$metadata[1]['force_on']==1,
  'both PostgreSQL tables have RLS enabled and FORCE ROW LEVEL SECURITY');
 echo "F162 PostgreSQL16 tenant RLS review registry: {$n} PASS / 0 FAIL — CI-only NO-GO\n";
