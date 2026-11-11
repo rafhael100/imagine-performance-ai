@@ -1,0 +1,26 @@
+{
+  "schema_version": "perf.planning.offline-portfolio-csv.synthetic.v1",
+  "portfolio_request": {
+    "schema_version": "perf.planning.offline-portfolio.synthetic.v1",
+    "scenarios": [
+      {
+        "schema_version": "perf.planning.offline-budget.synthetic.v1",
+        "scenario_ref": "scenario-demo-google-meta-a",
+        "currency": "BRL",
+        "start_date": "2026-11-12",
+        "end_date": "2026-11-16",
+        "total_centavos": 101,
+        "channel_split_bp": {"google_ads": 5000, "meta_ads": 5000}
+      },
+      {
+        "schema_version": "perf.planning.offline-budget.synthetic.v1",
+        "scenario_ref": "scenario-demo-google-meta-b",
+        "currency": "BRL",
+        "start_date": "2026-11-12",
+        "end_date": "2026-11-16",
+        "total_centavos": 99,
+        "channel_split_bp": {"google_ads": 3000, "meta_ads": 7000}
+      }
+    ]
+  }
+}

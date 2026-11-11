@@ -1,0 +1,36 @@
+name: Performance F1-203 - offline portfolio CSV no side effects
+on:
+  push:
+    branches:
+      - dev/perf-f1-203-offline-budget-csv-export-2026-11-11
+  pull_request:
+    paths:
+      - 'app/Performance/Planning/OfflineBudgetScenarioPreview.php'
+      - 'app/Performance/Planning/OfflinePortfolioBudgetRollup.php'
+      - 'app/Performance/Planning/OfflinePortfolioBudgetCsvExporter.php'
+      - 'tests/Standalone/F203OfflinePortfolioBudgetCsvExporterTest.php'
+      - '.github/workflows/perf-f1-203-portfolio-csv-ci.yml'
+permissions:
+  contents: read
+jobs:
+  offline-csv:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Byte-exact CSV, formula safety and no runtime wiring
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Planning/OfflinePortfolioBudgetCsvExporter.php
+          php -l tests/Standalone/F203OfflinePortfolioBudgetCsvExporterTest.php
+          php tests/Standalone/F203OfflinePortfolioBudgetCsvExporterTest.php
+          if grep -R 'OfflinePortfolioBudgetCsvExporter' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL offline export attached to operational app'
+            exit 1
+          fi

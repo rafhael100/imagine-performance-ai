@@ -1,0 +1,35 @@
+name: Performance F1-202 - synthetic campaign portfolio budget rollup
+on:
+  push:
+    branches:
+      - dev/perf-f1-202-multi-campaign-budget-rollup-2026-11-11
+  pull_request:
+    paths:
+      - 'app/Performance/Planning/OfflineBudgetScenarioPreview.php'
+      - 'app/Performance/Planning/OfflinePortfolioBudgetRollup.php'
+      - 'tests/Standalone/F202OfflinePortfolioBudgetRollupTest.php'
+      - '.github/workflows/perf-f1-202-portfolio-budget-ci.yml'
+permissions:
+  contents: read
+jobs:
+  offline-portfolio:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Canonical pure budget aggregation checks
+        run: |
+          set -euo pipefail
+          php -l app/Performance/Planning/OfflinePortfolioBudgetRollup.php
+          php -l tests/Standalone/F202OfflinePortfolioBudgetRollupTest.php
+          php tests/Standalone/F202OfflinePortfolioBudgetRollupTest.php
+          if grep -R 'OfflinePortfolioBudgetRollup' routes/ bootstrap/ app/Providers/; then
+            echo 'FAIL: F202 offline rollup attached to operational routes'
+            exit 1
+          fi
