@@ -1,0 +1,13 @@
+# FAST-PERF F1-187 — prova adversarial: administradores SQL conseguem retroceder geração e auditoria local
+
+**Base F186/PR #294; DRAFT, banco PostgreSQL16 descartável, produção NO-GO.**
+
+F184 bloqueou campanhas retiradas nos leitores F93/F97; F185 acrescentou uma geração monotônica e tumbas históricas; F186 impediu regravações ordinárias e registrou auditoria append-only em **tabelas do mesmo PostgreSQL**. Tais mecanismos protegem contra aplicação comum e erros de SQL, mas **não** contra um DBA superusuário ou restore do mesmo domínio de backup.
+
+A F187 reproduz a consequência, utilizando exclusivamente dados A/B sintéticos **após todas as regressões anteriores**. Primeiro confirma que a role de leitura A/B não pode executar `ALTER TABLE DISABLE TRIGGER USER`, e que `UPDATE management_epoch` e `DELETE` da auditoria diretamente pela sessão administrativa com os triggers habilitados são negados. Em seguida, **somente a sessão de superusuário dentro do runner CI** desabilita temporariamente os triggers locais da tabela `performance_managed_campaigns` e da tabela de auditoria F186, reduz o epoch da campanha B reativada 2→1, elimina os dois eventos da auditoria e **reativa novamente as views F93/F97 e o F100** em relação ao vínculo e revisão da gestão anterior. Confirma-se que a revisão antiga reaparece no mesmo relatório que a revisão pendente mais nova.
+
+Depois, os triggers são restaurados; a geração volta a 2; a revisão histórica se oculta de novo e um superusuário consegue **recriar registros de auditoria com valores aparentemente coerentes**, sem fonte independente. A evidência é uma vulnerabilidade esperada, não uma falha de execução do CI. No fim, os flags Ads/conta real/cobrança continuam falsos e a empresa A permanece isolada.
+
+A regressão expõe duas necessidades de arquitetura obrigatórias antes de produção: (1) guardar e verificar uma âncora externa à administração/backup do PostgreSQL (WORM/serviço confiável independente, chaves e retenção segura), que impeça reduzir epoch e reapresentar versões antigas; (2) verificar integridade/antirollback **no próprio caminho de leitura/autorização**, não apenas em relatório administrativo opcional. A F141 já mostrou que assinatura Ed25519 de arquivo sem garantia de persistência também admite truncamento para um prefixo válido. Portanto **nem auditoria SQL append-only nem JSONL assinado em arquivo local** são prova externa suficiente.
+
+**Escopo do teste:** não se sugere desabilitar triggers no ambiente operacional, não há credenciais reais, não se emite anúncio nem se acessa VPS. A mutação é adversarial sobre PostgreSQL descartável de CI. P0/HT-R01/SEC-R03/T3 continuam NO-GO; sem merge main/dev, deploy, clientes, Ads, faturamento ou despesas.
