@@ -101,7 +101,7 @@ $assert($admin->exec("UPDATE perf_f162.managed_campaigns SET managed=false
  'admin can retire synthetic campaign after writer transaction releases lock');
 $timeline=$checkEvents($a,'cam-f165-lock');
 $assert(count($timeline)===2&&$timeline[1]['event_type']==='retired_demo'
- &&(string)$timeline[1]['managed']==='',
+ &&in_array($timeline[1]['managed'],[false,'f','0',0],true),
  'retirement appends one automatic event');
 $assert($denies(static fn()=>$a->exec("INSERT INTO perf_f162.reviews
  (tenant,reference,campaign,channel,title)
