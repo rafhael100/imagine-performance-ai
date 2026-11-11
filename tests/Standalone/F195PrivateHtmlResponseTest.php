@@ -18,7 +18,7 @@ $assert=static function(bool $ok,string $reason)use(&$n):void{
 };
 $required='<html lang="pt-BR"><head><meta charset="utf-8"><meta '
     .'http-equiv="Content-Security-Policy" content="default-src '
-    ."'none'; script-src 'none'; connect-src 'none'; form-action 'none'">"
+    ."'none'; script-src 'none'; connect-src 'none'; form-action 'none'".'">'
     .'</head><body><h1>DEMONSTRAÇÃO NÃO HOMOLOGADA</h1>'
     .str_repeat('<p>Somente demonstração sintética sem anúncios ou cobrança.</p>',42)
     .'</body></html>';
