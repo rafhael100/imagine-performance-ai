@@ -44,7 +44,7 @@ final class F160SyntheticSqliteAuditReader
     public function inspect(string $tenant):?array
     {
         if(!preg_match('/^perf-demo-[a-z0-9-]{1,60}$/D',$tenant))return null;
-        $deny=static function(string $status):array use($tenant){
+        $deny=static function(string $status) use($tenant):array{
             return [
                 'schema_version'=>'perf.review-audit.sqlite-lab.v1',
                 'source'=>'sqlite_runner_fixture_only',
