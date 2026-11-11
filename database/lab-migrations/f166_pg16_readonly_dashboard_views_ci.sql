@@ -8,7 +8,12 @@ WITH (security_invoker=true, security_barrier=true) AS
     INNER JOIN perf_f162.managed_campaigns AS c
       ON c.tenant=r.tenant AND c.campaign=r.campaign
       AND c.channel=r.channel
-    WHERE c.managed=true;
+    WHERE c.managed=true
+      AND NOT EXISTS (
+        SELECT 1 FROM perf_f162.campaign_events AS e
+        WHERE e.tenant=r.tenant AND e.campaign=r.campaign
+          AND e.event_type='retired_demo'
+      );
 CREATE VIEW perf_f162.retired_review_counts
 WITH (security_invoker=true, security_barrier=true) AS
     SELECT r.tenant,r.channel,count(*)::integer AS count_retired_demo
@@ -17,6 +22,11 @@ WITH (security_invoker=true, security_barrier=true) AS
       ON c.tenant=r.tenant AND c.campaign=r.campaign
       AND c.channel=r.channel
     WHERE c.managed=false
+       OR EXISTS (
+        SELECT 1 FROM perf_f162.campaign_events AS e
+        WHERE e.tenant=r.tenant AND e.campaign=r.campaign
+          AND e.event_type='retired_demo'
+       )
     GROUP BY r.tenant,r.channel;
 CREATE VIEW perf_f162.campaign_scope_activity
 WITH (security_invoker=true, security_barrier=true) AS
