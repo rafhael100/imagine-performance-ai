@@ -1,0 +1,39 @@
+name: Performance AI — marca Imagine original e UX offline
+on:
+  push:
+    branches:
+      - design/perf-original-imagine-ux-f154-2026-11-12
+  pull_request:
+    paths:
+      - 'contracts/demo/performance-scope-preview-v1.html'
+      - 'contracts/demo/assets/logo-imagine.png'
+      - 'tests/ui/test-offline-preview.mjs'
+      - 'tests/ui/test-imagine-original-brand.mjs'
+      - '.github/workflows/perf-original-imagine-ux.yml'
+permissions:
+  contents: read
+concurrency:
+  group: perf-original-ux-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  standalone-offline-ux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check original logo and no-network styling
+        run: |
+          set -euo pipefail
+          node --check tests/ui/test-imagine-original-brand.mjs
+          node tests/ui/test-imagine-original-brand.mjs
+          node tests/ui/test-offline-preview.mjs
+      - name: Confirm no side effects
+        run: |
+          test ! -e routes/api.php
+          test ! -e routes/web.php
+          test -z "$(git status --porcelain)"
