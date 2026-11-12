@@ -1,0 +1,7 @@
+# Imagine Performance AI — UX e logomarca originais (prévia F1-54)
+
+Diretriz aprovada em 12/11/2026: a experiência visual dos produtos Imagine deve reaproveitar a identidade original do Portal Node (laranja `#F9941D`, grafite `#171B19`, branco e cinza claro), a mesma logomarca original e navegação elegante e leve. Referências: Portal [PR #589](https://github.com/rafhael100/imagine-portal/pull/589), Performance [issue #320](https://github.com/rafhael100/imagine-performance-ai/issues/320).
+
+Esta entrega modifica **apenas o HTML estático fictício** da prévia `contracts/demo/performance-scope-preview-v1.html`, filho do PR #130. Menu lateral branco e seleção laranja, hero grafite, botões acessíveis, filtros com alvo 44 px, conteúdo arejado e menu horizontal no mobile. O PNG real é incorporado no HTML como URI local `data:image/png;base64` para funcionar sem servidor; seus bytes originais também são preservados em `contracts/demo/assets/logo-imagine.png`, Git blob `678adeceb3a8ecdaeb6b576b9ee18d1bf0396f77`. CSP restringe imagens a `data:` e bloqueia todas as conexões e formulários.
+
+Os filtros, painéis, contadores e avisos de não contratação seguem idênticos. Zero Google/Meta/CRM/Portal real, autenticação, dados de clientes, anúncios, pagamentos, bancos ou deployment. O F1-54 continua prévia independente, **não** vira Portal funcional, e as outras superfícies de Performance requerem etapas próprias. Revisar testes Node, navegador gráfico e gate de aprovação antes de qualquer integração.
