@@ -45,9 +45,15 @@ foreach (['tenant_crossrepo_alpha1234','tenant_crossrepo_beta5678'] as $tenant) 
         'restored monthly draft per tenant');
     $row = $db->query('SELECT billable, finance_approved, source_verified, adjustment_cents FROM perf_fin_lab.reconciliation_drafts')->fetch(PDO::FETCH_ASSOC);
     if (!is_array($row)) throw new RuntimeException('Restore lost draft');
-    assertRestored('f', $row['billable'], 'draft not billable after restore');
-    assertRestored('f', $row['finance_approved'], 'draft cannot gain approval after restore');
-    assertRestored('f', $row['source_verified'], 'provider source still unverified');
+    if (!in_array($row['billable'], [false, 0, '0', 'f'], true)) {
+        throw new RuntimeException('Restore check: draft not billable after restore');
+    }
+    if (!in_array($row['finance_approved'], [false, 0, '0', 'f'], true)) {
+        throw new RuntimeException('Restore check: draft cannot gain approval after restore');
+    }
+    if (!in_array($row['source_verified'], [false, 0, '0', 'f'], true)) {
+        throw new RuntimeException('Restore check: provider source still unverified');
+    }
     assertRestored($tenant === 'tenant_crossrepo_alpha1234' ? -2000 : -14000,
         (int)$row['adjustment_cents'], 'restored amount did not drift');
     $canUpdate = $db->query("SELECT has_table_privilege(current_user, 'perf_fin_lab.reconciliation_drafts', 'UPDATE')")->fetchColumn();
