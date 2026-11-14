@@ -92,9 +92,13 @@ jobs:
         run: php tests/portal_real_issuer_pg_e2e_test.php
       - name: Backup and restore synthetic finance schema into another ephemeral database
         run: |
-          pg_dump --format=custom --schema=perf_fin_lab --file=/tmp/perf-fin-rls-lab.dump
+          # The runner's newer pg_dump may emit a PostgreSQL 17+ session SET
+          # unsupported by our pinned PostgreSQL 16 service. Strip exactly
+          # that compatibility-only directive; never suppress SQL errors.
+          pg_dump --format=plain --no-owner --schema=perf_fin_lab --file=/tmp/perf-fin-rls-lab.sql
+          sed -i '/^SET transaction_timeout = 0;$/d' /tmp/perf-fin-rls-lab.sql
           createdb --template=template0 perf_fin_lab_restore
-          pg_restore --no-owner --dbname=perf_fin_lab_restore /tmp/perf-fin-rls-lab.dump
+          psql -X -v ON_ERROR_STOP=1 --dbname=perf_fin_lab_restore --file=/tmp/perf-fin-rls-lab.sql
       - name: Confirm restored immutable drafts and deny replay of genuine signed Portal quote
         env:
           APP_ENV: testing
