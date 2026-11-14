@@ -73,10 +73,16 @@ $accounts=[
 foreach($accounts as $channel=>$cfg){
     $binding=$common+['provider'=>$channel,'account_id'=>$cfg['id']]+$cfg['extra'];
     $plan=$cfg['plan'];
-    $call=static fn(array $b=$binding,array $p=$plan,string $expectedTenant=$tenant,
-        string $expectedAgreement=$agreement,string $expectedPeriod=$month,int $clock=$now)=>
-        Boundary::inspect($expectedTenant,$expectedAgreement,$expectedPeriod,
-            $channel,$cfg['id'],$b,$p,$clock);
+    $call=static function(
+        ?array $b=null, ?array $p=null, ?string $expectedTenant=null,
+        ?string $expectedAgreement=null, ?string $expectedPeriod=null, ?int $clock=null
+    ) use($binding,$plan,$tenant,$agreement,$month,$now,$channel,$cfg):array {
+        return Boundary::inspect(
+            $expectedTenant??$tenant,$expectedAgreement??$agreement,
+            $expectedPeriod??$month,$channel,$cfg['id'],
+            $b??$binding,$p??$plan,$clock??$now
+        );
+    };
     $out=$call();
     sameBoundary($cfg['expectedHost'],$out['host'],$channel.' allowlisted host');
     sameBoundary($cfg['expectedMethod'],$out['method'],$channel.' request verb');
