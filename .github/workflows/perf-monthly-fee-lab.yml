@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/Domain/Commercial/MonthlyFeeReconciliation.php'
       - 'tests/monthly_fee_reconciliation_test.php'
+      - 'tests/portal_contract_parity_test.php'
+      - 'contracts/portal/performance-offer-v4.pinned.json'
       - '.github/workflows/perf-monthly-fee-lab.yml'
   workflow_dispatch:
 
@@ -27,5 +29,8 @@ jobs:
         run: |
           php -l src/Domain/Commercial/MonthlyFeeReconciliation.php
           php -l tests/monthly_fee_reconciliation_test.php
+          php -l tests/portal_contract_parity_test.php
       - name: Offline reconciliation unit tests
-        run: php tests/monthly_fee_reconciliation_test.php
+        run: |
+          php tests/monthly_fee_reconciliation_test.php
+          php tests/portal_contract_parity_test.php

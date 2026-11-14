@@ -1,0 +1,25 @@
+{
+  "kind": "portal_performance_commercial_contract_test_fixture",
+  "status": "pinned_offline_snapshot_not_runtime_source_of_truth",
+  "source": {
+    "repository": "rafhael100/imagine-portal",
+    "pull_request": 744,
+    "commit": "b12d518f86827f31bfd6308735dca8f986f43adc",
+    "catalog_path": "apps/portal/app/Homologation/Commerce/approved-catalog.json",
+    "catalog_blob_sha": "7bfa9ede6ed6cd44d9899bcd60bedb332a3dc784",
+    "quote_path": "apps/portal/app/Homologation/Commerce/ApprovedOfferCatalog.php"
+  },
+  "catalog_schema_version": 4,
+  "offer_id": "performance",
+  "currency": "BRL",
+  "management_fee_basis_points": 2000,
+  "minimum_media_investment_per_channel_cents": 70000,
+  "quote_maximum_per_channel_cents": 100000000,
+  "channels": ["google_ads", "meta_ads"],
+  "reference_period": "monthly",
+  "operational_settlement_policy": "estimated_management_fee_upfront_with_monthly_actual_media_spend_adjustment",
+  "media_spend_paid_directly_to_platforms": true,
+  "direct_checkout_enabled": false,
+  "automatic_settlement_charge_enabled": false,
+  "notes": "Terms transcribed from pinned Portal catalog v4 and ApprovedOfferCatalog.php; no automatic cross-repository synchronization. Refresh and independently review on every Portal catalog change."
+}
