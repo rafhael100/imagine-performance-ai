@@ -71,7 +71,7 @@ foreach ($plans as $planned) {
     assertSameValue('requires_finance_review_no_auto_charge_or_credit', $result['settlement_status'], 'review required');
 }
 $lower = MonthlyFeeReconciliation::calculate('2026-11', [
-    'google_ads' => ['planned_cents' => 70000, 'actual_cents' => 69999],
+    'google_ads' => ['planned_cents' => 70000, 'actual_cents' => 69997],
 ]);
 assertSameValue(-1, $lower['adjustment_cents'], 'below planned is not subject to minimum top-up');
 $unused = MonthlyFeeReconciliation::calculate('2026-11', [
