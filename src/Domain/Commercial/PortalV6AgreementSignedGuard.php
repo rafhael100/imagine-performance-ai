@@ -159,6 +159,7 @@ final class PortalV6AgreementSignedGuard
             'billing_period'=>$period,
             'contract_version'=>self::CONTRACT,
             'quote_claim_hmac_verified'=>true,
+            'billing_period_bound'=>true,
             'agreement_id_signed_in_envelope'=>true,
             'quote_claim_sha256'=>hash('sha256',$signingBytes),
             'catalog_sha256'=>$expectedCatalogSha256,
