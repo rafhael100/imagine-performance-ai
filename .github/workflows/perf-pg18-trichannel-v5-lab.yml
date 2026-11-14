@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'labs/finance-pg/PgTriChannelV5CandidateCloseLab.php'
+      - 'labs/finance-pg/PgTriChannelV5ReviewHtml.php'
+      - 'tests/pg_trichannel_v5_signed_review_html_test.php'
       - 'tests/pg_trichannel_v5_atomic_close_e2e_test.php'
       - 'tests/pg_trichannel_v5_restored_replay_test.php'
       - 'src/Domain/Commercial/PortalTriChannelV5CandidateGuard.php'
@@ -65,6 +67,8 @@ jobs:
       - name: PHP lint of V5 atomic close and restore
         run: |
           php -l labs/finance-pg/PgTriChannelV5CandidateCloseLab.php
+          php -l labs/finance-pg/PgTriChannelV5ReviewHtml.php
+          php -l tests/pg_trichannel_v5_signed_review_html_test.php
           php -l tests/pg_trichannel_v5_atomic_close_e2e_test.php
           php -l tests/pg_trichannel_v5_restored_replay_test.php
           php -l src/Domain/Commercial/PortalTriChannelV5CandidateGuard.php
@@ -79,6 +83,20 @@ jobs:
           psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_lab.reconciliation_drafts TO perf_fin_lab_app"
       - name: Real Portal HMAC V5 to atomic nonce and immutable PG18 financial draft
         run: php tests/pg_trichannel_v5_atomic_close_e2e_test.php
+      - name: Render read-only V5 three-channel financial review as static CI artifact
+        env:
+          PERF_PG_TRICHANNEL_V5_HTML_LAB: '1'
+          PERF_V5_REVIEW_HTML_PATH: 'ci-artifacts/perf-v5-trichannel-finance-review.html'
+        run: |
+          mkdir -p ci-artifacts
+          php tests/pg_trichannel_v5_signed_review_html_test.php
+      - name: Publish review-only static HTML from synthetic finance ledger
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-v5-trichannel-finance-readonly-preview
+          path: ci-artifacts/perf-v5-trichannel-finance-review.html
+          if-no-files-found: error
+          retention-days: 14
       - name: Backup and restore V5 nonce/draft to separate ephemeral PG18 database
         run: |
           pg_dump --format=plain --no-owner --schema=perf_fin_lab --file=/tmp/perf-fin-v5-lab.sql
