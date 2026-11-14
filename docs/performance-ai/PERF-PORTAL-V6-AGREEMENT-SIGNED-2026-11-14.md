@@ -1,6 +1,6 @@
 # Imagine Performance AI — verificação da assinatura Portal V6 com contrato individual
 
-**Origem:** Portal PR #778 (SHA `d3a5afb2e2a13cd6d6a3da53bd932b542faf46ac`), baseada na cotação comercial tricanal owner-approved da PR #770.
+**Origem:** Portal PR #778 (SHA `a8d2fe3924f0e2375c38ff197216212215b38c59`), baseada na cotação comercial tricanal owner-approved da PR #770.
 
 O novo `PortalV6AgreementSignedGuard` valida **código real do emissor Portal V6** e exige `tenant_id`, `agreement_id`, `billing_period`, versão/forma de contrato, audiência, expiração, nonce, catálogo SHA-256 pinado, HMAC e mínimos de mídia Meta R$700, Google R$1.000 e ChatGPT R$1.200. Mídia paga diretamente aos provedores; honorários de 20% calculados uma vez sobre a soma.
 
