@@ -2,6 +2,10 @@ name: Performance finance ledger PostgreSQL laboratory
 on:
   pull_request:
     paths:
+      - 'src/Domain/Commercial/MonthlySettlementReviewHtml.php'
+      - 'bin/perf_finance_review_preview.php'
+      - 'tests/monthly_settlement_html_test.php'
+      - 'contracts/demo/perf-financial-review-input.json'
       - 'src/Domain/Commercial/MonthlySettlementCandidate.php'
       - 'tests/monthly_settlement_candidate_test.php'
       - 'tests/monthly_settlement_persistence_pg_test.php'
@@ -39,9 +43,20 @@ jobs:
           coverage: none
       - name: Validate PHP syntax
         run: |
+          php -l src/Domain/Commercial/MonthlySettlementReviewHtml.php
+          php -l bin/perf_finance_review_preview.php
+          php -l tests/monthly_settlement_html_test.php
           php -l src/Domain/Commercial/MonthlySettlementCandidate.php
           php -l tests/monthly_settlement_candidate_test.php
           php -l tests/monthly_settlement_persistence_pg_test.php
+      - name: Finance preview HTML safety tests
+        run: |
+          php tests/monthly_settlement_html_test.php
+          APP_ENV=testing PERF_FIN_REVIEW_HTML_LAB=1 php bin/perf_finance_review_preview.php < contracts/demo/perf-financial-review-input.json > /tmp/perf-fin-demo.html
+          grep -Fq "DEMONSTRAÇÃO NÃO HOMOLOGADA" /tmp/perf-fin-demo.html
+          if APP_ENV=production PERF_FIN_REVIEW_HTML_LAB=1 php bin/perf_finance_review_preview.php < contracts/demo/perf-financial-review-input.json > /tmp/perf-fin-should-not-exist.html; then
+            echo "Forbidden CLI gate accepted production environment"; exit 1
+          fi
       - name: Validate isolated synthetic PostgreSQL contract
         env:
           PGHOST: localhost
