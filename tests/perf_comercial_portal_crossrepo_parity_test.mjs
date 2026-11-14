@@ -90,7 +90,7 @@ test('Comercial canonical scenario: declared historical CPL and proportional R$1
 });
 
 test('No silent marketing intake or altered commercial minima on mistakes', () => {
-  assert.throws(()=>calculateMediaBudget({channels:['google_ads','google_ads']}),/canal/i);
+  assert.throws(()=>calculateMediaBudget({channels:['google_ads','google_ads']}),/canais/i);
   assert.throws(()=>calculateMediaBudget({
     channels:['meta_ads'],objective:'leads',targetLeads:100,historicalCplCents:0
   }),/meta/i);
