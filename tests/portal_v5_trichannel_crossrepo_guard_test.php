@@ -56,10 +56,10 @@ v5Equal(false,$signed['quote']['real_charge_enabled'],'Portal cannot charge cand
 v5Equal($catalog->version(),$signed['quote']['catalog_version'],'catalog fingerprint');
 v5Equal(false,hash_equals($catalog->version(),$legacy->version()),'not legacy checkout');
 
-$guard=static fn(array $envelope, string $t=$tenant, string $p=$period,
-    array $actual=$expenses, ?string $expectedCatalog=null, ?array $floors=null)=>
-    Guard::verify($envelope,$t,$p,$expectedCatalog??$catalog->version(),
-        $floors??$meta,$actual,$now,$resolver,$claimNonce);
+$guard=static fn(array $envelope, ?string $t=null, ?string $p=null,
+    ?array $actual=null, ?string $expectedCatalog=null, ?array $floors=null)=>
+    Guard::verify($envelope,$t??$tenant,$p??$period,$expectedCatalog??$catalog->version(),
+        $floors??$meta,$actual??$expenses,$now,$resolver,$claimNonce);
 
 $broken=$signed;
 $broken['quote']['estimated_management_fee_cents']++;
