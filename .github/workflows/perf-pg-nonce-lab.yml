@@ -5,6 +5,7 @@ on:
     paths:
       - 'labs/finance-pg/**'
       - 'tests/pg_nonce_claims_test.php'
+      - 'tests/pg_finance_close_drafts_test.php'
       - 'src/Domain/Commercial/PortalSignedQuoteGuard.php'
       - '.github/workflows/perf-pg-nonce-lab.yml'
   workflow_dispatch:
@@ -48,17 +49,23 @@ jobs:
         run: |
           php -l labs/finance-pg/PgNonceClaims.php
           php -l tests/pg_nonce_claims_test.php
+          php -l labs/finance-pg/PgFinanceCloseDrafts.php
+          php -l tests/pg_finance_close_drafts_test.php
           php -l src/Domain/Commercial/PortalSignedQuoteGuard.php
       - name: Create isolated lab RLS schema and least-privileged role
         run: |
           psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_fin_lab_app LOGIN PASSWORD 'synthetic_ci_app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
           psql -v ON_ERROR_STOP=1 -f labs/finance-pg/001_signed_quote_nonce.sql
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/002_reconciliation_drafts.sql
           psql -v ON_ERROR_STOP=1 -c "REVOKE ALL ON SCHEMA perf_fin_lab FROM PUBLIC"
           psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA perf_fin_lab TO perf_fin_lab_app"
           psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_lab.signed_quote_nonces TO perf_fin_lab_app"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_lab.reconciliation_drafts TO perf_fin_lab_app"
       - name: Atomic nonce claim and tenant isolation against PostgreSQL
         env:
           PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
           PERF_LAB_PG_USER: perf_fin_lab_app
           PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
-        run: php tests/pg_nonce_claims_test.php
+        run: |
+          php tests/pg_nonce_claims_test.php
+          php tests/pg_finance_close_drafts_test.php
