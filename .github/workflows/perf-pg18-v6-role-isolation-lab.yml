@@ -1,0 +1,92 @@
+name: Performance PG18 V6 authenticated session-user tenant RLS lab
+
+on:
+  pull_request:
+    paths:
+      - 'labs/finance-pg/005_v6_session_role_isolation_lab.sql'
+      - 'labs/finance-pg/PgV6RoleBoundAgreementCloseLab.php'
+      - 'tests/pg_v6_role_bound_*'
+      - 'docs/performance-ai/PERF-V6-PG18-ROLE-BOUND-TENANT-2026-11-14.md'
+      - '.github/workflows/perf-pg18-v6-role-isolation-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pg18-login-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_ci_postgres_password
+          POSTGRES_DB: perf_fin_lab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_fin_lab_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: testing
+      PORTAL_PERF_TRICHANNEL_V5_LAB: '1'
+      PORTAL_PERF_V6_AGREEMENT_LAB: '1'
+      PERF_PORTAL_V6_AGREEMENT_LAB: '1'
+      PERF_PG_V6_ROLE_LAB: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_fin_lab_test
+      PGUSER: postgres
+      PGPASSWORD: synthetic_ci_postgres_password
+      PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+      PERF_ROLE_ALPHA_PASS: synthetic_ci_alpha_role_password
+      PERF_ROLE_BETA_PASS: synthetic_ci_beta_role_password
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin actual Portal V6 issuer at validated SHA (read only)
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: a8d2fe3924f0e2375c38ff197216212215b38c59
+          path: portal-v6-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          tools: none
+          coverage: none
+      - name: Syntax check V6 issuer, role-bound close and tests
+        run: |
+          php -l labs/finance-pg/PgV6RoleBoundAgreementCloseLab.php
+          php -l tests/pg_v6_role_bound_isolation_test.php
+          php -l tests/pg_v6_role_bound_restored_replay_test.php
+      - name: Create two NOINHERIT authenticated tenant LOGINs with zero mutual role membership
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_v6_tenant_alpha LOGIN PASSWORD 'synthetic_ci_alpha_role_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_v6_tenant_beta LOGIN PASSWORD 'synthetic_ci_beta_role_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+      - name: Create protected authenticated-login tenant registry, forced RLS and nonce/drafts
+        run: |
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/005_v6_session_role_isolation_lab.sql
+          psql -v ON_ERROR_STOP=1 -c "INSERT INTO perf_fin_role_lab.login_tenant_registry(login_role,tenant_id) VALUES ('perf_v6_tenant_alpha','tenant_v6multi_alpha_123456'),('perf_v6_tenant_beta','tenant_v6multi_beta_567890')"
+          psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA perf_fin_role_lab TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
+          psql -v ON_ERROR_STOP=1 -c "GRANT EXECUTE ON FUNCTION perf_fin_role_lab.tenant_for_authenticated_session() TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_role_lab.signed_quote_nonces,perf_fin_role_lab.agreement_close_drafts TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
+      - name: Reject session impersonation, forged tenant GUC and cross-tenant contracts
+        run: php tests/pg_v6_role_bound_isolation_test.php
+      - name: Backup and restore independent test DB including protected role registry and nonces
+        run: |
+          pg_dump --format=plain --no-owner --schema=perf_fin_role_lab --file=/tmp/perf-v6-role-isolation.sql
+          sed -i '/^SET transaction_timeout = 0;$/d' /tmp/perf-v6-role-isolation.sql
+          createdb --template=template0 perf_fin_role_restore
+          psql -X -v ON_ERROR_STOP=1 --dbname=perf_fin_role_restore --file=/tmp/perf-v6-role-isolation.sql
+      - name: Restored login identity still controls RLS and rejects V6 agreement replay
+        env:
+          PERF_LAB_RESTORE_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_role_restore'
+        run: php tests/pg_v6_role_bound_restored_replay_test.php
