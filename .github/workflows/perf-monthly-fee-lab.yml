@@ -9,6 +9,8 @@ on:
       - 'src/Domain/Commercial/PortalQuoteReconciliationPreview.php'
       - 'tests/portal_quote_preview_test.php'
       - 'tests/portal_crossrepo_contract_test.php'
+      - 'src/Domain/Commercial/MonthlySpendEvidencePreview.php'
+      - 'tests/monthly_spend_evidence_preview_test.php'
       - 'contracts/portal/performance-offer-v4.pinned.json'
       - '.github/workflows/perf-monthly-fee-lab.yml'
   workflow_dispatch:
@@ -43,9 +45,12 @@ jobs:
           php -l src/Domain/Commercial/PortalQuoteReconciliationPreview.php
           php -l tests/portal_quote_preview_test.php
           php -l tests/portal_crossrepo_contract_test.php
+          php -l src/Domain/Commercial/MonthlySpendEvidencePreview.php
+          php -l tests/monthly_spend_evidence_preview_test.php
       - name: Offline reconciliation unit tests
         run: |
           php tests/monthly_fee_reconciliation_test.php
           php tests/portal_contract_parity_test.php
           php tests/portal_quote_preview_test.php
           php tests/portal_crossrepo_contract_test.php
+          php tests/monthly_spend_evidence_preview_test.php
