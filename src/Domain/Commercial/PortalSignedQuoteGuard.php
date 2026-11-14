@@ -25,7 +25,11 @@ final class PortalSignedQuoteGuard
      */
     public static function signingBytes(array $envelope): string
     {
+        $periodBound = array_key_exists('billing_period', $envelope);
         $expected = ['audience', 'expires_at', 'issued_at', 'key_id', 'nonce', 'quote', 'tenant_id'];
+        if ($periodBound) {
+            array_splice($expected, 1, 0, ['billing_period']);
+        }
         $keys = array_keys($envelope);
         sort($keys, SORT_STRING);
         if ($keys !== $expected) {
@@ -35,7 +39,8 @@ final class PortalSignedQuoteGuard
         if (strlen($encoded) > self::MAX_ENVELOPE_BYTES) {
             throw new InvalidArgumentException('Oversized signed envelope.');
         }
-        return "imagine:portal:performance:quote:v1\n" . $encoded;
+        $version = $periodBound ? 'v2' : 'v1';
+        return "imagine:portal:performance:quote:{$version}\n" . $encoded;
     }
 
     /**
@@ -55,9 +60,14 @@ final class PortalSignedQuoteGuard
         callable $resolveKey,
         callable $claimNonce
     ): array {
+        $periodBound = array_key_exists('billing_period', $signed);
+        $expectedFields = ['audience', 'expires_at', 'issued_at', 'key_id', 'nonce', 'quote', 'signature', 'tenant_id'];
+        if ($periodBound) {
+            array_splice($expectedFields, 1, 0, ['billing_period']);
+        }
         $keys = array_keys($signed);
         sort($keys, SORT_STRING);
-        if ($keys !== ['audience', 'expires_at', 'issued_at', 'key_id', 'nonce', 'quote', 'signature', 'tenant_id']) {
+        if ($keys !== $expectedFields) {
             throw new InvalidArgumentException('Invalid signed message shape.');
         }
         $tenant = $signed['tenant_id'];
@@ -74,6 +84,9 @@ final class PortalSignedQuoteGuard
             $issued < 0 || $issued > $now + self::CLOCK_SKEW_SECONDS ||
             $expires <= $now || $expires <= $issued || $expires - $issued > self::MAX_LIFETIME_SECONDS ||
             $signed['audience'] !== self::AUDIENCE ||
+            ($periodBound && (!is_string($signed['billing_period']) ||
+                !preg_match('/\A[0-9]{4}-(0[1-9]|1[0-2])\z/D', $signed['billing_period']) ||
+                !hash_equals($period, $signed['billing_period']))) ||
             !is_string($signature) || !preg_match('/\A[a-f0-9]{64}\z/D', $signature) ||
             !is_array($signed['quote']) ||
             !preg_match('/\A[a-f0-9]{64}\z/D', $expectedCatalogSha256)) {
@@ -101,6 +114,7 @@ final class PortalSignedQuoteGuard
         return [
             'tenant_id' => $tenant,
             'quote_claim_hmac_verified' => true,
+            'billing_period_bound' => $periodBound,
             'key_id' => $keyId,
             'nonce' => $nonce,
             'quote_claim_sha256' => hash('sha256', $bytes),
