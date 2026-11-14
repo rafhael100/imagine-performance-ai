@@ -1,0 +1,40 @@
+name: Performance finance ledger PostgreSQL laboratory
+on:
+  pull_request:
+    paths:
+      - 'laboratory/postgresql/finance_schema.sql'
+      - 'laboratory/postgresql/finance_contract_test.sql'
+      - '.github/workflows/perf-finance-pg-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pg-tenant-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate isolated synthetic PostgreSQL contract
+        env:
+          PGHOST: localhost
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: local-ci-only
+          PGDATABASE: postgres
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f laboratory/postgresql/finance_schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f laboratory/postgresql/finance_contract_test.sql
