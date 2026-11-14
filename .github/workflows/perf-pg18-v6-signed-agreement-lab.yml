@@ -1,0 +1,94 @@
+name: Performance PG18 V6 agreement-bound atomic finance lab
+
+on:
+  pull_request:
+    paths:
+      - 'labs/finance-pg/004_v6_signed_agreement_drafts.sql'
+      - 'labs/finance-pg/PgV6AgreementAtomicCloseLab.php'
+      - 'src/Domain/Commercial/PortalV6AgreementSignedGuard.php'
+      - 'tests/pg_v6_signed_agreement_*'
+      - 'docs/performance-ai/PERF-V6-PG18-SIGNED-AGREEMENT-ATOMIC-2026-11-14.md'
+      - '.github/workflows/perf-pg18-v6-signed-agreement-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pg18-v6-signed-agreement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_ci_postgres_password
+          POSTGRES_DB: perf_fin_lab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_fin_lab_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: testing
+      PORTAL_PERF_TRICHANNEL_V5_LAB: '1'
+      PORTAL_PERF_V6_AGREEMENT_LAB: '1'
+      PERF_PORTAL_V6_AGREEMENT_LAB: '1'
+      PERF_PG_V6_AGREEMENT_LAB: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_fin_lab_test
+      PGUSER: postgres
+      PGPASSWORD: synthetic_ci_postgres_password
+      PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+      PERF_LAB_PG_USER: perf_fin_lab_app
+      PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout real Portal V6 issuer at pinned SHA (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: a8d2fe3924f0e2375c38ff197216212215b38c59
+          path: portal-v6-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          tools: none
+          coverage: none
+      - name: Validate PHP code and real pinned Portal V6 issuer
+        run: |
+          php -l portal-v6-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceV6AgreementLabIssuer.php
+          php -l src/Domain/Commercial/PortalV6AgreementSignedGuard.php
+          php -l labs/finance-pg/PgV6AgreementAtomicCloseLab.php
+          php -l tests/pg_v6_signed_agreement_cases.php
+          php -l tests/pg_v6_signed_agreement_atomic_close_test.php
+          php -l tests/pg_v6_signed_agreement_restored_replay_test.php
+      - name: Provision disposable role, nonce schema and V6 agreement draft schema
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_fin_lab_app LOGIN PASSWORD 'synthetic_ci_app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/001_signed_quote_nonce.sql
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/004_v6_signed_agreement_drafts.sql
+          psql -v ON_ERROR_STOP=1 -c "REVOKE ALL ON SCHEMA perf_fin_lab, perf_fin_v6_lab FROM PUBLIC"
+          psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA perf_fin_lab, perf_fin_v6_lab TO perf_fin_lab_app"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_lab.signed_quote_nonces TO perf_fin_lab_app"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_v6_lab.agreement_close_drafts TO perf_fin_lab_app"
+      - name: Real Portal V6 HMAC -> two same tenant-month agreements + atomic PG18 nonce
+        run: php tests/pg_v6_signed_agreement_atomic_close_test.php
+      - name: Backup and restore signed V6 agreement drafts and nonces into fresh PG18 DB
+        run: |
+          pg_dump --format=plain --no-owner --schema=perf_fin_lab --schema=perf_fin_v6_lab --file=/tmp/perf-v6-agreement-lab.sql
+          sed -i '/^SET transaction_timeout = 0;$/d' /tmp/perf-v6-agreement-lab.sql
+          createdb --template=template0 perf_fin_v6_restore
+          psql -X -v ON_ERROR_STOP=1 --dbname=perf_fin_v6_restore --file=/tmp/perf-v6-agreement-lab.sql
+      - name: Prove signed V6 agreement replays denied after restore
+        env:
+          PERF_LAB_RESTORE_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_v6_restore'
+        run: php tests/pg_v6_signed_agreement_restored_replay_test.php

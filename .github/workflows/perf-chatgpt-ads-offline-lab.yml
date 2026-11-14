@@ -1,0 +1,36 @@
+name: Performance ChatGPT Ads P0 offline contract
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/ChatgptAdsOfflineAdapter.php'
+      - 'src/Domain/Commercial/ChannelMinimumBudgetProposal.php'
+      - 'tests/chatgpt_ads_offline_adapter_test.php'
+      - 'tests/channel_minimum_budget_proposal_test.php'
+      - '.github/workflows/perf-chatgpt-ads-offline-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Syntax check
+        run: |
+          php -l src/Domain/Commercial/ChatgptAdsOfflineAdapter.php
+          php -l src/Domain/Commercial/ChannelMinimumBudgetProposal.php
+          php -l tests/chatgpt_ads_offline_adapter_test.php
+          php -l tests/channel_minimum_budget_proposal_test.php
+      - name: Read-only offline contract tests
+        run: |
+          php tests/chatgpt_ads_offline_adapter_test.php
+          php tests/channel_minimum_budget_proposal_test.php

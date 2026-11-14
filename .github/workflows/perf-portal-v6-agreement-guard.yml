@@ -1,0 +1,47 @@
+name: Performance real Portal V6 signed agreement crossrepo lab
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/PortalV6AgreementSignedGuard.php'
+      - 'tests/portal_v6_agreement_guard_crossrepo_test.php'
+      - '.github/workflows/perf-portal-v6-agreement-guard.yml'
+      - 'docs/performance-ai/PERF-PORTAL-V6-AGREEMENT-SIGNED-2026-11-14.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-v6-agreement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      APP_ENV: testing
+      PORTAL_PERF_TRICHANNEL_V5_LAB: '1'
+      PORTAL_PERF_V6_AGREEMENT_LAB: '1'
+      PERF_PORTAL_V6_AGREEMENT_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use real Portal V6 issuer at exact reviewed commit
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: a8d2fe3924f0e2375c38ff197216212215b38c59
+          path: portal-v6-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: PHP syntax
+        run: |
+          php -l portal-v6-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceV6AgreementLabIssuer.php
+          php -l portal-v6-reference/apps/portal/app/Homologation/Commerce/PerformanceTriChannelV5CandidateCatalog.php
+          php -l src/Domain/Commercial/PortalV6AgreementSignedGuard.php
+          php -l tests/portal_v6_agreement_guard_crossrepo_test.php
+      - name: Portal V6 real HMAC and Performance strict agreement-bound verifier
+        run: php tests/portal_v6_agreement_guard_crossrepo_test.php
