@@ -104,6 +104,7 @@ final class PortalSignedQuoteGuard
             'key_id' => $keyId,
             'nonce' => $nonce,
             'quote_claim_sha256' => hash('sha256', $bytes),
+            'signed_signature_fingerprint_sha256_not_auth' => hash('sha256', $signature),
             'state' => 'signed_claim_only_requires_portal_iam_real_spend_finance_review',
             'portal_iam_authenticated' => false,
             'provider_spend_verified' => false,
