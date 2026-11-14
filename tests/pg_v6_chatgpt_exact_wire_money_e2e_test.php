@@ -169,12 +169,14 @@ $db=new PDO(getenv('PERF_LAB_PG_DSN'),getenv('PERF_LAB_PG_USER'),
 wireE2eEq('perf_fin_lab_app',$db->query('SELECT current_user')->fetchColumn(),
     'existing CI-only PostgreSQL finance user');
 $finance=new Close($db);
-$call=static fn(array $report=$bridge['reports'],array $quote=$signed):array=>
-    $finance->stage(
-        $quote,$tenant,$agreement,$month,$fx['catalog_sha256'],
-        $fx['minima'],$report,$now,
+$call=static function(?array $report=null,?array $quote=null)
+    use($bridge,$signed,$finance,$tenant,$agreement,$month,$fx,$now):array {
+    return $finance->stage(
+        $quote??$signed,$tenant,$agreement,$month,$fx['catalog_sha256'],
+        $fx['minima'],$report??$bridge['reports'],$now,
         [V6SignedAgreementCases::class,'resolveKey']
     );
+};
 $result=$call();
 wireE2eEq(true,$result['created'],'real Portal HMAC V6 -> PG18 atomically closed');
 wireE2eEq(true,$result['agreement_id_signed_in_v6_envelope'],
