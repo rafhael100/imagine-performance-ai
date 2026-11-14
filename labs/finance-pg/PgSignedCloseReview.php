@@ -45,6 +45,8 @@ final class PgSignedCloseReview
             !hash_equals($expectedTenant, $signedTenant) ||
             !hash_equals($expectedTenant, $verifiedTenant) ||
             ($verifiedOutput['quote_claim_hmac_verified'] ?? null) !== true ||
+            ($verifiedOutput['billing_period_bound'] ?? null) !== true ||
+            ($signedEnvelope['billing_period'] ?? null) !== ($verifiedOutput['preview']['period'] ?? null) ||
             ($verifiedOutput['portal_iam_authenticated'] ?? null) !== false ||
             ($verifiedOutput['finance_approved'] ?? null) !== false ||
             ($verifiedOutput['asaas_write_enabled'] ?? null) !== false ||
