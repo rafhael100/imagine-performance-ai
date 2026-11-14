@@ -51,6 +51,7 @@ atomicDeny(fn()=> $service->stage($first,$tenant,$catalog->version(),'2026-12',$
     'signed month cannot be reused for another competence');
 $out = $service->stage($first,$tenant,$catalog->version(),'2026-11',$records('2026-11',80000),$now,$resolve);
 atomicSame(true,$out['created'],'first stage created');
+atomicSame(true,$out['signed_verification']['billing_period_bound'],'atomic stage accepts only signed v2 billing month');
 atomicSame(false,$out['billable'],'cannot bill');
 atomicSame(14000,$out['signed_verification']['preview']['estimated_advance_fee_cents'],'advance');
 atomicSame(16000,$out['signed_verification']['preview']['unverified_earned_fee_cents'],'earned');
@@ -83,6 +84,10 @@ atomicSame([2,2],$claimCount($db,$tenant),'both monthly closes and nonces commit
 atomicDeny(fn()=> $service->stage($december,$tenant,$catalog->version(),'2026-12',$records('2026-12',80000),$now,$resolve),
     'completed December cannot be replayed');
 
+$legacy = Issuer::issue($catalog,['google_ads'=>70000],$tenant,$keyId,
+    'nonce_legacy_test_123456abcdef',$now - 4,$now + 100,$secret);
+atomicDeny(fn()=> $service->stage($legacy,$tenant,$catalog->version(),'2027-01',
+    $records('2027-01',70000),$now,$resolve),'legacy v1 quote must be blocked in canonical finance path');
 $third = $issue('nonce_atomic_003_123456abcdef',70000,'2027-01');
 $forged = $third; $forged['billing_period'] = '2026-12';
 atomicDeny(fn()=> $service->stage($forged,$tenant,$catalog->version(),'2027-01',
