@@ -103,7 +103,7 @@ foreach($accounts as $channel=>$cfg){
         throw new RuntimeException('Credential or secret material leaked to output.');
     }
 
-    $bad=$binding;$bad['provider']='meta_ads';
+    $bad=$binding;$bad['provider']=$channel==='meta_ads'?'google_ads':'meta_ads';
     denyBoundary(fn()=>$call($bad),$channel.' provider swapping');
     $bad=$binding;$bad['account_id']='another_account';
     denyBoundary(fn()=>$call($bad),$channel.' wrong account');
