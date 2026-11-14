@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'src/Domain/Commercial/MonthlyFeeReconciliation.php'
+      - 'src/Domain/Commercial/MonthlyFeeReconciliationV6.php'
+      - 'tests/monthly_fee_reconciliation_v6_test.php'
       - 'tests/monthly_fee_reconciliation_test.php'
       - 'tests/portal_contract_parity_test.php'
       - 'src/Domain/Commercial/PortalQuoteReconciliationPreview.php'
@@ -50,6 +52,8 @@ jobs:
       - name: PHP syntax
         run: |
           php -l src/Domain/Commercial/MonthlyFeeReconciliation.php
+          php -l src/Domain/Commercial/MonthlyFeeReconciliationV6.php
+          php -l tests/monthly_fee_reconciliation_v6_test.php
           php -l tests/monthly_fee_reconciliation_test.php
           php -l tests/portal_contract_parity_test.php
           php -l src/Domain/Commercial/PortalQuoteReconciliationPreview.php
@@ -70,6 +74,7 @@ jobs:
       - name: Offline reconciliation unit tests
         run: |
           php tests/monthly_fee_reconciliation_test.php
+          php tests/monthly_fee_reconciliation_v6_test.php
           php tests/portal_contract_parity_test.php
           php tests/portal_quote_preview_test.php
           php tests/portal_crossrepo_contract_test.php
