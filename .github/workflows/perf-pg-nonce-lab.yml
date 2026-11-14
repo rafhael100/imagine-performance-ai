@@ -12,6 +12,10 @@ on:
       - 'src/Domain/Commercial/MonthlySettlementReviewHtml.php'
       - 'tests/pg_signed_close_html_review_test.php'
       - 'labs/finance-pg/PgAtomicSignedCloseLab.php'
+      - 'labs/finance-pg/PgProviderShapedFinanceLab.php'
+      - 'src/Domain/Commercial/SyntheticProviderSpendAdapter.php'
+      - 'src/Domain/Commercial/SyntheticAdsAccountSpendContract.php'
+      - 'tests/pg_provider_shaped_finance_e2e_test.php'
       - 'tests/pg_atomic_signed_close_test.php'
       - 'src/Domain/Commercial/PortalSignedQuoteGuard.php'
       - '.github/workflows/perf-pg-nonce-lab.yml'
@@ -73,6 +77,10 @@ jobs:
           php -l labs/finance-pg/PgSignedCloseReview.php
           php -l tests/pg_signed_close_html_review_test.php
           php -l labs/finance-pg/PgAtomicSignedCloseLab.php
+          php -l labs/finance-pg/PgProviderShapedFinanceLab.php
+          php -l src/Domain/Commercial/SyntheticProviderSpendAdapter.php
+          php -l src/Domain/Commercial/SyntheticAdsAccountSpendContract.php
+          php -l tests/pg_provider_shaped_finance_e2e_test.php
           php -l tests/pg_atomic_signed_close_test.php
           php -l src/Domain/Commercial/PortalSignedQuoteGuard.php
       - name: Create isolated lab RLS schema and least-privileged role
@@ -118,6 +126,17 @@ jobs:
           PERF_LAB_PG_USER: perf_fin_lab_app
           PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
         run: php tests/pg_atomic_signed_close_test.php
+      - name: Google/Meta account-scoped synthetic spend into signed PostgreSQL 18 finance draft
+        env:
+          APP_ENV: testing
+          PORTAL_PERF_SIGN_LAB: '1'
+          PERF_FIN_ATOMIC_LAB: '1'
+          PERF_ADS_PROVIDER_FIN_LAB: '1'
+          PERF_FIN_SIGNED_HTML_LAB: '1'
+          PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: php tests/pg_provider_shaped_finance_e2e_test.php
       - name: Backup and restore synthetic finance schema into another ephemeral database
         run: |
           # Retain strict restore; compatibility-only SET stripping is harmless
