@@ -1,0 +1,38 @@
+name: Performance V7 minimum R170 management fee per contracted channel proposal
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/MonthlyManagementFeeFloorV7Candidate.php'
+      - 'tests/monthly_management_fee_floor_v7_candidate_test.php'
+      - 'docs/performance-ai/PERF-P0-MIN-R170-GESTAO-POR-CANAL-V7-CANDIDATE-2026-11-14.md'
+      - '.github/workflows/perf-v7-per-channel-fee-floor-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  per-channel-fee-floor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Lint new candidate and preserved V4/V6
+        run: |
+          php -l src/Domain/Commercial/MonthlyManagementFeeFloorV7Candidate.php
+          php -l tests/monthly_management_fee_floor_v7_candidate_test.php
+          php -l src/Domain/Commercial/MonthlyFeeReconciliationV6.php
+          php -l src/Domain/Commercial/MonthlyFeeReconciliation.php
+      - name: Run R170 per channel financial fee-floor candidate and compatibility tests
+        run: |
+          php tests/monthly_management_fee_floor_v7_candidate_test.php
+          php tests/monthly_fee_reconciliation_test.php
+          php tests/monthly_fee_reconciliation_v6_test.php
