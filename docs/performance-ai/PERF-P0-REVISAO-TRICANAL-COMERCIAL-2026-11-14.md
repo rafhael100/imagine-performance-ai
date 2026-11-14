@@ -9,7 +9,7 @@
 
 ## Trilha ChatGPT Ads — independente e experimental
 - `ChatgptAdsOfflineAdapter` interpreta amostras de Insights, com data, tenant/conta BRL e flags de gasto não verificado, sem token/API real.
-- `ChannelMinimumBudgetProposal` propõe pisos comerciais **não aprovados**: Meta R$700, Google R$1.000, ChatGPT R$1.200 de mídia mensal, junto de faixas recomendadas. **Não alterar o catálogo aprovado do Portal com estes valores sem decisão comercial.**
+- `ChannelMinimumBudgetProposal` representa pisos **aprovados pelo titular para novos serviços em 14/11/2026**, mas ainda **não migrados para o catálogo de checkout assinado do Portal**: Meta R$700, Google R$1.000, ChatGPT R$1.200 de mídia mensal, com referências recomendadas R$1.000/R$1.500/R$1.800. O JSON da PR Portal #770 confirma `commercial_minima_approved=true`, `checkout_enabled=false` e `asaas_charge_authorized=false`. Alterações no checkout ainda exigem migração de catálogo, testes cruzados e gates de segurança/financeiro.
 - A documentação oficial da OpenAI informa **R$40 por campanha/dia** como mínimo **para orçamento diário em BRL**. Em 30 dias, R$1.200 é apenas uma equivalência ilustrativa de 30 × R$40; não equivale a um mínimo mensal obrigatório para qualquer configuração de campanha. Campanhas podem optar por orçamento total e existem regras de orçamento por conta/moeda.
 - A Advertiser API oficial possui `GET /v1/ad_account/insights` e autenticação por Advertiser API key da própria conta. Ainda não foi conectada. A existência da API não significa elegibilidade automática da conta ou permissão de operar campanhas.
 

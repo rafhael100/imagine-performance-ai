@@ -52,7 +52,8 @@ final class ChannelMinimumBudgetProposal
             ];
         }
         return [
-            'state' => 'unapproved_commercial_proposal_offline_preview',
+            'state' => 'owner_approved_values_pending_portal_catalog_migration_offline_preview',
+            'commercial_minima_owner_approved' => true,
             'currency' => 'BRL',
             'channels' => $details,
             'planned_media_cents' => $sum,
