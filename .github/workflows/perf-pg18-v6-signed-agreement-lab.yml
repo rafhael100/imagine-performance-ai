@@ -7,6 +7,9 @@ on:
       - 'labs/finance-pg/PgV6AgreementAtomicCloseLab.php'
       - 'src/Domain/Commercial/PortalV6AgreementSignedGuard.php'
       - 'tests/pg_v6_signed_agreement_*'
+      - 'tests/pg_v6_chatgpt_exact_wire_money_e2e_test.php'
+      - 'labs/finance-pg/ChatgptAdsSyntheticWireToV6FinanceLab.php'
+      - 'docs/performance-ai/PERF-CHATGPT-WIRE-TO-PG18-V6-E2E-2026-11-14.md'
       - 'docs/performance-ai/PERF-V6-PG18-SIGNED-AGREEMENT-ATOMIC-2026-11-14.md'
       - '.github/workflows/perf-pg18-v6-signed-agreement-lab.yml'
   workflow_dispatch:
@@ -38,6 +41,10 @@ jobs:
       PORTAL_PERF_V6_AGREEMENT_LAB: '1'
       PERF_PORTAL_V6_AGREEMENT_LAB: '1'
       PERF_PG_V6_AGREEMENT_LAB: '1'
+      PERF_ADS_READONLY_BOUNDARY_LAB: '1'
+      PERF_CHATGPT_AD_ACCOUNT_PREFLIGHT_LAB: '1'
+      PERF_CHATGPT_EXACT_WIRE_MONEY_LAB: '1'
+      PERF_CHATGPT_WIRE_V6_FINANCE_E2E_LAB: '1'
       PGHOST: 127.0.0.1
       PGPORT: '5432'
       PGDATABASE: perf_fin_lab_test
@@ -71,6 +78,8 @@ jobs:
           php -l tests/pg_v6_signed_agreement_cases.php
           php -l tests/pg_v6_signed_agreement_atomic_close_test.php
           php -l tests/pg_v6_signed_agreement_restored_replay_test.php
+          php -l labs/finance-pg/ChatgptAdsSyntheticWireToV6FinanceLab.php
+          php -l tests/pg_v6_chatgpt_exact_wire_money_e2e_test.php
       - name: Provision disposable role, nonce schema and V6 agreement draft schema
         run: |
           psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_fin_lab_app LOGIN PASSWORD 'synthetic_ci_app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
@@ -92,3 +101,5 @@ jobs:
         env:
           PERF_LAB_RESTORE_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_v6_restore'
         run: php tests/pg_v6_signed_agreement_restored_replay_test.php
+      - name: Real Portal V6 signed quote and exact OpenAI numeric spend fixture to atomic PG18 nonbillable close
+        run: php tests/pg_v6_chatgpt_exact_wire_money_e2e_test.php
