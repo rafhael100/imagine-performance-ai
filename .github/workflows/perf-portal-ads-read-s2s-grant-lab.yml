@@ -1,0 +1,51 @@
+name: Performance pinned Portal Ads read S2S signed grant lab
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/PortalAdsReadS2SLabVerifier.php'
+      - 'src/Domain/Commercial/PortalAdsGrantedReadOnlySessionLab.php'
+      - 'tests/portal_ads_read_s2s_crossrepo_test.php'
+      - 'docs/performance-ai/PERF-PORTAL-ADS-S2S-READ-GRANT-CROSSREPO-2026-11-14.md'
+      - '.github/workflows/perf-portal-ads-read-s2s-grant-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portal-grant-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PORTAL_PERF_ADS_S2S_READ_GRANT_LAB: '1'
+      PERF_PORTAL_ADS_S2S_READ_GRANT_LAB: '1'
+      PERF_ADS_READONLY_BOUNDARY_LAB: '1'
+      PERF_CHATGPT_AD_ACCOUNT_PREFLIGHT_LAB: '1'
+      PERF_CHATGPT_EXACT_WIRE_MONEY_LAB: '1'
+      PERF_CHATGPT_READONLY_SESSION_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin actual Portal issuer at validated exact commit
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 8760e7dbc6c6e643368f43fbb7f44d363182bf8c
+          path: portal-ads-read-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: PHP parser check for pinned issuer and independent verifier
+        run: |
+          php -l portal-ads-read-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceAdsReadGrantLabIssuer.php
+          php -l src/Domain/Commercial/PortalAdsReadS2SLabVerifier.php
+          php -l src/Domain/Commercial/PortalAdsGrantedReadOnlySessionLab.php
+          php -l tests/portal_ads_read_s2s_crossrepo_test.php
+      - name: Real Portal HMAC parity and identical credential refs across two mocked GETs
+        run: php tests/portal_ads_read_s2s_crossrepo_test.php
