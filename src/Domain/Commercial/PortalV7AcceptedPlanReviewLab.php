@@ -16,7 +16,7 @@ use RuntimeException;
  */
 final class PortalV7AcceptedPlanReviewLab
 {
-    private const DOMAIN="IMAGINE-PORTAL-PERFORMANCE-V7-PLAN-AGREEMENT-LAB\n";
+    private const ACCEPTANCE_DOMAIN="IMAGINE-V7-ACCEPTANCE-STABLE-PLAN-V1\n";
 
     /**
      * @param array<string,mixed> $envelope Portal V7 signed plan review
@@ -55,9 +55,13 @@ final class PortalV7AcceptedPlanReviewLab
                 string $tenant,string $agreement,string $nonce,int $expires
             )use($envelope,$expectedTermsSha256,$nowUtc,$acceptAndClaim):bool {
                 $payload=$envelope['payload'];
-                $canonical=self::canonical($payload);
-                $digest=hash('sha256',self::DOMAIN.json_encode(
-                    $canonical,JSON_THROW_ON_ERROR|
+                // A customer-accepted plan is stable across signing-key
+                // rotation, independent nonces and short review lifetimes.
+                // Never bind a durable acceptance to an ephemeral grant nonce.
+                unset($payload['nonce'],$payload['issued_at'],
+                    $payload['expires_at'],$payload['key_id']);
+                $digest=hash('sha256',self::ACCEPTANCE_DOMAIN.json_encode(
+                    self::canonical($payload),JSON_THROW_ON_ERROR|
                     JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE
                 ));
                 $now=\DateTimeImmutable::createFromFormat(
