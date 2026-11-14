@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/Domain/Commercial/PortalAdsReadS2SLabVerifier.php'
+      - 'src/Domain/Commercial/PortalAdsGrantedReadOnlySessionLab.php'
       - 'tests/portal_ads_read_s2s_crossrepo_test.php'
       - 'docs/performance-ai/PERF-PORTAL-ADS-S2S-READ-GRANT-CROSSREPO-2026-11-14.md'
       - '.github/workflows/perf-portal-ads-read-s2s-grant-lab.yml'
@@ -44,6 +45,7 @@ jobs:
         run: |
           php -l portal-ads-read-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceAdsReadGrantLabIssuer.php
           php -l src/Domain/Commercial/PortalAdsReadS2SLabVerifier.php
+          php -l src/Domain/Commercial/PortalAdsGrantedReadOnlySessionLab.php
           php -l tests/portal_ads_read_s2s_crossrepo_test.php
       - name: Real Portal HMAC parity and identical credential refs across two mocked GETs
         run: php tests/portal_ads_read_s2s_crossrepo_test.php
