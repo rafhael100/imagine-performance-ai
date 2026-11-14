@@ -6,6 +6,7 @@ on:
       - 'labs/finance-pg/**'
       - 'tests/pg_nonce_claims_test.php'
       - 'tests/pg_finance_close_drafts_test.php'
+      - 'tests/portal_real_issuer_pg_e2e_test.php'
       - 'src/Domain/Commercial/PortalSignedQuoteGuard.php'
       - '.github/workflows/perf-pg-nonce-lab.yml'
   workflow_dispatch:
@@ -39,6 +40,13 @@ jobs:
       PGPASSWORD: synthetic_ci_postgres_password
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout real pinned Portal issuer source (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 22c226ee143dc562e5699df75254d64e61cc0d12
+          path: portal-reference
+          persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -51,6 +59,9 @@ jobs:
           php -l tests/pg_nonce_claims_test.php
           php -l labs/finance-pg/PgFinanceCloseDrafts.php
           php -l tests/pg_finance_close_drafts_test.php
+          php -l portal-reference/apps/portal/app/Homologation/Commerce/ApprovedOfferCatalog.php
+          php -l portal-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceQuoteLabIssuer.php
+          php -l tests/portal_real_issuer_pg_e2e_test.php
           php -l src/Domain/Commercial/PortalSignedQuoteGuard.php
       - name: Create isolated lab RLS schema and least-privileged role
         run: |
@@ -69,3 +80,11 @@ jobs:
         run: |
           php tests/pg_nonce_claims_test.php
           php tests/pg_finance_close_drafts_test.php
+      - name: Real pinned Portal issuer to Performance and PostgreSQL E2E
+        env:
+          APP_ENV: testing
+          PORTAL_PERF_SIGN_LAB: '1'
+          PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: php tests/portal_real_issuer_pg_e2e_test.php
