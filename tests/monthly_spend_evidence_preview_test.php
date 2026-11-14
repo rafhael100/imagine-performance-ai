@@ -64,7 +64,7 @@ evidenceReject(fn() => Evidence::build($quote, '2026-11', [evidenceRow('google_a
 evidenceReject(fn() => Evidence::build($quote, '2026-11', []), 'missing all');
 evidenceReject(fn() => Evidence::build($quote, '2026-11', array_fill(0, 201, $rows[0])), 'record cap');
 evidenceReject(fn() => Evidence::build($quote, '2026-11', [$rows[0], $rows[0], $rows[2]]), 'duplicate report');
-evidenceReject(fn() => Evidence::build($quote, '2026-11', [$rows[0], evidenceRow('google_ads', 'g3', 80000000), $rows[2]]), 'cumulative cap');
+evidenceReject(fn() => Evidence::build($quote, '2026-11', [$rows[0], evidenceRow('google_ads', 'g3', 99990000), $rows[2]]), 'cumulative cap');
 evidenceReject(fn() => Evidence::build($quote, '2026-11', [$rows[0], evidenceRow('other', 'fake', 0), $rows[2]]), 'unknown channel');
 evidenceReject(fn() => Evidence::build($quote, '2026-11', [$rows[0], evidenceRow('meta_ads', 'wrong-month', 0, '2026-10')]), 'month mismatch');
 $bad = $rows[2]; $bad['source'] = 'provider_verified';
