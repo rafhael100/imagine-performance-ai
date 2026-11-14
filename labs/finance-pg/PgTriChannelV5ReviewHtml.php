@@ -21,7 +21,7 @@ final class PgTriChannelV5ReviewHtml
     /**
      * @param array<string,mixed> $signed
      * @param array<string,int> $floors trusted, pinned Portal owner-approved decision
-     * @param array<string,int> $unverifiedSpend synthetic per-channel totals
+     * @param list<array<string,mixed>> $records SYNTHETIC original rows, NEVER a caller-supplied hash
      * @param callable(string,string):?string $resolveKey
      */
     public function render(
@@ -30,8 +30,7 @@ final class PgTriChannelV5ReviewHtml
         string $period,
         string $catalogSha256,
         array $floors,
-        array $unverifiedSpend,
-        string $spendFingerprint,
+        array $records,
         int $now,
         callable $resolveKey
     ): string {
@@ -40,11 +39,69 @@ final class PgTriChannelV5ReviewHtml
             getenv('PERF_PG_TRICHANNEL_V5_HTML_LAB') !== '1' ||
             !preg_match('/\Atenant_[A-Za-z0-9_-]{8,64}\z/D', $expectedTenant) ||
             !preg_match('/\A[0-9]{4}-(0[1-9]|1[0-2])\z/D', $period) ||
-            !preg_match('/\A[a-f0-9]{64}\z/D', $spendFingerprint) ||
             $this->db->inTransaction() ||
             $this->db->query('SELECT current_user')->fetchColumn() !== 'perf_fin_lab_app') {
             throw new InvalidArgumentException('V5 financial HTML laboratory disabled or invalid.');
         }
+        // Rebuild the precise evidence bytes from original synthetic records.
+        // A client-supplied digest + a changed account/channel split is NEVER sufficient.
+        $planned = $signed['quote']['media_by_channel_cents'] ?? null;
+        if (!is_array($planned) || $planned === [] ||
+            count($records) < 1 || count($records) > 200) {
+            throw new InvalidArgumentException('Original synthetic evidence rows required.');
+        }
+        $allowed = ['chatgpt_ads','google_ads','meta_ads'];
+        $seen = [];
+        $unverifiedSpend = [];
+        $canonical = [];
+        foreach ($records as $record) {
+            if (!is_array($record)) {
+                throw new InvalidArgumentException('Invalid V5 report record.');
+            }
+            $fields = array_keys($record);
+            sort($fields, SORT_STRING);
+            if ($fields !== ['channel','period','report_id','source','spend_cents']) {
+                throw new InvalidArgumentException('Unknown V5 evidence field.');
+            }
+            $channel = $record['channel'];
+            $id = $record['report_id'];
+            $cost = $record['spend_cents'];
+            if (!is_string($channel) || !in_array($channel, $allowed, true) ||
+                !array_key_exists($channel, $planned) ||
+                $record['period'] !== $period ||
+                $record['source'] !== 'synthetic_fixture' ||
+                !is_string($id) || !preg_match('/\A[A-Za-z0-9][A-Za-z0-9_-]{0,63}\z/D', $id) ||
+                !is_int($cost) || $cost < 0 || $cost > 100000000) {
+                throw new InvalidArgumentException('Invalid V5 expense receipt.');
+            }
+            $key = $channel . "\0" . $id;
+            if (isset($seen[$key])) {
+                throw new InvalidArgumentException('Duplicated V5 receipt.');
+            }
+            $seen[$key] = true;
+            $current = $unverifiedSpend[$channel] ?? 0;
+            if ($current > 100000000 - $cost) {
+                throw new InvalidArgumentException('V5 channel total exceeds cap.');
+            }
+            $unverifiedSpend[$channel] = $current + $cost;
+            $canonical[] = [
+                'channel'=>$channel,'period'=>$period,
+                'report_id'=>$id,'source'=>'synthetic_fixture','spend_cents'=>$cost
+            ];
+        }
+        $expected = array_keys($planned);
+        $provided = array_keys($unverifiedSpend);
+        sort($expected, SORT_STRING);
+        sort($provided, SORT_STRING);
+        if ($expected !== $provided) {
+            throw new InvalidArgumentException('Missing channel evidence; explicit zero required.');
+        }
+        ksort($unverifiedSpend, SORT_STRING);
+        usort($canonical, static fn(array $a,array $b):int =>
+            [$a['channel'],$a['report_id']] <=> [$b['channel'],$b['report_id']]);
+        $spendFingerprint = hash('sha256', json_encode(
+            $canonical, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES
+        ));
         try {
             $this->db->beginTransaction();
             $this->db->prepare("SELECT set_config('app.tenant_id',:tenant,true)")
