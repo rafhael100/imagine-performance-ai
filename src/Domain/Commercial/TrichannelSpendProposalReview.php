@@ -23,14 +23,16 @@ final class TrichannelSpendProposalReview
      * @return array<string,mixed>
      */
     public static function preview(
-        string $tenant, string $period, array $plannedByChannelCents,
-        array $scopes, array $fixtures
+        string $expectedTenant, string $tenant, string $period,
+        array $plannedByChannelCents, array $scopes, array $fixtures
     ): array {
         if (getenv('APP_ENV') !== 'testing' ||
             getenv('PERF_TRICHANNEL_SPEND_LAB') !== '1') {
             throw new InvalidArgumentException('Three-channel scenario laboratory disabled.');
         }
-        if (!preg_match('/\Atenant_[A-Za-z0-9_-]{8,64}\z/D', $tenant) ||
+        if (!preg_match('/\Atenant_[A-Za-z0-9_-]{8,64}\z/D', $expectedTenant) ||
+            !hash_equals($expectedTenant, $tenant) ||
+            !preg_match('/\Atenant_[A-Za-z0-9_-]{8,64}\z/D', $tenant) ||
             !preg_match('/\A([0-9]{4})-(0[1-9]|1[0-2])\z/D', $period)) {
             throw new InvalidArgumentException('Invalid test company or period.');
         }
