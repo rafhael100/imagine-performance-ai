@@ -1,0 +1,64 @@
+name: Performance PG nonce ledger isolation lab
+
+on:
+  pull_request:
+    paths:
+      - 'labs/finance-pg/**'
+      - 'tests/pg_nonce_claims_test.php'
+      - 'src/Domain/Commercial/PortalSignedQuoteGuard.php'
+      - '.github/workflows/perf-pg-nonce-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pg-nonce-rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: synthetic_ci_postgres_password
+          POSTGRES_USER: postgres
+          POSTGRES_DB: perf_fin_lab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_fin_lab_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_fin_lab_test
+      PGUSER: postgres
+      PGPASSWORD: synthetic_ci_postgres_password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          tools: none
+          coverage: none
+      - name: Verify syntax
+        run: |
+          php -l labs/finance-pg/PgNonceClaims.php
+          php -l tests/pg_nonce_claims_test.php
+          php -l src/Domain/Commercial/PortalSignedQuoteGuard.php
+      - name: Create isolated lab RLS schema and least-privileged role
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_fin_lab_app LOGIN PASSWORD 'synthetic_ci_app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/001_signed_quote_nonce.sql
+          psql -v ON_ERROR_STOP=1 -c "REVOKE ALL ON SCHEMA perf_fin_lab FROM PUBLIC"
+          psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA perf_fin_lab TO perf_fin_lab_app"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_lab.signed_quote_nonces TO perf_fin_lab_app"
+      - name: Atomic nonce claim and tenant isolation against PostgreSQL
+        env:
+          PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: php tests/pg_nonce_claims_test.php
