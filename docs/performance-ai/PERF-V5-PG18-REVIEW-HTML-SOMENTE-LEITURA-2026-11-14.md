@@ -6,7 +6,7 @@
 `PgTriChannelV5ReviewHtml` exige `APP_ENV=testing`, `PERF_PORTAL_TRICHANNEL_V5_LAB=1`, `PERF_PG_TRICHANNEL_V5_HTML_LAB=1`, papel SQL `perf_fin_lab_app` e conexão sem transação aberta.
 
 - Reconfere a assinatura do contrato V5 e seus valores por `PortalTriChannelV5CandidateGuard`, verificando **existência de nonce já consumido**, sem inserir outro nonce.
-- Confere versão do catálogo aprovada, empresa, competência, valores em centavos, assinatura, `quote_claim_sha256` e `spend_claim_sha256` com rascunho SQL imutável e não faturável.
+- Confere versão do catálogo aprovada, empresa, competência, valores em centavos, assinatura, `quote_claim_sha256` e `spend_claim_sha256` com rascunho SQL imutável e não faturável. **Recalcula o SHA de evidências a partir dos registros originais recebidos**, após validar cada campo, canal, report_id, mês e montante; não aceita hash fornecido pelo cliente. Redistribuir gastos entre contas/canais, ainda que a soma permaneça idêntica, invalida a visualização.
 - Recusa rascunho faltante, empresa/mês divergentes, hash de gasto alterado, HMAC adulterado, ajuste numérico diferente do banco ou qualquer status de fonte/billing aprovado.
 - Renderiza HTML responsivo com identidade Imagine (`#F9941D`), orçamento de mídia planejado (pago aos canais), taxa ilustrativa de gestão de 20%, gasto sintético por canal e ajuste para **análise humana**, com alerta explícito de dado não homologado.
 - Não inclui scripts, formulários, botões de pagamento, links externos ou informação de clientes. Apenas dados sintéticos previamente presentes na CI.
