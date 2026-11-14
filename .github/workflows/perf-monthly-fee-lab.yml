@@ -1,0 +1,66 @@
+name: Performance monthly fee reconciliation lab
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/MonthlyFeeReconciliation.php'
+      - 'tests/monthly_fee_reconciliation_test.php'
+      - 'tests/portal_contract_parity_test.php'
+      - 'src/Domain/Commercial/PortalQuoteReconciliationPreview.php'
+      - 'tests/portal_quote_preview_test.php'
+      - 'tests/portal_crossrepo_contract_test.php'
+      - 'src/Domain/Commercial/MonthlySpendEvidencePreview.php'
+      - 'src/Domain/Commercial/SyntheticAdsAccountSpendContract.php'
+      - 'tests/synthetic_ads_account_spend_contract_test.php'
+      - 'src/Domain/Commercial/PortalSignedQuoteGuard.php'
+      - 'tests/portal_signed_quote_guard_test.php'
+      - 'tests/monthly_spend_evidence_preview_test.php'
+      - 'contracts/portal/performance-offer-v4.pinned.json'
+      - '.github/workflows/perf-monthly-fee-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout pinned public Portal contract source
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: b12d518f86827f31bfd6308735dca8f986f43adc
+          path: portal-reference
+          persist-credentials: false
+      - name: Install PHP CLI 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: PHP syntax
+        run: |
+          php -l src/Domain/Commercial/MonthlyFeeReconciliation.php
+          php -l tests/monthly_fee_reconciliation_test.php
+          php -l tests/portal_contract_parity_test.php
+          php -l src/Domain/Commercial/PortalQuoteReconciliationPreview.php
+          php -l tests/portal_quote_preview_test.php
+          php -l tests/portal_crossrepo_contract_test.php
+          php -l src/Domain/Commercial/MonthlySpendEvidencePreview.php
+          php -l src/Domain/Commercial/SyntheticAdsAccountSpendContract.php
+          php -l tests/synthetic_ads_account_spend_contract_test.php
+          php -l tests/monthly_spend_evidence_preview_test.php
+          php -l src/Domain/Commercial/PortalSignedQuoteGuard.php
+          php -l tests/portal_signed_quote_guard_test.php
+      - name: Offline reconciliation unit tests
+        run: |
+          php tests/monthly_fee_reconciliation_test.php
+          php tests/portal_contract_parity_test.php
+          php tests/portal_quote_preview_test.php
+          php tests/portal_crossrepo_contract_test.php
+          php tests/monthly_spend_evidence_preview_test.php
+          php tests/synthetic_ads_account_spend_contract_test.php
+          php tests/portal_signed_quote_guard_test.php
