@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS perf_fin_lab.reconciliation_drafts (
     created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
     PRIMARY KEY (tenant_id, close_id),
     UNIQUE (tenant_id, period, quote_claim_sha256),
+    -- Lab-only fail closed: there is no approved correction or revision policy.
+    CONSTRAINT one_synthetic_close_per_month UNIQUE (tenant_id, period),
     CHECK (adjustment_cents = unverified_earned_fee_cents - advance_fee_cents)
 );
 -- Deliberately immutable: runtime role receives only SELECT and INSERT.
