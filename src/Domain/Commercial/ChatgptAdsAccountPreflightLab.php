@@ -42,6 +42,12 @@ final class ChatgptAdsAccountPreflightLab
            ($scope['asaas_write_enabled']??null)!==false ||
            !is_string($scope['account_id']??null) ||
            !preg_match('/\Aadacct_[A-Za-z0-9]{3,64}\z/D',$scope['account_id']) ||
+           !is_string($scope['tenant_id']??null) ||
+           !preg_match('/\Atenant_[A-Za-z0-9_-]{8,64}\z/D',$scope['tenant_id']) ||
+           !is_string($scope['agreement_id']??null) ||
+           !preg_match('/\Aagreement_[A-Za-z0-9_-]{8,64}\z/D',$scope['agreement_id']) ||
+           !is_string($scope['period']??null) ||
+           !preg_match('/\A[0-9]{4}-(0[1-9]|1[0-2])\z/D',$scope['period']) ||
            ($scope['account_currency']??null)!=='BRL' ||
            !is_string($scope['account_time_zone']??null) ||
            !in_array($scope['account_time_zone'],DateTimeZone::listIdentifiers(),true)){
