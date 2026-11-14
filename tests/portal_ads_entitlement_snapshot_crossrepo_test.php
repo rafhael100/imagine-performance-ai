@@ -232,6 +232,6 @@ putenv('PERF_PORTAL_ENTITLEMENT_SNAPSHOT_LAB=0');
 entitlementReject(fn()=> $run($issue('nonce_entitlement_disabled_12345')),'gate disabled');
 putenv('PERF_PORTAL_ENTITLEMENT_SNAPSHOT_LAB=1');
 putenv('APP_ENV=production');
-entitlementReject(fn()=> $run($issue('nonce_entitlement_prod_123456')),'production denied');
+entitlementReject(fn()=> $run($validGrant),'production denied');
 
 echo "OK: independent simulated Portal account/contract/consent snapshot gating before HMAC nonce and two read-only GET fixtures; no real IAM, media, billing or ads writes\n";
