@@ -103,6 +103,7 @@ jobs:
       - name: Render tenant-scoped read-only HTML from signed PostgreSQL 18 draft
         env:
           APP_ENV: testing
+          PERF_FIN_SIGNED_HTML_LAB: '1'
           PORTAL_PERF_SIGN_LAB: '1'
           PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
           PERF_LAB_PG_USER: perf_fin_lab_app
