@@ -73,7 +73,7 @@ $now = 1794660000;
 $replayed = Issuer::issue(
     $catalog, ['google_ads'=>70000, 'meta_ads'=>90000],
     'tenant_crossrepo_alpha1234', 'k_crossrepo_lab01',
-    'nonce_crossrepo_A_1234567890abcdef', $now - 5, $now + 120, $secret
+    'nonce_crossrepo_A_1234567890abcdef', $now - 5, $now + 120, $secret, '2026-11'
 );
 $resolver = static fn(string $tenant, string $key): ?string =>
     $tenant === 'tenant_crossrepo_alpha1234' && $key === 'k_crossrepo_lab01'

@@ -39,7 +39,8 @@ final class PgAtomicSignedCloseLab
         }
         if ($this->db->inTransaction() ||
             !preg_match('/\Atenant_[A-Za-z0-9_-]{8,64}\z/D', $expectedTenant) ||
-            !is_array($signed['quote'] ?? null)) {
+            !is_array($signed['quote'] ?? null) ||
+            ($signed['billing_period'] ?? null) !== $period) {
             throw new InvalidArgumentException('Invalid trusted laboratory scope.');
         }
         // Unverified rows are validated independently before entering SQL.
@@ -80,6 +81,7 @@ final class PgAtomicSignedCloseLab
                 $trustedKeyResolver, $claim
             );
             if (($verified['quote_claim_hmac_verified'] ?? false) !== true ||
+                ($verified['billing_period_bound'] ?? null) !== true ||
                 ($verified['portal_iam_authenticated'] ?? null) !== false ||
                 ($verified['finance_approved'] ?? null) !== false ||
                 ($verified['asaas_write_enabled'] ?? null) !== false ||

@@ -73,7 +73,7 @@ $keyResolver = static fn(string $tenant, string $id): ?string =>
 $issue = static function(string $tenant, string $nonce, array $budget) use ($catalog, $keyId, $now, $secret): array {
     return PortalIssuer::issue(
         $catalog, $budget, $tenant, $keyId, $nonce,
-        $now - 5, $now + 120, $secret
+        $now - 5, $now + 120, $secret, '2026-11'
     );
 };
 $recordsA = [
@@ -90,10 +90,16 @@ sameCross(false, $signedA['quote']['real_charge_enabled'], 'no real charge');
 sameCross(true, $signedA['quote']['media_paid_directly_to_platforms'], 'media direct to channels');
 
 $evidenceA = Evidence::build($signedA['quote'], '2026-11', $recordsA);
+rejectCross(fn()=> Guard::verifyAndPreview(
+    $signedA, $tenantA, $catalog->version(), '2026-12',
+    $evidenceA['unverified_spend_by_channel_cents'], $now,
+    $keyResolver, [$nonces, 'claim']
+), 'signed November envelope cannot be accepted for December');
 $verifiedA = Guard::verifyAndPreview($signedA, $tenantA, $catalog->version(),
     '2026-11', $evidenceA['unverified_spend_by_channel_cents'], $now,
     $keyResolver, [$nonces, 'claim']);
 sameCross(true, $verifiedA['quote_claim_hmac_verified'], 'HMAC from actual Portal issuer accepted');
+sameCross(true, $verifiedA['billing_period_bound'], 'period is in domain-separated HMAC');
 sameCross(false, $verifiedA['portal_iam_authenticated'], 'HMAC not equivalent to Portal IAM');
 sameCross(false, $verifiedA['finance_approved'], 'no approval');
 sameCross(false, $verifiedA['asaas_write_enabled'], 'no Asaas writes');

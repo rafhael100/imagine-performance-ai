@@ -38,17 +38,20 @@ $tenant = 'tenant_atomic_alpha7777';
 $keyId = 'k_atomic_lab01';
 $secret = str_repeat('T',48);
 $now = 1794660000;
-$issue = static fn(string $nonce,int $plan) =>
-    Issuer::issue($catalog,['google_ads'=>$plan],$tenant,$keyId,$nonce,$now - 4,$now + 100,$secret);
+$issue = static fn(string $nonce,int $plan,string $month) =>
+    Issuer::issue($catalog,['google_ads'=>$plan],$tenant,$keyId,$nonce,$now - 4,$now + 100,$secret,$month);
 $resolve = static fn(string $t,string $kid): ?string =>
     $t === 'tenant_atomic_alpha7777' && $kid === 'k_atomic_lab01' ? str_repeat('T',48) : null;
 $records = static fn(string $month,int $cents): array => [[
     'channel'=>'google_ads','period'=>$month,'report_id'=>'synthetic_google_001',
     'source'=>'synthetic_fixture','spend_cents'=>$cents,
 ]];
-$first = $issue('nonce_atomic_001_123456abcdef',70000);
+$first = $issue('nonce_atomic_001_123456abcdef',70000,'2026-11');
+atomicDeny(fn()=> $service->stage($first,$tenant,$catalog->version(),'2026-12',$records('2026-12',80000),$now,$resolve),
+    'signed month cannot be reused for another competence');
 $out = $service->stage($first,$tenant,$catalog->version(),'2026-11',$records('2026-11',80000),$now,$resolve);
 atomicSame(true,$out['created'],'first stage created');
+atomicSame(true,$out['signed_verification']['billing_period_bound'],'atomic stage accepts only signed v2 billing month');
 atomicSame(false,$out['billable'],'cannot bill');
 atomicSame(14000,$out['signed_verification']['preview']['estimated_advance_fee_cents'],'advance');
 atomicSame(16000,$out['signed_verification']['preview']['unverified_earned_fee_cents'],'earned');
@@ -66,18 +69,29 @@ $claimCount = static function(PDO $db,string $scope): array {
 };
 atomicSame([1,1],$claimCount($db,$tenant),'one nonce with one drafted close');
 
-$second = $issue('nonce_atomic_002_123456abcdef',80000);
+$second = $issue('nonce_atomic_002_123456abcdef',80000,'2026-11');
 atomicDeny(fn()=> $service->stage($second,$tenant,$catalog->version(),'2026-11',$records('2026-11',80000),$now,$resolve),
     'second distinct draft in same month rejected');
 atomicSame([1,1],$claimCount($db,$tenant),'failed draft rolled nonce back');
 
-$secondMonth = $service->stage($second,$tenant,$catalog->version(),'2026-12',$records('2026-12',80000),$now,$resolve);
-atomicSame(true,$secondMonth['created'],'failed month conflict preserved valid nonce for another month');
-atomicSame([2,2],$claimCount($db,$tenant),'both monthly closes and nonces committed together');
 atomicDeny(fn()=> $service->stage($second,$tenant,$catalog->version(),'2026-12',$records('2026-12',80000),$now,$resolve),
-    'completed second month also blocks replay');
+    'even a rolled-back November nonce cannot be applied to December');
+atomicSame([1,1],$claimCount($db,$tenant),'rejected cross-month use consumes no nonce');
+$december = $issue('nonce_atomic_dec_123456abcdef',80000,'2026-12');
+$secondMonth = $service->stage($december,$tenant,$catalog->version(),'2026-12',$records('2026-12',80000),$now,$resolve);
+atomicSame(true,$secondMonth['created'],'fresh December quote creates a separate competence');
+atomicSame([2,2],$claimCount($db,$tenant),'both monthly closes and nonces committed together');
+atomicDeny(fn()=> $service->stage($december,$tenant,$catalog->version(),'2026-12',$records('2026-12',80000),$now,$resolve),
+    'completed December cannot be replayed');
 
-$third = $issue('nonce_atomic_003_123456abcdef',70000);
+$legacy = Issuer::issue($catalog,['google_ads'=>70000],$tenant,$keyId,
+    'nonce_legacy_test_123456abcdef',$now - 4,$now + 100,$secret);
+atomicDeny(fn()=> $service->stage($legacy,$tenant,$catalog->version(),'2027-01',
+    $records('2027-01',70000),$now,$resolve),'legacy v1 quote must be blocked in canonical finance path');
+$third = $issue('nonce_atomic_003_123456abcdef',70000,'2027-01');
+$forged = $third; $forged['billing_period'] = '2026-12';
+atomicDeny(fn()=> $service->stage($forged,$tenant,$catalog->version(),'2027-01',
+    $records('2027-01',70000),$now,$resolve),'signed month tampered');
 $spoof = $records('2027-01',70000);
 $spoof[0]['source'] = 'google_verified';
 atomicDeny(fn()=> $service->stage($third,$tenant,$catalog->version(),'2027-01',$spoof,$now,$resolve),

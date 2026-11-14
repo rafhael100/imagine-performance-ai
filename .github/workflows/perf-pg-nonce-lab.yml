@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: rafhael100/imagine-portal
-          ref: 22c226ee143dc562e5699df75254d64e61cc0d12
+          ref: 9d2b7030c98778438c0e0544b5db836ea1520789
           path: portal-reference
           persist-credentials: false
       - uses: shivammathur/setup-php@v2
