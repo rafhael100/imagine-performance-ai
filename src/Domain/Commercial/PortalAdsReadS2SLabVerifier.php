@@ -111,7 +111,7 @@ final class PortalAdsReadS2SLabVerifier
             'issuer'=>'imagine-portal-ci',
             'grant_sha256'=>hash('sha256',$signingBytes),
             'short_lived_grant_hmac_verified_in_lab'=>true,
-            'nonce_claimed_in_ci_memory'=>true,
+            'nonce_claim_succeeded_via_callback_in_lab'=>true,
             'state'=>'synthetic_portal_ads_s2s_read_scope_verified',
             'portal_iam_authenticated'=>false,
             'consent_verified_in_real_database'=>false,
