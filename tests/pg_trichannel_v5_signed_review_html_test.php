@@ -50,10 +50,10 @@ $records=[
 ];
 $digest=hash('sha256',json_encode($records,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES));
 $actual=['chatgpt_ads'=>90000,'google_ads'=>150000,'meta_ads'=>50000];
-$render=static fn(array $signedInput=$signed,string $tenant=$a,array $unverified=$actual,string $sha=$digest,
+$render=static fn(?array $signedInput=null,?string $tenant=null,?array $unverified=null,?string $sha=null,
  string $reviewPeriod='2026-11')=>
-    $reader->render($signedInput,$tenant,$reviewPeriod,$cat->version(),$cat->minima(),
-        $unverified,$sha,$now,$resolve);
+    $reader->render($signedInput??$signed,$tenant??$a,$reviewPeriod,$cat->version(),$cat->minima(),
+        $unverified??$actual,$sha??$digest,$now,$resolve);
 $html=$render();
 foreach([
  'Imagine Performance AI','DEMONSTRAÇÃO NÃO HOMOLOGADA',
