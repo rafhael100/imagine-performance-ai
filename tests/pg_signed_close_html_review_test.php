@@ -46,7 +46,7 @@ $secret = str_repeat('H',48);
 $now = 1794660000;
 $envelope = Issuer::issue($catalog,
     ['google_ads' => 70000, 'meta_ads' => 90000],
-    $tenant, 'k_htmlrev_01', 'nonce_htmlrev_1234567890abcdef', $now - 2, $now + 120, $secret);
+    $tenant, 'k_htmlrev_01', 'nonce_htmlrev_1234567890abcdef', $now - 2, $now + 120, $secret, '2026-11');
 $records = [
     ['channel'=>'google_ads','period'=>'2026-11','report_id'=>'google-html-01','source'=>'synthetic_fixture','spend_cents'=>50000],
     ['channel'=>'meta_ads','period'=>'2026-11','report_id'=>'meta-html-01','source'=>'synthetic_fixture','spend_cents'=>100000],
@@ -58,6 +58,7 @@ $verified = Guard::verifyAndPreview(
     static fn(string $t,string $kid): ?string => $t === 'tenant_htmlreview_alpha7777' && $kid === 'k_htmlrev_01' ? str_repeat('H',48) : null,
     [new PgNonceClaims($db),'claim']
 );
+expectReview($verified['billing_period_bound'] === true, 'signed billing period bound');
 $drafts = new PgFinanceCloseDrafts($db);
 $result = $drafts->stage($tenant,$verified,$spend);
 expectReview($result['created'] === true, 'signed draft created');
