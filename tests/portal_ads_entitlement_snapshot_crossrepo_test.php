@@ -130,18 +130,18 @@ $transport=static function(array $descriptor)use(&$requests,$metadata,$insights)
     $requests[]=$descriptor;
     return $descriptor['operation']==='ad_account_metadata'?$metadata:$insights;
 };
-$run=static function(array $grant,?array $b=null,?callable $reader=null)
+$run=static function(array $grant,?array $b=null,?callable $reader=null,?callable $mock=null)
     use($tenant,$agreement,$period,$account,$credential,$consent,$zone,$now,
         $binding,$resolvePolicy,$resolveKey,$claim,$transport):array{
     return Gate::collect(
         $grant,$b??$binding,$tenant,$agreement,$period,$account,
         $credential,$consent,$zone,$now,$reader??$resolvePolicy,
-        $resolveKey,$claim,$transport
+        $resolveKey,$claim,$mock??$transport
     );
 };
 $validGrant=$issue('nonce_entitlement_valid_1234567');
 $ok=$run($validGrant);
-entitlementAssert($lookups===1 && $claims===1 && count($requests)===2,
+entitlementAssert($lookups===3 && $claims===1 && count($requests)===2,
     'policy evaluated before nonce and both provider mock GETs');
 entitlementAssert($ok['entitlement_snapshot_verified_in_lab']===true &&
     preg_match('/\A[a-f0-9]{64}\z/D',$ok['entitlement_snapshot_sha256'])===1,
@@ -161,6 +161,32 @@ foreach ([
 }
 entitlementReject(fn()=> $run($validGrant),'nonce cannot be replayed');
 entitlementAssert(count($requests)===2,'replay cannot issue another GET');
+
+// Simulate a revocation DURING the first provider metadata response.
+// The second GET must re-check the independent registry and fail closed.
+$midflight=[];
+$revocationTransport=static function(array $descriptor)use(
+    &$midflight,&$policyFixture,$metadata,$insights
+):array{
+    $midflight[]=$descriptor['operation'];
+    if($descriptor['operation']==='ad_account_metadata') {
+        $policyFixture['consent_status']='revoked';
+        $policyFixture['consent_revoked_at']=1794660000;
+        return $metadata;
+    }
+    return $insights;
+};
+$beforeClaims=$claims;
+entitlementReject(
+    fn()=> $run($issue('nonce_entitlement_midflight_1234567'),null,null,$revocationTransport),
+    'consent revoked between metadata and Insights'
+);
+entitlementAssert($midflight===['ad_account_metadata'],
+    'recheck blocks insights after mid-session revocation');
+entitlementAssert($claims===$beforeClaims+1,
+    'signed nonce was consumed once even though second mocked GET was denied');
+$policyFixture['consent_status']='synthetic_granted';
+$policyFixture['consent_revoked_at']=null;
 
 $cases=[
     ['agreement_status','terminated','terminated contract'],
