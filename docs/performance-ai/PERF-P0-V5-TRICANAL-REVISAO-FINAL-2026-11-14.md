@@ -7,7 +7,7 @@
 - Comercial PR #389: calculadora pública PT/EN/ES, metas de negócio, CPL autodeclarado, limites de mídia e honorários ilustrativos, sem coleta de contatos nem escrita CRM.
 - Portal PR #770: decisão comercial aprovada para piso mensal de mídia Meta R$700, Google R$1.000, ChatGPT R$1.200; recomendados R$1.000, R$1.500, R$1.800. Valores comerciais **aprovados**, mas catálogo de checkout **não migrado**.
 - Portal PR #772 SHA `913f8e8420ecb26524c583d2e76bccd96133eb95`: catálogo candidato isolado e cotação HMAC V5 para três canais. `approved-catalog.json` V4 e emissor V1/V2 permanecem intactos.
-- Performance PRs #357 e #358: verificador HMAC V5 contra fonte real pinada, e nonce+pré-fechamento **na mesma transação PostgreSQL 18**, com teste de restauração em outro banco descartável.
+- Performance PRs #357, #358 e #360: verificador HMAC V5 contra fonte real pinada, nonce+pré-fechamento **na mesma transação PostgreSQL 18**, restauração em outro banco descartável e HTML estático de conferência com evidência recalculada.
 - CRM PR #569: consentimento sintético de pedido de estudo separado de opt-in de marketing, sem persistência de PII.
 - Performance PR #355: testes cruzados com código do Comercial, Portal e CRM por SHA.
 - Performance PR #354: demo alternativa local da calculadora; **não** publicar como interface concorrente do Comercial.
@@ -21,6 +21,8 @@ Cliente paga mídia diretamente aos provedores. A Imagine cobra 20% da **mídia 
 3. Gastos **sintéticos** com IDs por canal são conferidos, exigindo linha explícita de zero quando aplicável, sem claims de autoridade externa.
 4. PG18 efêmero insere nonce e rascunho de fechamento em transação única. Replay e segundo pré-fechamento para mesmo tenant/mês rejeitados; rollback também reverte nonce.
 5. RLS forçada e role de teste limitada; `pg_dump` e restore confirmam durabilidade das restrições e replay negado. O uso de `app.tenant_id` como GUC é uma **limitação grave de produção**: cliente SQL pode escolher valor, então RLS nesta forma não é fronteira real de IAM.
+
+6. **PR #360:** `PgTriChannelV5ReviewHtml` recria a evidência a partir dos registros sintéticos originais e **não confia em hashes recebidos como argumentos**; compara fingerprint com o draft SQL imutável, verifica novamente o HMAC e a existência do nonce sem escrevê-lo, e renderiza HTML responsivo laranja Imagine dos três canais. Teste adversarial rejeita troca de atribuição entre canais mesmo com a soma idêntica, empresa/competência erradas e comprovantes adulterados. A CI anexa prévia estática `perf-v5-trichannel-finance-readonly-preview` por 14 dias, sem criar página pública ou rota financeira.
 
 ## Checklist NO-GO
 | Gate | Requisito ainda não atendido |
