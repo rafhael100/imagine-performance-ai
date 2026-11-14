@@ -1,0 +1,43 @@
+name: Performance ChatGPT Ads same-credential read-only session CI
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/ChatgptAdsReadOnlySessionLab.php'
+      - 'tests/chatgpt_ads_readonly_session_test.php'
+      - 'docs/performance-ai/PERF-CHATGPT-ADS-SAME-CREDENTIAL-READONLY-SESSION-2026-11-14.md'
+      - '.github/workflows/perf-chatgpt-ads-readonly-session-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  same-credential-session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      APP_ENV: testing
+      PERF_ADS_READONLY_BOUNDARY_LAB: '1'
+      PERF_CHATGPT_AD_ACCOUNT_PREFLIGHT_LAB: '1'
+      PERF_CHATGPT_EXACT_WIRE_MONEY_LAB: '1'
+      PERF_CHATGPT_READONLY_SESSION_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Validate PHP syntax
+        run: |
+          php -l src/Domain/Commercial/ChatgptAdsReadOnlySessionLab.php
+          php -l tests/chatgpt_ads_readonly_session_test.php
+      - name: Verify credential identity and fail-closed preflight before Insights
+        run: php tests/chatgpt_ads_readonly_session_test.php
+      - name: Validate preexisting account/amount safety remains intact
+        run: |
+          php tests/chatgpt_ads_account_preflight_test.php
+          php tests/chatgpt_ads_exact_wire_money_test.php
