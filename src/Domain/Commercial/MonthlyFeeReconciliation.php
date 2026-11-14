@@ -6,16 +6,12 @@ namespace Imagine\Performance\Commercial;
 use InvalidArgumentException;
 
 /**
- * Simulador puro de honorários V6 para Meta/Google/ChatGPT. NÃO emite cobrança, crédito ou comandos de mídia.
+ * Simulador puro de honorários. NÃO emite cobrança, crédito ou comandos de mídia.
  * Entradas em centavos BRL; números inteiros, sem floats.
  */
 final class MonthlyFeeReconciliation
 {
-    private const MIN_MEDIA_BY_CHANNEL_CENTS = [
-        'chatgpt_ads' => 120000,
-        'google_ads' => 100000,
-        'meta_ads' => 70000,
-    ];
+    private const MIN_MEDIA_PER_CHANNEL_CENTS = 70000;
     // Mesmo teto por canal da cotação do Portal (ApprovedOfferCatalog::quote).
     // Teto técnico de homologação, não é uma autorização para gasto.
     private const MAX_MEDIA_CENTS = 100000000;
@@ -29,8 +25,8 @@ final class MonthlyFeeReconciliation
         if (!preg_match('/^\\d{4}-(0[1-9]|1[0-2])$/D', $period)) {
             throw new InvalidArgumentException('Invalid YYYY-MM period.');
         }
-        if ($channels === [] || count($channels) > 3 || array_diff(array_keys($channels), array_keys(self::MIN_MEDIA_BY_CHANNEL_CENTS)) !== []) {
-            throw new InvalidArgumentException('Only one to three unique Meta/Google/ChatGPT channels are supported.');
+        if ($channels === [] || count($channels) > 2 || array_diff(array_keys($channels), ['google_ads', 'meta_ads']) !== []) {
+            throw new InvalidArgumentException('Only one or two unique Google/Meta channels are supported.');
         }
 
         $plannedTotal = 0;
@@ -44,7 +40,7 @@ final class MonthlyFeeReconciliation
             $planned = $input['planned_cents'];
             $actual = $input['actual_cents'];
             if (!is_int($planned) || !is_int($actual) ||
-                $planned < self::MIN_MEDIA_BY_CHANNEL_CENTS[$channel] || $planned > self::MAX_MEDIA_CENTS ||
+                $planned < self::MIN_MEDIA_PER_CHANNEL_CENTS || $planned > self::MAX_MEDIA_CENTS ||
                 $actual < 0 || $actual > self::MAX_MEDIA_CENTS) {
                 throw new InvalidArgumentException('Invalid channel media amount in integer cents.');
             }
@@ -67,11 +63,6 @@ final class MonthlyFeeReconciliation
             'currency' => 'BRL',
             'period' => $period,
             'simulated' => true,
-            'provider_spend_verified' => false,
-            'finance_approved' => false,
-            'billable' => false,
-            'gateway_write_enabled' => false,
-            'ads_write_enabled' => false,
             'planned_media_cents' => $plannedTotal,
             'actual_media_cents' => $actualTotal,
             'advance_fee_cents' => $advance,
