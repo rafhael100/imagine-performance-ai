@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'labs/finance-pg/005_v6_session_role_isolation_lab.sql'
+      - 'labs/finance-pg/006_v6_append_only_spend_corrections_lab.sql'
+      - 'labs/finance-pg/PgV6SpendCorrectionReviewLab.php'
+      - 'tests/pg_v6_role_bound_spend_correction_test.php'
+      - 'docs/performance-ai/PERF-V6-PG18-CORRECTIONS-AUDIT-LAB-2026-11-14.md'
       - 'labs/finance-pg/PgV6RoleBoundAgreementCloseLab.php'
       - 'tests/pg_v6_role_bound_*'
       - 'docs/performance-ai/PERF-V6-PG18-ROLE-BOUND-TENANT-2026-11-14.md'
@@ -37,6 +41,7 @@ jobs:
       PORTAL_PERF_V6_AGREEMENT_LAB: '1'
       PERF_PORTAL_V6_AGREEMENT_LAB: '1'
       PERF_PG_V6_ROLE_LAB: '1'
+      PERF_PG_V6_CORRECTION_LAB: '1'
       PGHOST: 127.0.0.1
       PGPORT: '5432'
       PGDATABASE: perf_fin_lab_test
@@ -65,6 +70,8 @@ jobs:
       - name: Syntax check V6 issuer, role-bound close and tests
         run: |
           php -l labs/finance-pg/PgV6RoleBoundAgreementCloseLab.php
+          php -l labs/finance-pg/PgV6SpendCorrectionReviewLab.php
+          php -l tests/pg_v6_role_bound_spend_correction_test.php
           php -l tests/pg_v6_role_bound_isolation_test.php
           php -l tests/pg_v6_role_bound_restored_replay_test.php
       - name: Create two NOINHERIT authenticated tenant LOGINs with zero mutual role membership
@@ -74,12 +81,15 @@ jobs:
       - name: Create protected authenticated-login tenant registry, forced RLS and nonce/drafts
         run: |
           psql -v ON_ERROR_STOP=1 -f labs/finance-pg/005_v6_session_role_isolation_lab.sql
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/006_v6_append_only_spend_corrections_lab.sql
           psql -v ON_ERROR_STOP=1 -c "INSERT INTO perf_fin_role_lab.login_tenant_registry(login_role,tenant_id) VALUES ('perf_v6_tenant_alpha','tenant_v6multi_alpha_123456'),('perf_v6_tenant_beta','tenant_v6multi_beta_567890')"
           psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA perf_fin_role_lab TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
           psql -v ON_ERROR_STOP=1 -c "GRANT EXECUTE ON FUNCTION perf_fin_role_lab.tenant_for_authenticated_session() TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
-          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_role_lab.signed_quote_nonces,perf_fin_role_lab.agreement_close_drafts TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_role_lab.signed_quote_nonces,perf_fin_role_lab.agreement_close_drafts,perf_fin_role_lab.spend_correction_events TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
       - name: Reject session impersonation, forged tenant GUC and cross-tenant contracts
         run: php tests/pg_v6_role_bound_isolation_test.php
+      - name: Append correction audit revisions without changing signed finance draft
+        run: php tests/pg_v6_role_bound_spend_correction_test.php
       - name: Backup and restore independent test DB including protected role registry and nonces
         run: |
           pg_dump --format=plain --no-owner --schema=perf_fin_role_lab --file=/tmp/perf-v6-role-isolation.sql
