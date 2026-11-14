@@ -50,6 +50,12 @@ final class PgSignedCloseReview
             !is_array($verifiedOutput['preview'] ?? null)) {
             throw new InvalidArgumentException('Signed review is not an unbillable internal claim.');
         }
+        $sig = $signedEnvelope['signature'] ?? null;
+        if (!is_string($sig) || !preg_match('/\\A[a-f0-9]{64}\\z/D', $sig) ||
+            !is_string($verifiedOutput['signed_signature_fingerprint_sha256_not_auth'] ?? null) ||
+            !hash_equals(hash('sha256', $sig), $verifiedOutput['signed_signature_fingerprint_sha256_not_auth'])) {
+            throw new InvalidArgumentException('Signed envelope signature differs from verified claim.');
+        }
         $unsigned = $signedEnvelope;
         unset($unsigned['signature']);
         $raw = PortalSignedQuoteGuard::signingBytes($unsigned);
