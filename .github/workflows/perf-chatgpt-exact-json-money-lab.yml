@@ -1,0 +1,44 @@
+name: Performance ChatGPT Ads exact numeric JSON spend laboratory
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/ExactJsonNumberLexicalParser.php'
+      - 'src/Domain/Commercial/ChatgptAdsExactWireSpendLab.php'
+      - 'tests/chatgpt_ads_exact_wire_money_test.php'
+      - 'docs/performance-ai/PERF-CHATGPT-ADS-EXACT-JSON-MONEY-2026-11-14.md'
+      - '.github/workflows/perf-chatgpt-exact-json-money-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-money:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      APP_ENV: testing
+      PERF_ADS_READONLY_BOUNDARY_LAB: '1'
+      PERF_CHATGPT_AD_ACCOUNT_PREFLIGHT_LAB: '1'
+      PERF_CHATGPT_EXACT_WIRE_MONEY_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: PHP strict syntax
+        run: |
+          php -l src/Domain/Commercial/ExactJsonNumberLexicalParser.php
+          php -l src/Domain/Commercial/ChatgptAdsExactWireSpendLab.php
+          php -l tests/chatgpt_ads_exact_wire_money_test.php
+      - name: Exact decimal JSON spend and adversarial cross-account checks
+        run: php tests/chatgpt_ads_exact_wire_money_test.php
+      - name: Legacy offline fixtures remain unchanged
+        run: |
+          php tests/chatgpt_ads_offline_adapter_test.php
+          php tests/chatgpt_ads_account_preflight_test.php
