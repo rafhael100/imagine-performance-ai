@@ -48,6 +48,7 @@ test('Performance offline proposal matches approved commercial minima but cannot
   assert.equal(phpGuidance.planned_media_cents,290000);
   assert.equal(phpGuidance.illustrative_management_fee_cents,58000);
   assert.equal(phpGuidance.management_percent,20);
+  assert.equal(phpGuidance.commercial_minima_owner_approved,true);
   assert.equal(phpGuidance.portal_catalog_approved,false);
   assert.equal(phpGuidance.provider_spend_verified,false);
   assert.equal(phpGuidance.asaas_write_enabled,false);
