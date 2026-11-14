@@ -6,7 +6,8 @@ namespace Imagine\Performance\Commercial;
 use InvalidArgumentException;
 
 /**
- * Pure proposal-only calculator. NOT Portal's approved commercial catalog.
+ * Owner-approved commercial values, proposal-only implementation.
+ * NOT Portal's currently active commercial catalog or checkout.
  * No charges, no signed quotations, no account access, no ad activation.
  */
 final class ChannelMinimumBudgetProposal
@@ -42,7 +43,7 @@ final class ChannelMinimumBudgetProposal
                 !is_int($amount) ||
                 $amount < self::PROPOSED_MINIMA[$channel] ||
                 $amount > self::MAX_CENTS_PER_CHANNEL) {
-                throw new InvalidArgumentException('Unsupported channel or media plan below PROPOSED channel floor.');
+                throw new InvalidArgumentException('Unsupported channel or media plan below approved Imagine channel floor.');
             }
             $sum += $amount;
             $details[$channel] = [
@@ -52,7 +53,7 @@ final class ChannelMinimumBudgetProposal
             ];
         }
         return [
-            'state' => 'unapproved_commercial_proposal_offline_preview',
+            'state' => 'owner_approved_prices_pending_versioned_portal_catalog_migration',
             'currency' => 'BRL',
             'channels' => $details,
             'planned_media_cents' => $sum,
@@ -60,6 +61,7 @@ final class ChannelMinimumBudgetProposal
             'management_percent' => 20,
             'media_paid_directly_to_providers' => true,
             'actual_fee_requires_verified_spend' => true,
+            'owner_approved_channel_minima' => true,
             'portal_catalog_approved' => false,
             'provider_spend_verified' => false,
             'asaas_write_enabled' => false,
