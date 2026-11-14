@@ -49,13 +49,38 @@ final class PortalAdsEntitledReadOnlySessionLab
             $signedGrant, $tenant, $agreement, $period, $account,
             $credentialReference, $consentReference, $now, $resolvePolicy
         );
+        // Re-read consent immediately before EACH mocked GET. A revocation
+        // observed after account metadata must prevent the Insights request.
+        // This is CI-only defense in depth, NOT an atomic production IAM read.
+        $operations = [];
+        $guardedTransport = static function(array $request) use (
+            &$operations, $signedGrant, $tenant, $agreement, $period,
+            $account, $credentialReference, $consentReference, $now,
+            $resolvePolicy, $fixtureTransport
+        ): array {
+            $next = count($operations) === 0
+                ? 'ad_account_metadata'
+                : 'ad_account_insights';
+            if (count($operations) >= 2 || ($request['operation'] ?? null) !== $next) {
+                throw new RuntimeException('Unexpected Ads-read request sequence.');
+            }
+            PortalAdsEntitlementSnapshotLab::review(
+                $signedGrant, $tenant, $agreement, $period, $account,
+                $credentialReference, $consentReference, $now, $resolvePolicy
+            );
+            $operations[] = $next;
+            return $fixtureTransport($request);
+        };
         // HMAC, TTL, account binding and durable nonce claim are delegated to
         // the existing tested boundary; snapshot alone NEVER allows access.
         $session = PortalAdsGrantedReadOnlySessionLab::collect(
             $signedGrant, $binding, $tenant, $agreement, $period, $account,
             $credentialReference, $consentReference, $timeZone, $now,
-            $resolveSigningKey, $claimNonce, $fixtureTransport
+            $resolveSigningKey, $claimNonce, $guardedTransport
         );
+        if ($operations !== ['ad_account_metadata','ad_account_insights']) {
+            throw new RuntimeException('Incomplete or reordered CI Ads-read session.');
+        }
         foreach ([
             'portal_iam_authenticated', 'real_s2s_identity_authenticated',
             'real_api_request_authorized', 'provider_account_authenticated',
