@@ -63,9 +63,12 @@ final class AdsReadOnlyHttpResponseReview
         if(!is_array($json)) {
             throw new InvalidArgumentException('Unexpected provider response collection.');
         }
+        // Preserve JSON object/list distinctions: assoc decoding collapses
+        // both [] and {} into the same empty PHP array.
+        $raw=json_decode($http['body'],false,32,JSON_THROW_ON_ERROR);
         if($provider==='google_ads'){
             // Google Ads SearchStream REST is a JSON list of batch objects.
-            if(!array_is_list($json)||count($json)>20) {
+            if(!is_array($raw)||!array_is_list($json)||count($json)>20) {
                 throw new InvalidArgumentException('Google SearchStream must be batches array.');
             }
             $count=0;
@@ -87,7 +90,9 @@ final class AdsReadOnlyHttpResponseReview
                 if($count>35)throw new InvalidArgumentException('Too many Google daily report rows.');
             }
         } elseif($provider==='meta_ads'){
-            if(array_is_list($json)||!isset($json['data']) ||
+            if(!is_object($raw)||!property_exists($raw,'data')||
+               !is_array($raw->data)||
+               array_is_list($json)||!isset($json['data']) ||
                !is_array($json['data'])||!array_is_list($json['data']) ||
                count($json['data'])>35) {
                 throw new InvalidArgumentException('Meta Insights data not complete array.');
@@ -110,7 +115,9 @@ final class AdsReadOnlyHttpResponseReview
         } else {
             // OPENAI Advertiser API: GET /v1/ad_account/insights lists data,
             // object, count and has_more (see official Ads API docs).
-            if(array_is_list($json)||($json['object']??null)!=='list' ||
+            if(!is_object($raw)||!property_exists($raw,'data')||
+               !is_array($raw->data)||
+               array_is_list($json)||($json['object']??null)!=='list' ||
                ($json['has_more']??null)!==false ||
                !is_int($json['count']??null) ||
                !is_array($json['data']??null)||
