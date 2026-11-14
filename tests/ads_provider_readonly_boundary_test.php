@@ -76,10 +76,10 @@ foreach($accounts as $channel=>$cfg){
     $call=static function(
         ?array $b=null, ?array $p=null, ?string $expectedTenant=null,
         ?string $expectedAgreement=null, ?string $expectedPeriod=null, ?int $clock=null
-    ) use($binding,$plan,$tenant,$agreement,$month,$now,$channel,$cfg):array {
+    ) use($binding,$plan,$tenant,$agreement,$month,$now,$zone,$channel,$cfg):array {
         return Boundary::inspect(
             $expectedTenant??$tenant,$expectedAgreement??$agreement,
-            $expectedPeriod??$month,$channel,$cfg['id'],
+            $expectedPeriod??$month,$channel,$cfg['id'],$zone,
             $b??$binding,$p??$plan,$clock??$now
         );
     };
@@ -171,11 +171,11 @@ foreach($accounts as $channel=>$cfg){
 }
 putenv('PERF_ADS_READONLY_BOUNDARY_LAB=0');
 denyBoundary(fn()=>Boundary::inspect($tenant,$agreement,$month,'google_ads',
-    '1234567890',$common+['provider'=>'google_ads','account_id'=>'1234567890']+
+    '1234567890',$zone,$common+['provider'=>'google_ads','account_id'=>'1234567890']+
     $accounts['google_ads']['extra'],$accounts['google_ads']['plan'],$now),'lab disabled');
 putenv('PERF_ADS_READONLY_BOUNDARY_LAB=1');
 putenv('APP_ENV=production');
 denyBoundary(fn()=>Boundary::inspect($tenant,$agreement,$month,'google_ads',
-    '1234567890',$common+['provider'=>'google_ads','account_id'=>'1234567890']+
+    '1234567890',$zone,$common+['provider'=>'google_ads','account_id'=>'1234567890']+
     $accounts['google_ads']['extra'],$accounts['google_ads']['plan'],$now),'production denied');
 echo "OK: exact Google/Meta/ChatGPT report-only plans, agreement/tenant/month/vault-ref binding; adversarial auth/Ads mutations denied, no network, no billing\n";
