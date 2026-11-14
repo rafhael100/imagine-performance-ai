@@ -11,6 +11,8 @@ on:
       - 'tests/portal_crossrepo_contract_test.php'
       - 'src/Domain/Commercial/MonthlySpendEvidencePreview.php'
       - 'src/Domain/Commercial/SyntheticAdsAccountSpendContract.php'
+      - 'src/Domain/Commercial/SyntheticProviderSpendAdapter.php'
+      - 'tests/synthetic_provider_spend_adapter_test.php'
       - 'tests/synthetic_ads_account_spend_contract_test.php'
       - 'src/Domain/Commercial/PortalSignedQuoteGuard.php'
       - 'tests/portal_signed_quote_guard_test.php'
@@ -51,6 +53,8 @@ jobs:
           php -l tests/portal_crossrepo_contract_test.php
           php -l src/Domain/Commercial/MonthlySpendEvidencePreview.php
           php -l src/Domain/Commercial/SyntheticAdsAccountSpendContract.php
+          php -l src/Domain/Commercial/SyntheticProviderSpendAdapter.php
+          php -l tests/synthetic_provider_spend_adapter_test.php
           php -l tests/synthetic_ads_account_spend_contract_test.php
           php -l tests/monthly_spend_evidence_preview_test.php
           php -l src/Domain/Commercial/PortalSignedQuoteGuard.php
@@ -63,4 +67,5 @@ jobs:
           php tests/portal_crossrepo_contract_test.php
           php tests/monthly_spend_evidence_preview_test.php
           php tests/synthetic_ads_account_spend_contract_test.php
+          php tests/synthetic_provider_spend_adapter_test.php
           php tests/portal_signed_quote_guard_test.php
