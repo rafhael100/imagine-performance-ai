@@ -7,6 +7,7 @@ on:
       - 'tests/pg_nonce_claims_test.php'
       - 'tests/pg_finance_close_drafts_test.php'
       - 'tests/portal_real_issuer_pg_e2e_test.php'
+      - 'tests/portal_pg_restore_replay_test.php'
       - 'src/Domain/Commercial/PortalSignedQuoteGuard.php'
       - '.github/workflows/perf-pg-nonce-lab.yml'
   workflow_dispatch:
@@ -62,6 +63,7 @@ jobs:
           php -l portal-reference/apps/portal/app/Homologation/Commerce/ApprovedOfferCatalog.php
           php -l portal-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceQuoteLabIssuer.php
           php -l tests/portal_real_issuer_pg_e2e_test.php
+          php -l tests/portal_pg_restore_replay_test.php
           php -l src/Domain/Commercial/PortalSignedQuoteGuard.php
       - name: Create isolated lab RLS schema and least-privileged role
         run: |
@@ -88,3 +90,20 @@ jobs:
           PERF_LAB_PG_USER: perf_fin_lab_app
           PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
         run: php tests/portal_real_issuer_pg_e2e_test.php
+      - name: Backup and restore synthetic finance schema into another ephemeral database
+        run: |
+          # The runner's newer pg_dump may emit a PostgreSQL 17+ session SET
+          # unsupported by our pinned PostgreSQL 16 service. Strip exactly
+          # that compatibility-only directive; never suppress SQL errors.
+          pg_dump --format=plain --no-owner --schema=perf_fin_lab --file=/tmp/perf-fin-rls-lab.sql
+          sed -i '/^SET transaction_timeout = 0;$/d' /tmp/perf-fin-rls-lab.sql
+          createdb --template=template0 perf_fin_lab_restore
+          psql -X -v ON_ERROR_STOP=1 --dbname=perf_fin_lab_restore --file=/tmp/perf-fin-rls-lab.sql
+      - name: Confirm restored immutable drafts and deny replay of genuine signed Portal quote
+        env:
+          APP_ENV: testing
+          PORTAL_PERF_SIGN_LAB: '1'
+          PERF_LAB_RESTORE_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_restore'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: php tests/portal_pg_restore_replay_test.php
