@@ -5,8 +5,10 @@ on:
     paths:
       - 'src/Domain/Commercial/ChatgptAdsOfflineAdapter.php'
       - 'src/Domain/Commercial/ChannelMinimumBudgetProposal.php'
+      - 'src/Domain/Commercial/PerformanceBudgetRecommendation.php'
       - 'tests/chatgpt_ads_offline_adapter_test.php'
       - 'tests/channel_minimum_budget_proposal_test.php'
+      - 'tests/performance_budget_recommendation_test.php'
       - '.github/workflows/perf-chatgpt-ads-offline-lab.yml'
   workflow_dispatch:
 
@@ -28,9 +30,12 @@ jobs:
         run: |
           php -l src/Domain/Commercial/ChatgptAdsOfflineAdapter.php
           php -l src/Domain/Commercial/ChannelMinimumBudgetProposal.php
+          php -l src/Domain/Commercial/PerformanceBudgetRecommendation.php
           php -l tests/chatgpt_ads_offline_adapter_test.php
           php -l tests/channel_minimum_budget_proposal_test.php
+          php -l tests/performance_budget_recommendation_test.php
       - name: Read-only offline contract tests
         run: |
           php tests/chatgpt_ads_offline_adapter_test.php
           php tests/channel_minimum_budget_proposal_test.php
+          php tests/performance_budget_recommendation_test.php
