@@ -26,6 +26,24 @@ final class ChannelMinimumBudgetProposal
     ];
 
     /**
+     * Laboratory commercial parameters, NOT an approved Portal price table.
+     * @return array<string,mixed>
+     */
+    public static function guidance(): array
+    {
+        return [
+            'proposed_minima_cents' => self::PROPOSED_MINIMA,
+            'reference_recommended_cents' => self::RECOMMENDED,
+            'state' => 'unapproved_offline_proposal_only',
+            'management_basis_points' => 2000,
+            'currency' => 'BRL',
+            'portal_catalog_approved' => false,
+            'asaas_write_enabled' => false,
+            'ads_write_enabled' => false,
+        ];
+    }
+
+    /**
      * @param array<string,int> $plannedCents channel => BRL monthly media plan in cents
      * @return array<string,mixed>
      */
