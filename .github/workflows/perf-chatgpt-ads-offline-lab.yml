@@ -1,0 +1,63 @@
+name: Performance ChatGPT Ads P0 offline contract
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/ChatgptAdsOfflineAdapter.php'
+      - 'src/Domain/Commercial/ChannelMinimumBudgetProposal.php'
+      - 'src/Domain/Commercial/PerformanceBudgetRecommendation.php'
+      - 'tests/chatgpt_ads_offline_adapter_test.php'
+      - 'tests/channel_minimum_budget_proposal_test.php'
+      - 'tests/performance_budget_recommendation_test.php'
+      - 'scripts/ci/compute-performance-budget-parity.php'
+      - 'scripts/ci/test-performance-commercial-budget-parity.mjs'
+      - '.github/workflows/perf-chatgpt-ads-offline-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout isolated Performance code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout immutable reviewed Commercial estimator
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-comercial
+          ref: 2403d297e2fa67e8dc615c3b47fd02d356c85cdf
+          path: _commercial_calculator_ci
+          persist-credentials: false
+      - name: Setup Node 22 for local cross-language comparison
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Syntax check
+        run: |
+          php -l src/Domain/Commercial/ChatgptAdsOfflineAdapter.php
+          php -l src/Domain/Commercial/ChannelMinimumBudgetProposal.php
+          php -l src/Domain/Commercial/PerformanceBudgetRecommendation.php
+          php -l tests/chatgpt_ads_offline_adapter_test.php
+          php -l tests/channel_minimum_budget_proposal_test.php
+          php -l tests/performance_budget_recommendation_test.php
+          php -l scripts/ci/compute-performance-budget-parity.php
+      - name: Read-only offline contract tests
+        run: |
+          php tests/chatgpt_ads_offline_adapter_test.php
+          php tests/channel_minimum_budget_proposal_test.php
+          php tests/performance_budget_recommendation_test.php
+      - name: Cross-repo exact Commercial JS and Performance PHP calculation
+        run: |
+          set -euo pipefail
+          test "$(git -C _commercial_calculator_ci rev-parse HEAD)" = '2403d297e2fa67e8dc615c3b47fd02d356c85cdf'
+          node scripts/ci/test-performance-commercial-budget-parity.mjs
