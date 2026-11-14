@@ -91,4 +91,9 @@ mustRejectReview(fn()=> $reader->render($tenant,$envelope,$alteredResult,$record
 $db->beginTransaction();
 mustRejectReview(fn()=> $reader->render($tenant,$envelope,$verified,$records), 'nested transaction denied');
 $db->rollBack();
+putenv('PERF_FIN_SIGNED_HTML_LAB=0');
+mustRejectReview(fn()=> $reader->render($tenant,$envelope,$verified,$records), 'closed without signed HTML lab flag');
+putenv('PERF_FIN_SIGNED_HTML_LAB=1');
+putenv('APP_ENV=production');
+mustRejectReview(fn()=> $reader->render($tenant,$envelope,$verified,$records), 'production rejects signed finance HTML');
 echo "OK: signed Portal quote -> PG18 stored unbillable close -> safe read-only HTML, tamper and tenant checks\n";
