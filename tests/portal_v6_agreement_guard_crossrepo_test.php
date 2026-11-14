@@ -79,7 +79,8 @@ $bad=$one;$bad['fake_approved']=true;
 v6Rejected(fn()=>$verify($bad),'unknown signed field');
 v6Rejected(fn()=>$verify($one,'agreement_brand_01_1234567',$tenant,$period,
     ['chatgpt_ads'=>0,'google_ads'=>140000]),'missing channel is not zero');
-v6Rejected(fn()=>GuardV5::signingBytes(array_diff_key($one,['signature'=>true])),
+v6Rejected(fn()=>GuardV5::verify($one,$tenant,$period,$catalog->version(),
+    $catalog->minima(),$unverified,$now,$resolve,$claim),
     'V5 cannot parse the new V6 agreement envelope');
 v6Equals(0,$claims,'rejected claims never consume nonce');
 
