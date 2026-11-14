@@ -50,9 +50,10 @@ foreach (['tenant_crossrepo_alpha1234','tenant_crossrepo_beta5678'] as $tenant) 
     assertRestored('f', $row['source_verified'], 'provider source still unverified');
     assertRestored($tenant === 'tenant_crossrepo_alpha1234' ? -2000 : -14000,
         (int)$row['adjustment_cents'], 'restored amount did not drift');
-    assertRestored(false,
-        $db->query("SELECT has_table_privilege(current_user, 'perf_fin_lab.reconciliation_drafts', 'UPDATE')")->fetchColumn() === true,
-        'application must not have UPDATE privilege');
+    $canUpdate = $db->query("SELECT has_table_privilege(current_user, 'perf_fin_lab.reconciliation_drafts', 'UPDATE')")->fetchColumn();
+    if (!in_array($canUpdate, [false, 'f', '0', 0], true)) {
+        throw new RuntimeException('Restored app role unexpectedly has UPDATE privilege.');
+    }
     $db->rollBack();
 }
 $db->beginTransaction();
