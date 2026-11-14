@@ -29,6 +29,7 @@ final class AdsProviderReadOnlyBoundary
         string $expectedPeriod,
         string $provider,
         string $accountId,
+        string $expectedTimeZone,
         array $binding,
         array $request,
         int $now
@@ -66,6 +67,8 @@ final class AdsProviderReadOnlyBoundary
            ($binding['provider']??null)!==$provider ||
            ($binding['account_id']??null)!==$accountId ||
            ($binding['account_currency']??null)!=='BRL' ||
+           !in_array($expectedTimeZone,DateTimeZone::listIdentifiers(),true) ||
+           ($binding['account_time_zone']??null)!==$expectedTimeZone ||
            !is_string($binding['account_time_zone']) ||
            !in_array($binding['account_time_zone'],DateTimeZone::listIdentifiers(),true) ||
            ($binding['account_access']??null)!=='synthetic_reporting_only' ||
