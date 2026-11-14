@@ -113,6 +113,8 @@ final class PortalAdsGrantedReadOnlySessionLab
             'real_s2s_identity_authenticated'=>false,
             'real_api_request_authorized'=>false,
             'provider_account_authenticated'=>false,
+            'api_key_verified_by_provider'=>false,
+            'actual_network_executed'=>false,
             'provider_spend_verified'=>false,
             'finance_approved'=>false,
             'billable'=>false,
