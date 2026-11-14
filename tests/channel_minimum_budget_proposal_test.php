@@ -25,7 +25,9 @@ requireProposal(array_keys($all['channels']) === ['chatgpt_ads', 'google_ads', '
 requireProposal($all['channels']['chatgpt_ads']['recommended_monthly_media_cents'] === 180000, 'recommendation BRL 1800');
 requireProposal($all['channels']['google_ads']['proposed_monthly_floor_cents'] === 100000, 'Google floor BRL 1000');
 requireProposal($all['channels']['meta_ads']['proposed_monthly_floor_cents'] === 70000, 'existing Meta floor BRL 700');
-requireProposal($all['portal_catalog_approved'] === false, 'not approved');
+requireProposal($all['owner_approved_channel_minima'] === true, 'commercial minima approved by owner');
+requireProposal($all['portal_catalog_approved'] === false, 'Portal checkout catalog migration remains pending');
+requireProposal($all['state'] === 'owner_approved_prices_pending_versioned_portal_catalog_migration', 'differentiate approval from release');
 requireProposal($all['asaas_write_enabled'] === false && $all['ads_write_enabled'] === false, 'no writes');
 requireProposal($all['actual_fee_requires_verified_spend'] === true, 'real fee separate from preview');
 
