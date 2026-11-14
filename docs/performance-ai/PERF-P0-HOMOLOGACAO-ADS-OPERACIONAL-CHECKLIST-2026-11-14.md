@@ -4,18 +4,18 @@
 
 ## 1. Antes de qualquer conexão
 
-- **Portal/IAM:** definir identidade autenticada da empresa, cliente e vínculo das contas Google/Meta, com titularidade comprovada, autorização do representante, consentimento e registro de revogação. Não confiar no `tenant_id` enviado pelo navegador.
+- **Portal/IAM:** definir identidade autenticada da empresa, cliente e vínculo das contas Google/Meta, com titularidade comprovada, autorização do representante, consentimento e registro de revogação. Não confiar no `tenant_id` enviado pelo navegador. O contrato `SyntheticAdsAccessGate` é apenas um ensaio sem verificação real; nenhuma declaração vinda de fixture pode servir de prova OAuth ou IAM.
 - **S2S:** tráfego autenticado e protegido entre Portal e Performance; chave de assinatura HMAC v2 gerida e rotacionada em vault. Contrato contém competência YYYY-MM, cotação, tenant, audiência, TTL e nonce único; fechar nonce + pré-fechamento dentro da mesma transação SQL.
 - **Banco:** decidir uma migração operacional canônica PostgreSQL 18, com conta não proprietária, RLS sob identidade estabelecida por camada confiável, políticas LGPD, auditoria externa, backup/restore e controle de correções. O GUC `app.tenant_id` do laboratório é forjável por cliente SQL e não é uma solução de produção.
 
 ## 2. Google Ads — leitura oficial de custos
 
-- Obter consentimento e autorização do cliente sobre o **customer ID** exato, vínculo de conta manager quando aplicável, acesso ao Google Ads API e token de desenvolvedor, com armazenamento de OAuth/token exclusivamente em cofre de segredos.
+- Obter consentimento e autorização do cliente sobre o **customer ID** exato, vínculo de conta manager quando aplicável, acesso à API Google Ads concedido ao **projeto Google Cloud** correspondente ao cliente OAuth, com armazenamento de credenciais OAuth exclusivamente em cofre de segredos. **Desde 9 de setembro de 2026, não é necessário solicitar um novo developer token** (token antigo é opcional e ignorado). Conferir o nível de acesso ao projeto Cloud e testar a concessão de acesso na conta correta.
 - Conferir oficialmente `customer.currency_code` e `customer.time_zone`, permissão e titularidade; o custo é em micros da moeda da conta. **Não somar gastos de moeda diferente como BRL.**
 - Consultar GAQL com `segments.date` e `metrics.cost_micros` usando `GoogleAdsService.SearchStream` para a competência fechada, incluindo todos os batches; consolidar micro-unidades antes de arredondar para centavos e registrar IDs/proveniência do retorno.
 - **Importante:** a permissão OAuth oficial `https://www.googleapis.com/auth/adwords` não equivale por si só a autorização tecnicamente read-only. É obrigatório implementar uma **lista positiva de endpoints/queries de relatório**, negar qualquer operação `mutate`, restringir o serviço e auditar chamadas/identidades.
 
-Documentação oficial: https://developers.google.com/google-ads/api/docs/reporting/example e https://developers.google.com/google-ads/api/reference/rpc/v26/GoogleAdsService/SearchStream.
+Documentação oficial: https://developers.google.com/google-ads/api/docs/reporting/example e https://developers.google.com/google-ads/api/reference/rpc/v26/GoogleAdsService/SearchStream. Atualização de política: https://developers.google.com/google-ads/api/docs/api-policy/developer-token.
 
 ## 3. Meta Ads — leitura oficial de custos
 
