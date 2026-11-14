@@ -2,6 +2,9 @@ name: Performance finance ledger PostgreSQL laboratory
 on:
   pull_request:
     paths:
+      - 'src/Domain/Commercial/MonthlySettlementCandidate.php'
+      - 'tests/monthly_settlement_candidate_test.php'
+      - 'tests/monthly_settlement_persistence_pg_test.php'
       - 'laboratory/postgresql/finance_schema.sql'
       - 'laboratory/postgresql/finance_contract_test.sql'
       - '.github/workflows/perf-finance-pg-lab.yml'
@@ -28,6 +31,17 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Install PHP CLI 8.4 with PostgreSQL driver
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          coverage: none
+      - name: Validate PHP syntax
+        run: |
+          php -l src/Domain/Commercial/MonthlySettlementCandidate.php
+          php -l tests/monthly_settlement_candidate_test.php
+          php -l tests/monthly_settlement_persistence_pg_test.php
       - name: Validate isolated synthetic PostgreSQL contract
         env:
           PGHOST: localhost
@@ -38,3 +52,11 @@ jobs:
         run: |
           psql -X -v ON_ERROR_STOP=1 -f laboratory/postgresql/finance_schema.sql
           psql -X -v ON_ERROR_STOP=1 -f laboratory/postgresql/finance_contract_test.sql
+      - name: PHP to PostgreSQL synthetic settlement E2E
+        env:
+          PGHOST: localhost
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: local-ci-only
+          PGDATABASE: postgres
+        run: php tests/monthly_settlement_persistence_pg_test.php
