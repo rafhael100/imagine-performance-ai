@@ -34,3 +34,10 @@ O catálogo do Portal passa a registrar o modelo percentual aprovado, em vez de 
 
 
 Fonte financeira canônica de integração: [Portal PR #737](https://github.com/rafhael100/imagine-portal/pull/737); catálogo JSON de referência sob autoridade do Portal. Esta decisão posterior prevalece sobre os estados de preço em aberto ou simulados dos documentos históricos BL01, BL02, RES01, Roadmap e estudos econômicos. Esses documentos preservam o contexto histórico e não são a tabela vigente.
+
+
+## Complemento expresso de 14/11/2026 — antecipado com acerto
+
+O titular escolheu cobrança de gestão **antecipada com acerto mensal**: estimar os 20% pelo orçamento mensal planejado, mínimo R$ 700 de mídia por canal por mês, e conciliar com 20% da mídia efetivamente investida ao fechar o período. Mídia continua paga diretamente aos canais; apenas honorários vão à Imagine. Não cobrar complemento/crédito automaticamente sem condições financeiras, autorização e evidência aplicáveis. Esta decisão resolve a pendência anterior de período/modalidade, preservando a necessidade de definir datas e execução do acerto.
+
+Catálogo canônico atualizado no Portal, commit `4ae3f2489e3002ff91fe8dc55b9fbdf4829a9a24`, PR #737. Implementação da estimativa e cálculo de acerto em teste: https://github.com/rafhael100/imagine-portal/pull/744. Não equivale a cobrança real ou homologação externa do Asaas.
