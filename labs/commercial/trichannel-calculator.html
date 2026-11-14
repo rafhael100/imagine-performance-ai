@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Imagine Performance AI | Simulador de investimentos</title>
+  <style>
+    :root{--orange:#F9941D;--text:#233246;--muted:#65758A;--border:#E5EAF1;--bg:#F7F8FA;--card:white;--shadow:0 10px 35px rgba(32,43,61,.06)}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text)}
+    .wrap{max-width:1140px;margin:auto;padding:28px 20px 70px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:28px}
+    .brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:-.6px;font-size:21px}
+    .logo{background:var(--orange);width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:white;font-weight:900}
+    .subbrand{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+    .pill{border:1px solid #F7CD98;background:#FFF7EC;border-radius:999px;padding:7px 12px;color:#8A5214;font-size:12px;font-weight:700}
+    .hero{display:grid;grid-template-columns:1.35fr .65fr;gap:30px;align-items:center;margin:0 0 24px}
+    h1{font-size:clamp(28px,4vw,47px);line-height:1.14;letter-spacing:-1.5px;margin:6px 0 15px;max-width:650px}
+    h1 span{color:#D67B12}
+    h2{font-size:22px;letter-spacing:-.55px;margin:0 0 8px}
+    p{margin:0 0 12px;color:var(--muted)}
+    .eyebrow{font-size:13px;font-weight:800;color:#B76D16;letter-spacing:.10em;text-transform:uppercase}
+    .hero-note{padding:24px;border-radius:20px;border:1px solid #F4D6B2;background:linear-gradient(135deg,#FFF8EC,#FFFEFD);box-shadow:var(--shadow)}
+    .hero-note strong{display:block;font-size:17px;margin-bottom:9px}
+    .hero-note p{font-size:14px;margin:0}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow);padding:28px;margin:22px 0}
+    .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+    .step{background:#FFF2E0;color:#AC6816;font-size:12px;font-weight:800;padding:5px 10px;border-radius:9px;white-space:nowrap}
+    label{display:block;font-size:13px;font-weight:750;margin:0 0 7px}
+    input[type=month],input[type=number],input[type=text]{height:43px;border:1px solid #CDD7E2;border-radius:11px;width:100%;background:white;color:var(--text);font:inherit;padding:9px 12px}
+    input:focus-visible,button:focus-visible{outline:3px solid #F9941D80;outline-offset:2px}
+    .params{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:22px}
+    .channel-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:22px 0 0}
+    .channel{padding:17px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#FCFDFE)}
+    .channel-head{display:flex;gap:9px;align-items:center;justify-content:flex-start;margin-bottom:17px}
+    .channel-head label{margin:0;cursor:pointer;font-size:16px}
+    .channel input[type=checkbox]{width:19px;height:19px;accent-color:#D98216;cursor:pointer}
+    .mini{color:var(--muted);font-size:12px;margin-top:9px}
+    .small-muted{color:var(--muted);font-size:13px}
+    .results{margin-top:24px}
+    .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .stat{border:1px solid var(--border);border-radius:15px;padding:17px;background:#FCFDFE}
+    .stat.featured{border:1px solid #F7C78E;background:#FFF7EB}
+    .stat span{font-size:12px;color:var(--muted);display:block;min-height:35px}
+    .stat strong{font-size:clamp(17px,2vw,25px);letter-spacing:-.8px;display:block;margin:9px 0 3px;white-space:nowrap}
+    .table-wrap{overflow-x:auto;margin-top:20px}
+    table{border-collapse:collapse;width:100%;font-size:14px;min-width:660px}
+    th{text-align:left;color:#526273;background:#F7F9FC;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+    th,td{padding:13px 12px;border-bottom:1px solid var(--border)}
+    td:first-child{font-weight:730}
+    .info{font-size:13px;color:#725320;background:#FFF9EB;border:1px solid #F2DDAD;padding:14px 16px;border-radius:12px;margin-top:20px}
+    #calc-feedback{color:#B33131;font-weight:700;margin-top:12px}
+    textarea{width:100%;min-height:132px;padding:13px;font:13px/1.5 ui-monospace,Consolas,monospace;color:var(--text);border-radius:12px;border:1px solid #D7DFE9;resize:vertical;background:#FBFCFE}
+    button{background:var(--orange);border:0;border-radius:10px;color:#332717;font-size:13px;font-weight:800;padding:11px 18px;cursor:pointer}
+    button:hover{filter:brightness(.97)}
+    .copy-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 10px}
+    footer{padding-top:5px;color:var(--muted);font-size:12px;text-align:center}
+    @media(max-width:800px){.hero{grid-template-columns:1fr}.channel-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:520px){.wrap{padding:16px 13px 40px}.panel{padding:18px}.params{grid-template-columns:1fr}.stat-grid{grid-template-columns:1fr 1fr}.stat{padding:12px}.stat strong{font-size:18px}.pill{display:none}.copy-head{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="brand"><div class="logo" aria-hidden="true">i</div><div>imagine <span class="subbrand">Performance AI</span></div></div>
+      <span class="pill">Prévia interativa • sem dados pessoais</span>
+    </header>
+    <section class="hero" aria-labelledby="hero-title">
+      <div>
+        <div class="eyebrow">Planejamento de mídia</div>
+        <h1 id="hero-title">Quanto investir para alcançar sua <span>meta de leads?</span></h1>
+        <p>Simule uma distribuição de orçamento entre Google Ads, Meta Ads e ChatGPT Ads. Informe o custo por lead <strong>que você deseja usar como hipótese</strong> e compare a mídia com os honorários de gestão.</p>
+      </div>
+      <aside class="hero-note">
+        <strong>Simulação, não uma promessa de resultados</strong>
+        <p>Os custos por lead são informados por você. Não são previsões do Google, Meta, ChatGPT ou Imagine. Nenhuma contratação, anúncio, pagamento ou coleta de contato ocorre nesta demonstração.</p>
+      </aside>
+    </section>
+
+    <section class="panel" id="calc" aria-labelledby="input-heading">
+      <div class="panel-head">
+        <div><h2 id="input-heading">Monte seu cenário</h2><p class="small-muted">Escolha a meta mensal e os canais desejados.</p></div><span class="step">ETAPA 01</span>
+      </div>
+      <div class="params">
+        <div><label for="period">Mês do planejamento</label><input id="period" type="month" value="2026-11" min="2000-01" max="2100-12"></div>
+        <div><label for="desired-leads">Meta de leads no mês</label><input id="desired-leads" type="number" value="30" min="1" max="3000" step="1"></div>
+      </div>
+      <div class="channel-grid">
+        <article class="channel">
+          <div class="channel-head"><input type="checkbox" id="use-meta_ads" checked><label for="use-meta_ads">Meta Ads</label></div>
+          <label for="cpl-meta_ads">CPL estimado (R$)</label><input type="text" id="cpl-meta_ads" value="100,00" inputmode="decimal" autocomplete="off" spellcheck="false">
+          <div class="mini">Piso proposto: R$ 700/mês • Referência: R$ 1.000</div>
+        </article>
+        <article class="channel">
+          <div class="channel-head"><input type="checkbox" id="use-google_ads" checked><label for="use-google_ads">Google Ads</label></div>
+          <label for="cpl-google_ads">CPL estimado (R$)</label><input type="text" id="cpl-google_ads" value="150,00" inputmode="decimal" autocomplete="off" spellcheck="false">
+          <div class="mini">Piso proposto: R$ 1.000/mês • Referência: R$ 1.500</div>
+        </article>
+        <article class="channel">
+          <div class="channel-head"><input type="checkbox" id="use-chatgpt_ads" checked><label for="use-chatgpt_ads">ChatGPT Ads</label></div>
+          <label for="cpl-chatgpt_ads">CPL estimado (R$)</label><input type="text" id="cpl-chatgpt_ads" value="80,00" inputmode="decimal" autocomplete="off" spellcheck="false">
+          <div class="mini">Piso proposto: R$ 1.200/mês • Referência: R$ 1.800</div>
+        </article>
+      </div>
+      <p class="small-muted" style="margin-top:17px">Metas distribuídas igualmente entre os canais selecionados; quando há sobra, ela é alocada por ordem alfabética do identificador técnico. Os mínimos diferenciados são propostas ainda não incorporadas ao catálogo comercial aprovado.</p>
+      <div id="calc-feedback" role="alert" aria-live="polite"></div>
+    </section>
+
+    <section id="calc-result" class="panel results" aria-labelledby="results-heading" hidden>
+      <div class="panel-head"><div><h2 id="results-heading">Seu investimento ilustrativo</h2><p>Os valores abaixo separam a mídia paga às plataformas dos honorários da Imagine.</p></div><span class="step">ETAPA 02</span></div>
+      <div class="stat-grid">
+        <div class="stat featured"><span>Mídia mensal sugerida (paga aos canais)</span><strong id="total-media">—</strong></div>
+        <div class="stat"><span>Honorários ilustrativos Imagine (20%)</span><strong id="total-fee">—</strong></div>
+        <div class="stat"><span>Desembolso combinado ilustrativo</span><strong id="total-sum">—</strong></div>
+        <div class="stat"><span>Capacidade matemática (leads, sem garantia)</span><strong id="capacity">—</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Canal</th><th>Meta de leads</th><th>Piso proposto</th><th>Mídia recomendada</th><th>CPL hipotético</th></tr></thead><tbody id="calc-rows"></tbody></table>
+      </div>
+      <div class="info"><strong>Condições importantes:</strong> a mídia é paga diretamente ao Google, Meta e/ou à plataforma de anúncios do ChatGPT, quando disponível para a conta. Os 20% são apenas uma ilustração sobre a mídia planejada; a remuneração efetiva exige gastos verificados, contratação e regras financeiras aprovadas. R$ 1.200 para ChatGPT é referência comercial proposta, não um mínimo mensal universal da plataforma.</div>
+      <div class="copy-head"><label for="calc-summary">Resumo da simulação</label><button id="copy-summary" type="button">Copiar resumo</button></div>
+      <textarea id="calc-summary" readonly aria-label="Resumo da simulação para copiar"></textarea>
+      <p id="copy-status" class="small-muted" aria-live="polite"></p>
+    </section>
+    <footer>Demonstração de laboratório • Sem CRM ativo nesta página • Sem scripts externos, cookies, rastreadores ou formulários de envio.</footer>
+  </main>
+  <script type="module" src="./trichannel-calculator.mjs"></script>
+</body>
+</html>
