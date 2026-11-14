@@ -26,6 +26,14 @@ $month = '2026-11';
 $plan = Adapter::insightsRequestPlan($account, $month, $zone);
 eqChatgpt('GET', $plan['method'], 'Insights method');
 eqChatgpt('/v1/ad_account/insights', $plan['path'], 'only Insights path');
+eqChatgpt('ad_account', $plan['query']['aggregation_level'], 'official account-level Insights aggregation');
+eqChatgpt(['metadata.readable_time','ad_account.spend','ad_account.impressions','ad_account.clicks'],
+    $plan['query']['fields[]'], 'official canonical account metric fields');
+eqChatgpt(35, $plan['query']['limit'], 'daily monthly report page size covers 31 days');
+eqChatgpt('date_range',
+    json_decode($plan['query']['time_ranges[]'],true,16,JSON_THROW_ON_ERROR)['type'],
+    'official date-range time query');
+
 eqChatgpt('chatgpt_ads', $plan['provider'], 'provider identity');
 eqChatgpt(false, $plan['transport_enabled'], 'network must be off');
 eqChatgpt(false, $plan['ads_write_enabled'], 'ads write disabled');

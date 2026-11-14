@@ -33,7 +33,7 @@ final class ChatgptAdsOfflineAdapter
             'method' => 'GET',
             'path' => '/v1/ad_account/insights',
             'query' => [
-                'aggregation_level' => 'account',
+                'aggregation_level' => 'ad_account',
                 'time_granularity' => 'daily',
                 'time_ranges[]' => json_encode([
                     'type' => 'date_range',
@@ -41,7 +41,11 @@ final class ChatgptAdsOfflineAdapter
                     'until' => $end,
                     'timezone' => $zone,
                 ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
-                'fields[]' => ['spend', 'impressions', 'clicks'],
+                'fields[]' => [
+                    'metadata.readable_time',
+                    'ad_account.spend', 'ad_account.impressions', 'ad_account.clicks'
+                ],
+                'limit' => 35,
             ],
             'account_id_guard' => $accountId,
             'read_only_report' => true,
