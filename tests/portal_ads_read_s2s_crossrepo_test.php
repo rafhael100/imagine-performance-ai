@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__.'/../portal-ads-read-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceAdsReadGrantLabIssuer.php';
 require_once __DIR__.'/../src/Domain/Commercial/PortalAdsReadS2SLabVerifier.php';
+require_once __DIR__.'/../src/Domain/Commercial/PortalAdsGrantedReadOnlySessionLab.php';
 require_once __DIR__.'/../src/Domain/Commercial/SyntheticProviderSpendAdapter.php';
 require_once __DIR__.'/../src/Domain/Commercial/ChatgptAdsOfflineAdapter.php';
 require_once __DIR__.'/../src/Domain/Commercial/AdsProviderReadOnlyBoundary.php';
@@ -14,7 +15,7 @@ require_once __DIR__.'/../src/Domain/Commercial/ChatgptAdsReadOnlySessionLab.php
 
 use App\Homologation\Commerce\PortalPerformanceAdsReadGrantLabIssuer as Issuer;
 use Imagine\Performance\Commercial\PortalAdsReadS2SLabVerifier as Verifier;
-use Imagine\Performance\Commercial\ChatgptAdsReadOnlySessionLab as Session;
+use Imagine\Performance\Commercial\PortalAdsGrantedReadOnlySessionLab as GrantedSession;
 
 function s2sAssert(bool $ok,string $msg):void {
     if(!$ok)throw new RuntimeException('Portal→Performance Ads read S2S: '.$msg);
@@ -151,9 +152,13 @@ $transport=static function(array $descriptor)use(&$seen,$metadata,$insights):arr
     $seen[]=$descriptor;
     return $descriptor['operation']==='ad_account_metadata'?$metadata:$insights;
 };
-$run=Session::collect(
-    $valid['tenant_id'],$valid['agreement_id'],$valid['period'],
-    $valid['account_id'],$zone,$binding,$now,$transport
+$sessionGrant=Issuer::issue(
+    $tenant,$agreement,$month,$account,$cred,$consent,
+    $keyId,'nonce_crossrepo_session_123456789',$now-1,$now+90,$secret
+);
+$run=GrantedSession::collect(
+    $sessionGrant,$binding,$tenant,$agreement,$month,$account,
+    $cred,$consent,$zone,$now,$resolve,$claim,$transport
 );
 s2sAssert(count($seen)===2,'only two GETs after signed grant verification');
 s2sAssert($seen[0]['credential_reference']===$cred &&
@@ -166,11 +171,29 @@ s2sAssert($run['billable']===false &&
           $run['ads_write_enabled']===false,
     'grant NEVER authorizes billing, Ads mutation or real API');
 $badBinding=$binding;$badBinding['credential_reference']='ref_someone_else_123456';
-s2sDeny(fn()=>Session::collect(
-    $valid['tenant_id'],$valid['agreement_id'],$valid['period'],
-    $valid['account_id'],$zone,$badBinding,$now,$transport
+$newGrant=Issuer::issue(
+    $tenant,$agreement,$month,$account,$cred,$consent,
+    $keyId,'nonce_crossrepo_refguard_12345678',$now-1,$now+90,$secret
+);
+$before=$claims;
+s2sDeny(fn()=>GrantedSession::collect(
+    $newGrant,$badBinding,$tenant,$agreement,$month,$account,
+    $cred,$consent,$zone,$now,$resolve,$claim,$transport
 ),'same signed grant cannot be used with a different account-credential link');
+s2sAssert($claims===$before,'wrong credential ref blocked before claiming nonce');
 s2sAssert(count($seen)===2,'invalid binding never reached transport');
+$badBinding=$binding;$badBinding['consent_reference']='consent_other_123456';
+s2sDeny(fn()=>GrantedSession::collect(
+    $newGrant,$badBinding,$tenant,$agreement,$month,$account,
+    $cred,$consent,$zone,$now,$resolve,$claim,$transport
+),'revoked/replaced consent ref cannot be used with signed grant');
+s2sAssert($claims===$before && count($seen)===2,
+    'wrong consent ref blocked without replay claim or transport');
+s2sDeny(fn()=>GrantedSession::collect(
+    $sessionGrant,$binding,$tenant,$agreement,$month,$account,
+    $cred,$consent,$zone,$now,$resolve,$claim,$transport
+),'the same signed S2S grant cannot be replayed after one session');
+s2sAssert(count($seen)===2,'S2S replay cannot invoke HTTP fixture');
 
 putenv('PERF_PORTAL_ADS_S2S_READ_GRANT_LAB=0');
 s2sDeny(fn()=> $verify($grant),'grant verifier disabled');
