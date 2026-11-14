@@ -40,7 +40,31 @@ foreach([[$a,$alpha,3],[$b,$beta,1]] as [$db,$tenant,$expected]){
             throw new RuntimeException('Restored session-user RLS, nonces or drafts incomplete.');
         }
     }
-    $db->RollBack();
+    $corrections=(int)$db->query(
+        'SELECT count(*) FROM perf_fin_role_lab.spend_correction_events'
+    )->fetchColumn();
+    $expectedCorrections=$tenant===$alpha?3:0;
+    if($corrections!==$expectedCorrections) {
+        throw new RuntimeException('Restored immutable correction history or role isolation incomplete.');
+    }
+    if($tenant===$alpha) {
+        $revisions=$db->query(
+            "SELECT revision_index,event_sha256,previous_event_sha256,
+                    delta_earned_fee_cents
+               FROM perf_fin_role_lab.spend_correction_events
+              WHERE agreement_id='agreement_alpha_brand_01'
+              ORDER BY revision_index"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        if(count($revisions)!==2 ||
+           (int)$revisions[0]['revision_index']!==1 ||
+           (int)$revisions[1]['revision_index']!==2 ||
+           $revisions[1]['previous_event_sha256']!==$revisions[0]['event_sha256'] ||
+           (int)$revisions[0]['delta_earned_fee_cents']!==4000 ||
+           (int)$revisions[1]['delta_earned_fee_cents']!==0) {
+            throw new RuntimeException('Restored correction hash chain or fee deltas invalid.');
+        }
+    }
+    $db->rollBack();
 }
 $svcA=new PgV6RoleBoundAgreementCloseLab($a);
 $svcB=new PgV6RoleBoundAgreementCloseLab($b);
@@ -57,4 +81,4 @@ foreach($fixture['cases'] as $case) {
     } catch(InvalidArgumentException|RuntimeException) {$denied=true;}
     if(!$denied) throw new RuntimeException('Restored quote HMAC/nonce replay accepted.');
 }
-echo "OK: Postgres 18 restore preserves login-to-tenant RLS and 4 V6 nonce claims; session forged app.tenant_id has no effect\n";
+echo "OK: Postgres 18 restore preserves login-to-tenant RLS and 4 V6 nonce claims + 3 chained corrections; session forged app.tenant_id has no effect\n";
