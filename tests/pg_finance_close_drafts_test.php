@@ -96,9 +96,9 @@ foreach ([$oneTenant,$twoTenant] as $tenant) {
     $db->prepare("SELECT set_config('app.tenant_id', ?, true)")->execute([$tenant]);
     sameDraft(1, (int)$db->query('SELECT count(*) FROM perf_fin_lab.reconciliation_drafts')->fetchColumn(), 'RLS draft tenant visibility');
     $row = $db->query('SELECT billable, finance_approved, source_verified, adjustment_cents FROM perf_fin_lab.reconciliation_drafts')->fetch(PDO::FETCH_ASSOC);
-    sameDraft('f', $row['billable'], 'database billable flag');
-    sameDraft('f', $row['finance_approved'], 'database finance flag');
-    sameDraft('f', $row['source_verified'], 'database source flag');
+    sameDraft(true, in_array($row['billable'], [false, 0, '0', 'f'], true), 'database billable disabled');
+    sameDraft(true, in_array($row['finance_approved'], [false, 0, '0', 'f'], true), 'database finance approval disabled');
+    sameDraft(true, in_array($row['source_verified'], [false, 0, '0', 'f'], true), 'database source unverified');
     sameDraft(6000, (int)$row['adjustment_cents'], 'monthly 20 percent difference');
     $db->rollBack();
 }
