@@ -9,6 +9,8 @@ on:
       - 'tests/chatgpt_ads_offline_adapter_test.php'
       - 'tests/channel_minimum_budget_proposal_test.php'
       - 'tests/performance_budget_recommendation_test.php'
+      - 'scripts/ci/compute-performance-budget-parity.php'
+      - 'scripts/ci/test-performance-commercial-budget-parity.mjs'
       - '.github/workflows/perf-chatgpt-ads-offline-lab.yml'
   workflow_dispatch:
 
@@ -20,7 +22,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout isolated Performance code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout immutable reviewed Commercial estimator
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-comercial
+          ref: 2403d297e2fa67e8dc615c3b47fd02d356c85cdf
+          path: _commercial_calculator_ci
+          persist-credentials: false
+      - name: Setup Node 22 for local cross-language comparison
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -34,8 +50,14 @@ jobs:
           php -l tests/chatgpt_ads_offline_adapter_test.php
           php -l tests/channel_minimum_budget_proposal_test.php
           php -l tests/performance_budget_recommendation_test.php
+          php -l scripts/ci/compute-performance-budget-parity.php
       - name: Read-only offline contract tests
         run: |
           php tests/chatgpt_ads_offline_adapter_test.php
           php tests/channel_minimum_budget_proposal_test.php
           php tests/performance_budget_recommendation_test.php
+      - name: Cross-repo exact Commercial JS and Performance PHP calculation
+        run: |
+          set -euo pipefail
+          test "$(git -C _commercial_calculator_ci rev-parse HEAD)" = '2403d297e2fa67e8dc615c3b47fd02d356c85cdf'
+          node scripts/ci/test-performance-commercial-budget-parity.mjs
