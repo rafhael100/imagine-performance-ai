@@ -108,8 +108,10 @@ $http=[
     'status'=>200,'content_type'=>'application/json',
     'redirected'=>false,'body'=>$makeBody($rows)
 ];
-$parse=static fn(array $wire=$http,array $bound=$scope,array $accountPre=$pre):array=>
-    Money::normalize($bound,$accountPre,$wire);
+$parse=static function(?array $wire=null,?array $bound=null,?array $accountPre=null)
+    use($http,$scope,$pre):array {
+    return Money::normalize($bound??$scope,$accountPre??$pre,$wire??$http);
+};
 $out=$parse();
 moneyEqual(1872,$out['synthetic_account_report']['spend_cents'],
     '0.1 plus 0.2 plus 18.42 = 18.72 BRL exactly');
@@ -232,7 +234,7 @@ moneyDeny(fn()=>Lexical::decode('{"note":"unterminated}'),'truncated JSON string
 moneyDeny(fn()=>Lexical::decode('[0.1] garbage'),'trailing JSON garbage');
 moneyDeny(fn()=>Lexical::decode('[01]'),'leading-zero invalid JSON');
 moneyDeny(fn()=>Lexical::decode('{"x":[1,2,]}'),'trailing comma invalid JSON');
-moneyDeny(fn()=>Lexical::decode('{"x":'+str_repeat('[',14)+'0'+str_repeat(']',14)+'}'),
+moneyDeny(fn()=>Lexical::decode('{"x":'.str_repeat('[',14).'0'.str_repeat(']',14).'}'),
     'excessive JSON nesting');
 
 putenv('PERF_CHATGPT_EXACT_WIRE_MONEY_LAB=0');
