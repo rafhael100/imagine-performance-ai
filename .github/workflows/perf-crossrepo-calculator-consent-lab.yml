@@ -1,0 +1,59 @@
+name: Performance cross-repository Comercial Portal CRM calculator contract
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/ChannelMinimumBudgetProposal.php'
+      - 'tests/perf_comercial_portal_crossrepo_parity_test.mjs'
+      - 'tests/perf_crm_calculator_consent_crossrepo_test.php'
+      - 'docs/performance-ai/PERF-P0-REVISAO-TRICANAL-COMERCIAL-2026-11-14.md'
+      - 'docs/performance-ai/PERF-CROSSREPO-CALCULATOR-CONSENT-2026-11-14.md'
+      - '.github/workflows/perf-crossrepo-calculator-consent-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin Comercial public calculator source (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-comercial
+          ref: dea647a725085702d8ef3b94b31e77cbb871da70
+          path: comercial-reference
+          persist-credentials: false
+      - name: Pin Portal channel-minima proposal (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: fa96f973bd0b826ee8eb88c688a96c0b0d3176f9
+          path: portal-reference
+          persist-credentials: false
+      - name: Pin CRM calculator consent inspector (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-crm
+          ref: 15fd825020b7ac83b585f2f4dcdef64c8afa88c3
+          path: crm-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Validate syntax of local/CRM PHP contracts
+        run: |
+          php -l src/Domain/Commercial/ChannelMinimumBudgetProposal.php
+          php -l crm-reference/app/Core/Leads/SyntheticCalculatorNurtureConsentInspector.php
+          php -l tests/perf_crm_calculator_consent_crossrepo_test.php
+      - name: Verify owner-approved floors and canonical Comercial calculator logic
+        run: node --test tests/perf_comercial_portal_crossrepo_parity_test.mjs
+      - name: Verify CRM consent/no-PII/no-message rules using pinned actual CRM class
+        run: php tests/perf_crm_calculator_consent_crossrepo_test.php
