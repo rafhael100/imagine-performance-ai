@@ -1,0 +1,55 @@
+name: Performance tri-channel commercial calculator offline lab
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/ChannelMinimumBudgetProposal.php'
+      - 'src/Domain/Commercial/ChatgptAdsOfflineAdapter.php'
+      - 'src/Domain/Commercial/SyntheticProviderSpendAdapter.php'
+      - 'src/Domain/Commercial/TrichannelBudgetCalculator.php'
+      - 'src/Domain/Commercial/TrichannelSpendProposalReview.php'
+      - 'tests/trichannel_*'
+      - 'labs/commercial/trichannel-*'
+      - '.github/workflows/perf-trichannel-commercial-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-trichannel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Verify exact calculator and offline preview PHP syntax
+        run: |
+          php -l src/Domain/Commercial/ChannelMinimumBudgetProposal.php
+          php -l src/Domain/Commercial/TrichannelBudgetCalculator.php
+          php -l src/Domain/Commercial/TrichannelSpendProposalReview.php
+          php -l tests/trichannel_budget_calculator_test.php
+          php -l tests/trichannel_spend_proposal_review_test.php
+      - name: Three-channel planning and synthetic reconciliation unit tests
+        env:
+          APP_ENV: testing
+          PERF_TRICHANNEL_SPEND_LAB: '1'
+        run: |
+          php tests/trichannel_budget_calculator_test.php
+          php tests/trichannel_spend_proposal_review_test.php
+      - name: JavaScript and static demo parity and no-PII tests
+        run: node --test tests/trichannel_calculator_ui_test.mjs
+      - name: Publish local-only demo as download artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-trichannel-calculator-offline-demo
+          path: |
+            labs/commercial/trichannel-calculator.html
+            labs/commercial/trichannel-calculator.mjs
+          if-no-files-found: error
+          retention-days: 14
