@@ -8,6 +8,8 @@
 - Verificação de interoperabilidade Performance/Portal, nonce e pré-fechamento em **uma transação PostgreSQL 18** descartável; rejeição de concorrência no mês, correção indevida, replay e alteração de valor.
 - Cópia/restauração de schema de laboratório e leitura de rascunho financeiro não faturável em painel HTML offline com gates de ambiente.
 - Contrato sintético de relatórios por tenant, conta Google/Meta, período, fuso horário IANA por conta, moeda BRL, IDs e ausência de duplicação; **sem conexão nem prova de gastos oficiais**.
+- Parser de fixtures compatíveis com Google Ads GAQL v26 (custos em micros) e Meta Insights v27 (gasto decimal), com plano de consulta allowlisted sem HTTP/credenciais. Rejeita páginas incompletas, moeda/conta não autorizada, datas e gastos inconsistentes.
+- Prova Portal HMAC v2 → parser por conta → hash de proveniência por conjunto de contas → pré-fechamento financeiro atômico PostgreSQL 18 → HTML. Se duas contas redistribuírem gasto sem mudar o total do canal, o hash do rascunho muda e a conferência anterior é recusada. **Todos os dados são sintéticos.**
 
 ## Pendências para fechar o P0 operacional
 
@@ -33,7 +35,8 @@
 
 ## Evidências de desenvolvimento
 - Portal v2: PR #769.
-- Performance: PRs #339–#345 (cadeia assinada, finance PG18, HTML e escopo de relatórios).
+- Performance: PRs #339–#348 (cadeia assinada, finance PG18, HTML, parser offline Google/Meta e fingerprint por conta).
+- Ver checklist operacional `PERF-P0-HOMOLOGACAO-ADS-OPERACIONAL-CHECKLIST-2026-11-14.md` para as permissões, contas, evidências e testes de homologação real ainda não executados.
 - As três pipelines da candidata integrada precisam passar **na HEAD exata**; não usar sucesso de PR filha como prova de merge seguro.
 
 **Controles preservados:** DRAFT/NO-MERGE/NO-DEPLOY/NO-CHARGE/NO-ADS-WRITE. Nenhuma aprovação funcional anterior é substituída por um teste sintético.
