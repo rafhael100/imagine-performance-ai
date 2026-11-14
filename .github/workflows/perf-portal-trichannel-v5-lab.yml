@@ -1,0 +1,55 @@
+name: Performance Portal V5 three-channel signed quote crossrepo lab
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/PortalTriChannelV5CandidateGuard.php'
+      - 'tests/portal_v5_trichannel_crossrepo_guard_test.php'
+      - 'docs/performance-ai/PERF-PORTAL-V5-TRICHANNEL-SIGNED-2026-11-14.md'
+      - '.github/workflows/perf-portal-trichannel-v5-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-portal-v5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PORTAL_PERF_TRICHANNEL_V5_LAB: '1'
+      PERF_PORTAL_TRICHANNEL_V5_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout real Portal PR #772 issuer at reviewed SHA (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 913f8e8420ecb26524c583d2e76bccd96133eb95
+          path: portal-v5-reference
+          persist-credentials: false
+      - name: Pin owner-approved pricing source by exact commit
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: fa96f973bd0b826ee8eb88c688a96c0b0d3176f9
+          path: owner-approved-pricing-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Pricing bytes must match actual owner-approved decision exactly
+        run: cmp -s owner-approved-pricing-reference/docs/decisions/performance-channel-minima-proposal-v1.json portal-v5-reference/apps/portal/app/Homologation/Commerce/performance-channel-minima-candidate-v5.json
+      - name: PHP 8.4 lint
+        run: |
+          php -l src/Domain/Commercial/PortalTriChannelV5CandidateGuard.php
+          php -l portal-v5-reference/apps/portal/app/Homologation/Commerce/PerformanceTriChannelV5CandidateCatalog.php
+          php -l portal-v5-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceTriChannelV5LabIssuer.php
+          php -l tests/portal_v5_trichannel_crossrepo_guard_test.php
+      - name: Full V5 Portal signer to Performance guard, denial and no-payment cases
+        run: php tests/portal_v5_trichannel_crossrepo_guard_test.php
