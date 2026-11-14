@@ -12,6 +12,8 @@ on:
       - 'src/Domain/Commercial/MonthlySpendEvidencePreview.php'
       - 'src/Domain/Commercial/SyntheticAdsAccountSpendContract.php'
       - 'src/Domain/Commercial/SyntheticProviderSpendAdapter.php'
+      - 'src/Domain/Commercial/SyntheticAdsAccessGate.php'
+      - 'tests/synthetic_ads_access_gate_test.php'
       - 'tests/synthetic_provider_spend_adapter_test.php'
       - 'tests/synthetic_ads_account_spend_contract_test.php'
       - 'src/Domain/Commercial/PortalSignedQuoteGuard.php'
@@ -54,6 +56,8 @@ jobs:
           php -l src/Domain/Commercial/MonthlySpendEvidencePreview.php
           php -l src/Domain/Commercial/SyntheticAdsAccountSpendContract.php
           php -l src/Domain/Commercial/SyntheticProviderSpendAdapter.php
+          php -l src/Domain/Commercial/SyntheticAdsAccessGate.php
+          php -l tests/synthetic_ads_access_gate_test.php
           php -l tests/synthetic_provider_spend_adapter_test.php
           php -l tests/synthetic_ads_account_spend_contract_test.php
           php -l tests/monthly_spend_evidence_preview_test.php
@@ -68,4 +72,5 @@ jobs:
           php tests/monthly_spend_evidence_preview_test.php
           php tests/synthetic_ads_account_spend_contract_test.php
           php tests/synthetic_provider_spend_adapter_test.php
+          APP_ENV=testing PERF_ADS_ACCESS_LAB=1 php tests/synthetic_ads_access_gate_test.php
           php tests/portal_signed_quote_guard_test.php
