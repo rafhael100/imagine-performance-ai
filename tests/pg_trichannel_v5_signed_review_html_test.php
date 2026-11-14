@@ -48,12 +48,10 @@ $records=[
  ['channel'=>'google_ads','period'=>$period,'report_id'=>'accountset_google_12345','source'=>'synthetic_fixture','spend_cents'=>150000],
  ['channel'=>'meta_ads','period'=>$period,'report_id'=>'accountset_meta_12345','source'=>'synthetic_fixture','spend_cents'=>50000],
 ];
-$digest=hash('sha256',json_encode($records,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES));
-$actual=['chatgpt_ads'=>90000,'google_ads'=>150000,'meta_ads'=>50000];
-$render=static fn(?array $signedInput=null,?string $tenant=null,?array $unverified=null,?string $sha=null,
+$render=static fn(?array $signedInput=null,?string $tenant=null,?array $originalRows=null,
  string $reviewPeriod='2026-11')=>
     $reader->render($signedInput??$signed,$tenant??$a,$reviewPeriod,$cat->version(),$cat->minima(),
-        $unverified??$actual,$sha??$digest,$now,$resolve);
+        $originalRows??$records,$now,$resolve);
 $html=$render();
 foreach([
  'Imagine Performance AI','DEMONSTRAÇÃO NÃO HOMOLOGADA',
@@ -71,12 +69,15 @@ seeV5(!$db->inTransaction(),'HTML reader must clear its transaction');
 $bad=$signed;$bad['quote']['estimated_management_fee_cents']++;
 blockV5Html(fn()=> $render($bad),'HMAC tampered');
 blockV5Html(fn()=> $render($signed,'tenant_v5_finance_beta5678'),'other tenant must not see Alpha');
-blockV5Html(fn()=> $render($signed,$a,$actual,str_repeat('f',64)),'evidence changed');
-$changed=$actual;$changed['chatgpt_ads']=80000;$changed['google_ads']=160000;
-blockV5Html(fn()=> $render($signed,$a,$changed,$digest),'changed source/amount cannot copy original draft');
-blockV5Html(fn()=> $render($signed,$a,$actual,$digest,'2026-12'),'different competence');
-$missing=$actual;unset($missing['chatgpt_ads']);
-blockV5Html(fn()=> $render($signed,$a,$missing,$digest),'missing ChatGPT is not zero');
+$changedId=$records;$changedId[0]['report_id']='accountset_chat_other12345';
+blockV5Html(fn()=> $render($signed,$a,$changedId),'evidence report ID changed');
+$changed=$records;$changed[0]['spend_cents']=80000;$changed[1]['spend_cents']=160000;
+blockV5Html(fn()=> $render($signed,$a,$changed),'changed account/channel attribution with same TOTAL cannot copy stored hash');
+blockV5Html(fn()=> $render($signed,$a,$records,'2026-12'),'different competence');
+$missing=$records;unset($missing[0]);$missing=array_values($missing);
+blockV5Html(fn()=> $render($signed,$a,$missing),'missing ChatGPT is not zero');
+$badSource=$records;$badSource[0]['source']='verified_provider_statement';
+blockV5Html(fn()=> $render($signed,$a,$badSource),'cannot forge official source');
 
 $b='tenant_v5_finance_beta5678';
 $signedB=$sign($b,'nonce_pg_v5_beta_1234567890');
@@ -85,8 +86,7 @@ $zeroRecords=[
  ['channel'=>'google_ads','period'=>$period,'report_id'=>'zero_google','source'=>'synthetic_fixture','spend_cents'=>0],
  ['channel'=>'meta_ads','period'=>$period,'report_id'=>'zero_meta','source'=>'synthetic_fixture','spend_cents'=>0],
 ];
-$zeroSha=hash('sha256',json_encode($zeroRecords,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES));
-$zeroHtml=$render($signedB,$b,['chatgpt_ads'=>0,'google_ads'=>0,'meta_ads'=>0],$zeroSha);
+$zeroHtml=$render($signedB,$b,$zeroRecords);
 seeV5(str_contains($zeroHtml,'R$ 0,00'),'zero actual spend shown');
 seeV5(str_contains($zeroHtml,'−R$ 580,00'),'negative adjustment is not refund');
 seeV5(str_contains($zeroHtml,$b) && !str_contains($zeroHtml,$a),'isolation of review tenant');
