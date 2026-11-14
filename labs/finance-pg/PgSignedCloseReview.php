@@ -33,6 +33,9 @@ final class PgSignedCloseReview
         array $verifiedOutput,
         array $syntheticRows
     ): string {
+        if (getenv('APP_ENV') !== 'testing' || getenv('PERF_FIN_SIGNED_HTML_LAB') !== '1') {
+            throw new RuntimeException('Signed financial HTML is strictly a gated laboratory visualization.');
+        }
         if ($this->db->inTransaction() || !preg_match('/\Atenant_[A-Za-z0-9_-]{8,64}\z/D', $expectedTenant)) {
             throw new InvalidArgumentException('Invalid review context.');
         }
