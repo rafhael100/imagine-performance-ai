@@ -1,0 +1,50 @@
+name: Performance pinned Portal V7 exact media plan agreement HMAC lab
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/PortalV7SignedPlanAgreementLabVerifier.php'
+      - 'tests/perf_portal_v7_signed_plan_crossrepo_test.php'
+      - 'docs/performance-ai/PERF-P0-PORTAL-V7-MEDIA-PLAN-SIGNED-CROSSREPO-2026-11-14.md'
+      - '.github/workflows/perf-portal-v7-signed-plan-agreement-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      APP_ENV: testing
+      PERF_PORTAL_F419_V7_REVIEW_LAB: '1'
+      PERF_PORTAL_V7_SIGNED_PLAN_LAB: '1'
+      PORTAL_PERF_V7_PLAN_AGREEMENT_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin actual Portal F419 plus V7 issuer at exact reviewed SHA
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 5437367b45a9258fabfe390183fe31fd40af4b8c
+          path: portal-v7-plan-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Syntax checks issuer/verifier and cross-repo test
+        run: |
+          php -l portal-v7-plan-reference/apps/portal/app/Domain/Performance/PortalPerformanceV7AgreementPlanLabIssuer.php
+          php -l src/Domain/Commercial/PortalV7SignedPlanAgreementLabVerifier.php
+          php -l tests/perf_portal_v7_signed_plan_crossrepo_test.php
+      - name: Verify actual Portal PHP HMAC with independent Performance parser and zero real authority
+        run: php tests/perf_portal_v7_signed_plan_crossrepo_test.php
+      - name: Prior activation and fee-floor contracts still pass
+        run: |
+          php tests/monthly_management_fee_floor_v7_candidate_test.php
+          php tests/monthly_fee_reconciliation_v6_test.php
