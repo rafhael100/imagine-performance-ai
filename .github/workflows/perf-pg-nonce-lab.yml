@@ -1,0 +1,156 @@
+name: Performance PG nonce ledger isolation lab
+
+on:
+  pull_request:
+    paths:
+      - 'labs/finance-pg/**'
+      - 'tests/pg_nonce_claims_test.php'
+      - 'tests/pg_finance_close_drafts_test.php'
+      - 'tests/portal_real_issuer_pg_e2e_test.php'
+      - 'tests/portal_pg_restore_replay_test.php'
+      - 'labs/finance-pg/PgSignedCloseReview.php'
+      - 'src/Domain/Commercial/MonthlySettlementReviewHtml.php'
+      - 'tests/pg_signed_close_html_review_test.php'
+      - 'labs/finance-pg/PgAtomicSignedCloseLab.php'
+      - 'labs/finance-pg/PgProviderShapedFinanceLab.php'
+      - 'src/Domain/Commercial/SyntheticProviderSpendAdapter.php'
+      - 'src/Domain/Commercial/SyntheticAdsAccountSpendContract.php'
+      - 'tests/pg_provider_shaped_finance_e2e_test.php'
+      - 'tests/pg_atomic_signed_close_test.php'
+      - 'src/Domain/Commercial/PortalSignedQuoteGuard.php'
+      - '.github/workflows/perf-pg-nonce-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pg-nonce-rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: synthetic_ci_postgres_password
+          POSTGRES_USER: postgres
+          POSTGRES_DB: perf_fin_lab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_fin_lab_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_fin_lab_test
+      PGUSER: postgres
+      PGPASSWORD: synthetic_ci_postgres_password
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout real pinned Portal issuer source (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 9d2b7030c98778438c0e0544b5db836ea1520789
+          path: portal-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          tools: none
+          coverage: none
+      - name: Verify syntax
+        run: |
+          php -l labs/finance-pg/PgNonceClaims.php
+          php -l tests/pg_nonce_claims_test.php
+          php -l labs/finance-pg/PgFinanceCloseDrafts.php
+          php -l tests/pg_finance_close_drafts_test.php
+          php -l portal-reference/apps/portal/app/Homologation/Commerce/ApprovedOfferCatalog.php
+          php -l portal-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceQuoteLabIssuer.php
+          php -l tests/portal_real_issuer_pg_e2e_test.php
+          php -l tests/portal_pg_restore_replay_test.php
+          php -l src/Domain/Commercial/MonthlySettlementReviewHtml.php
+          php -l labs/finance-pg/PgSignedCloseReview.php
+          php -l tests/pg_signed_close_html_review_test.php
+          php -l labs/finance-pg/PgAtomicSignedCloseLab.php
+          php -l labs/finance-pg/PgProviderShapedFinanceLab.php
+          php -l src/Domain/Commercial/SyntheticProviderSpendAdapter.php
+          php -l src/Domain/Commercial/SyntheticAdsAccountSpendContract.php
+          php -l tests/pg_provider_shaped_finance_e2e_test.php
+          php -l tests/pg_atomic_signed_close_test.php
+          php -l src/Domain/Commercial/PortalSignedQuoteGuard.php
+      - name: Create isolated lab RLS schema and least-privileged role
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_fin_lab_app LOGIN PASSWORD 'synthetic_ci_app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/001_signed_quote_nonce.sql
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/002_reconciliation_drafts.sql
+          psql -v ON_ERROR_STOP=1 -c "REVOKE ALL ON SCHEMA perf_fin_lab FROM PUBLIC"
+          psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA perf_fin_lab TO perf_fin_lab_app"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_lab.signed_quote_nonces TO perf_fin_lab_app"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_lab.reconciliation_drafts TO perf_fin_lab_app"
+      - name: Atomic nonce claim and tenant isolation against PostgreSQL
+        env:
+          PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: |
+          php tests/pg_nonce_claims_test.php
+          php tests/pg_finance_close_drafts_test.php
+      - name: Real pinned Portal issuer to Performance and PostgreSQL E2E
+        env:
+          APP_ENV: testing
+          PORTAL_PERF_SIGN_LAB: '1'
+          PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: php tests/portal_real_issuer_pg_e2e_test.php
+      - name: Render tenant-scoped read-only HTML from signed PostgreSQL 18 draft
+        env:
+          APP_ENV: testing
+          PERF_FIN_SIGNED_HTML_LAB: '1'
+          PORTAL_PERF_SIGN_LAB: '1'
+          PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: php tests/pg_signed_close_html_review_test.php
+      - name: Atomic nonce and finance close transaction; rollback and month-unique constraints
+        env:
+          APP_ENV: testing
+          PERF_FIN_ATOMIC_LAB: '1'
+          PORTAL_PERF_SIGN_LAB: '1'
+          PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: php tests/pg_atomic_signed_close_test.php
+      - name: Google/Meta account-scoped synthetic spend into signed PostgreSQL 18 finance draft
+        env:
+          APP_ENV: testing
+          PORTAL_PERF_SIGN_LAB: '1'
+          PERF_FIN_ATOMIC_LAB: '1'
+          PERF_ADS_PROVIDER_FIN_LAB: '1'
+          PERF_FIN_SIGNED_HTML_LAB: '1'
+          PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: php tests/pg_provider_shaped_finance_e2e_test.php
+      - name: Backup and restore synthetic finance schema into another ephemeral database
+        run: |
+          # Retain strict restore; compatibility-only SET stripping is harmless
+          # on PostgreSQL 18 and keeps the CI script runnable on older runners.
+          # Never ignore SQL errors.
+          pg_dump --format=plain --no-owner --schema=perf_fin_lab --file=/tmp/perf-fin-rls-lab.sql
+          sed -i '/^SET transaction_timeout = 0;$/d' /tmp/perf-fin-rls-lab.sql
+          createdb --template=template0 perf_fin_lab_restore
+          psql -X -v ON_ERROR_STOP=1 --dbname=perf_fin_lab_restore --file=/tmp/perf-fin-rls-lab.sql
+      - name: Confirm restored immutable drafts and deny replay of genuine signed Portal quote
+        env:
+          APP_ENV: testing
+          PORTAL_PERF_SIGN_LAB: '1'
+          PERF_LAB_RESTORE_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_restore'
+          PERF_LAB_PG_USER: perf_fin_lab_app
+          PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+        run: php tests/portal_pg_restore_replay_test.php
