@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: rafhael100/imagine-portal
-          ref: d3a5afb2e2a13cd6d6a3da53bd932b542faf46ac
+          ref: a8d2fe3924f0e2375c38ff197216212215b38c59
           path: portal-v6-reference
           persist-credentials: false
       - uses: shivammathur/setup-php@v2
