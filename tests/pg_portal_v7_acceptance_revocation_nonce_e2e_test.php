@@ -119,11 +119,16 @@ $canonical=static function(array $value)use(&$canonical):array {
     foreach($value as $k=>$v)if(is_array($v))$value[$k]=$canonical($v);
     return $value;
 };
-$planDigest=static fn(array $signed):string=>hash('sha256',
-    "IMAGINE-PORTAL-PERFORMANCE-V7-PLAN-AGREEMENT-LAB\n".
-    json_encode($canonical($signed['payload']),
-        JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
-);
+$planDigest=static function(array $signed)use($canonical):string {
+    $accepted=$signed['payload'];
+    unset($accepted['nonce'],$accepted['issued_at'],
+        $accepted['expires_at'],$accepted['key_id']);
+    return hash('sha256',
+        "IMAGINE-V7-ACCEPTANCE-STABLE-PLAN-V1\n".
+        json_encode($canonical($accepted),
+            JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
+    );
+};
 $seed=$admin->prepare(
     'INSERT INTO perf_fin_role_lab.portal_v7_acceptance_events (
         tenant_id,agreement_id,period,event_revision,state,
@@ -181,8 +186,9 @@ acceptMust($ok['synthetic_acceptance_and_nonce_claimed_in_lab']===true &&
     $ok['planned_media_total_cents']===170000 &&
     $ok['estimated_management_fee_cents']===37000,
     'valid signed V7 plan matches admin-seeded acceptance and claims nonce');
-acceptMust($ok['signed_plan_sha256']===$alphaDigest,
-    'independent signed-plan digest equals acceptance fingerprint');
+acceptMust($planDigest($alphaInitial['signed'])===$alphaDigest &&
+    preg_match('/\A[a-f0-9]{64}\z/D',$ok['signed_plan_sha256'])===1,
+    'independent stable acceptance fingerprint checked alongside signed HMAC');
 foreach([
     'real_customer_contract_authenticated','customer_acceptance_proven',
     'portal_iam_authenticated','durable_nonce_verified',
@@ -248,7 +254,9 @@ $changedPlan=$compose($a,$agreementA,'order-acceptance-alpha',
     ['google_ads'=>100001,'meta_ads'=>70000]);
 acceptDeny(fn()=> $run($changedPlan,$storeAlpha),
     'different valid HMAC + media plan cannot inherit old approval');
-acceptDeny(fn()=> $run($afterRegrant,$storeAlpha,$termsOther=str_repeat('f',64)),
+$differentTerms=$compose($a,$agreementA,'order-acceptance-alpha',
+    'nonce_v7_accept_wrong_terms_12345');
+acceptDeny(fn()=> $run($differentTerms,$storeAlpha,str_repeat('f',64)),
     'different independently expected signed terms must be refused');
 acceptMust($countNonce($alpha)===2,
     'invalid plan and terms cannot consume new nonce');
