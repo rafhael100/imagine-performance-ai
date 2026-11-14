@@ -12,7 +12,9 @@ use InvalidArgumentException;
 final class MonthlyFeeReconciliation
 {
     private const MIN_MEDIA_PER_CHANNEL_CENTS = 70000;
-    private const MAX_MEDIA_CENTS = 100000000000;
+    // Mesmo teto por canal da cotação do Portal (ApprovedOfferCatalog::quote).
+    // Teto técnico de homologação, não é uma autorização para gasto.
+    private const MAX_MEDIA_CENTS = 100000000;
 
     /**
      * @param array<string, array{planned_cents:int, actual_cents:int}> $channels
