@@ -1,0 +1,37 @@
+name: Performance ChatGPT Ads ad-account metadata preflight lab
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/ChatgptAdsAccountPreflightLab.php'
+      - 'tests/chatgpt_ads_account_preflight_test.php'
+      - '.github/workflows/perf-chatgpt-ad-account-preflight-lab.yml'
+      - 'docs/performance-ai/PERF-CHATGPT-ACCOUNT-GET-PREFLIGHT-2026-11-14.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chatgpt-account-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: PHP 8.4 syntax checks
+        run: |
+          php -l src/Domain/Commercial/ChatgptAdsAccountPreflightLab.php
+          php -l tests/chatgpt_ads_account_preflight_test.php
+      - name: Account ownership, BRL/timezone and review metadata checks against synthetic GET /ad_account
+        env:
+          APP_ENV: testing
+          PERF_ADS_READONLY_BOUNDARY_LAB: '1'
+          PERF_CHATGPT_AD_ACCOUNT_PREFLIGHT_LAB: '1'
+        run: php tests/chatgpt_ads_account_preflight_test.php
