@@ -1,0 +1,48 @@
+name: Performance pinned Portal F826 synthetic MFA authority V7 crossrepo lab
+
+on:
+  pull_request:
+    paths:
+      - 'tests/perf_portal_f826_mfa_preflight_crossrepo_test.php'
+      - '.github/workflows/perf-portal-f826-mfa-crossrepo-lab.yml'
+      - 'docs/performance-ai/PERF-P0-PORTAL-F826-V7-MFA-CROSSREPO-NOGO-2026-11-14.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portal-mfa-v7-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      APP_ENV: testing
+      PORTAL_PERF_V7_PLAN_AGREEMENT_LAB: '1'
+      PORTAL_PERF_V7_AUTHORITY_PREFLIGHT_LAB: '1'
+      PERF_PORTAL_V7_SIGNED_PLAN_LAB: '1'
+      PERF_PORTAL_F419_V7_REVIEW_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin actual Portal F826 authority preflight code at immutable SHA
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: afdca172afd4813b21de1c2741ef72336e05c535
+          path: portal-f826-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Check PHP syntax in Portal and Performance crossrepo test
+        run: |
+          php -l portal-f826-reference/apps/portal/app/Domain/Performance/PortalPerformanceV7AuthorityPreflightLab.php
+          php -l portal-f826-reference/apps/portal/app/Domain/Performance/PortalPerformanceV7AgreementPlanLabIssuer.php
+          php -l tests/perf_portal_f826_mfa_preflight_crossrepo_test.php
+      - name: Verify actual Portal F826 MFA and services.manage preflight to Performance V7 HMAC
+        run: php tests/perf_portal_f826_mfa_preflight_crossrepo_test.php
+      - name: Preserve management 20 percent and per-channel R170 floor
+        run: php tests/monthly_management_fee_floor_v7_candidate_test.php
