@@ -31,3 +31,37 @@ jobs:
         env:
           ADMIN_PHASE2_PG_CI: '1'
           ADMIN_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=admin_phase2_ci'
+      - name: Encrypt dump, verify integrity and restore into separate disposable database
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          umask 077
+          openssl rand -hex 32 > "$RUNNER_TEMP/admin-backup-password"
+          integrity_key="$(openssl rand -hex 32)"
+          docker exec "$PG_CONTAINER" pg_dump -U postgres -d admin_phase2_ci -Fc \
+            | openssl enc -aes-256-cbc -pbkdf2 -salt -pass file:"$RUNNER_TEMP/admin-backup-password" \
+              -out "$RUNNER_TEMP/admin-backup.enc"
+          before="$(openssl dgst -sha256 -mac HMAC -macopt "key:$integrity_key" "$RUNNER_TEMP/admin-backup.enc")"
+          cp "$RUNNER_TEMP/admin-backup.enc" "$RUNNER_TEMP/admin-backup-tampered.enc"
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import os
+          p=Path(os.environ['RUNNER_TEMP'])/'admin-backup-tampered.enc'
+          b=bytearray(p.read_bytes());b[-1]^=1;p.write_bytes(b)
+          PYCODE
+          tampered="$(openssl dgst -sha256 -mac HMAC -macopt "key:$integrity_key" "$RUNNER_TEMP/admin-backup-tampered.enc" | awk '{print $NF}')"
+          test "${before##* }" != "$tampered"
+          after="$(openssl dgst -sha256 -mac HMAC -macopt "key:$integrity_key" "$RUNNER_TEMP/admin-backup.enc")"
+          test "$before" = "$after"
+          docker exec "$PG_CONTAINER" createdb -U postgres admin_phase2_restored_ci
+          openssl enc -d -aes-256-cbc -pbkdf2 -pass file:"$RUNNER_TEMP/admin-backup-password" \
+              -in "$RUNNER_TEMP/admin-backup.enc" \
+            | docker exec -i "$PG_CONTAINER" pg_restore -U postgres -d admin_phase2_restored_ci --exit-on-error
+      - run: php tests/admin_phase2_restore_test.php
+        env:
+          ADMIN_PHASE2_PG_CI: '1'
+          ADMIN_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=admin_phase2_restored_ci'
+      - name: Remove disposable encrypted backup and key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/admin-backup-tampered.enc" "$RUNNER_TEMP/admin-backup.enc" "$RUNNER_TEMP/admin-backup-password"
