@@ -1,0 +1,77 @@
+name: Performance finance ledger PostgreSQL laboratory
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/MonthlySettlementReviewHtml.php'
+      - 'bin/perf_finance_review_preview.php'
+      - 'tests/monthly_settlement_html_test.php'
+      - 'contracts/demo/perf-financial-review-input.json'
+      - 'src/Domain/Commercial/MonthlySettlementCandidate.php'
+      - 'tests/monthly_settlement_candidate_test.php'
+      - 'tests/monthly_settlement_persistence_pg_test.php'
+      - 'laboratory/postgresql/finance_schema.sql'
+      - 'laboratory/postgresql/finance_contract_test.sql'
+      - '.github/workflows/perf-finance-pg-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pg-tenant-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP CLI 8.4 with PostgreSQL driver
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          coverage: none
+      - name: Validate PHP syntax
+        run: |
+          php -l src/Domain/Commercial/MonthlySettlementReviewHtml.php
+          php -l bin/perf_finance_review_preview.php
+          php -l tests/monthly_settlement_html_test.php
+          php -l src/Domain/Commercial/MonthlySettlementCandidate.php
+          php -l tests/monthly_settlement_candidate_test.php
+          php -l tests/monthly_settlement_persistence_pg_test.php
+      - name: Finance preview HTML safety tests
+        run: |
+          php tests/monthly_settlement_html_test.php
+          APP_ENV=testing PERF_FIN_REVIEW_HTML_LAB=1 php bin/perf_finance_review_preview.php < contracts/demo/perf-financial-review-input.json > /tmp/perf-fin-demo.html
+          grep -Fq "DEMONSTRAÇÃO NÃO HOMOLOGADA" /tmp/perf-fin-demo.html
+          if APP_ENV=production PERF_FIN_REVIEW_HTML_LAB=1 php bin/perf_finance_review_preview.php < contracts/demo/perf-financial-review-input.json > /tmp/perf-fin-should-not-exist.html; then
+            echo "Forbidden CLI gate accepted production environment"; exit 1
+          fi
+      - name: Validate isolated synthetic PostgreSQL contract
+        env:
+          PGHOST: localhost
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: local-ci-only
+          PGDATABASE: postgres
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f laboratory/postgresql/finance_schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f laboratory/postgresql/finance_contract_test.sql
+      - name: PHP to PostgreSQL synthetic settlement E2E
+        env:
+          PGHOST: localhost
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: local-ci-only
+          PGDATABASE: postgres
+        run: php tests/monthly_settlement_persistence_pg_test.php
