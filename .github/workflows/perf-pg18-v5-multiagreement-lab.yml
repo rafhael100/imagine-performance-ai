@@ -1,0 +1,97 @@
+name: Performance V5 PG18 multiagreement immutable finance lab
+
+on:
+  pull_request:
+    paths:
+      - 'labs/finance-pg/003_multiagreement_v5_drafts.sql'
+      - 'labs/finance-pg/PgMultiAgreementV5CloseLab.php'
+      - 'tests/pg_v5_multiagreement_*'
+      - 'docs/performance-ai/PERF-V5-PG18-MULTIAGREEMENT-CLOSE-2026-11-14.md'
+      - '.github/workflows/perf-pg18-v5-multiagreement-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pg18-multiagreement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_ci_postgres_password
+          POSTGRES_DB: perf_fin_lab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_fin_lab_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: testing
+      PORTAL_PERF_TRICHANNEL_V5_LAB: '1'
+      PERF_PORTAL_TRICHANNEL_V5_LAB: '1'
+      PERF_PG_MULTIAGREEMENT_V5_LAB: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: perf_fin_lab_test
+      PGUSER: postgres
+      PGPASSWORD: synthetic_ci_postgres_password
+      PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+      PERF_LAB_PG_USER: perf_fin_lab_app
+      PERF_LAB_PG_PASSWORD: synthetic_ci_app_password
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin real approved Portal V5 issuer source (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 913f8e8420ecb26524c583d2e76bccd96133eb95
+          path: portal-v5-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          tools: none
+          coverage: none
+      - name: Verify syntax and signed fixture test code
+        run: |
+          php -l labs/finance-pg/PgMultiAgreementV5CloseLab.php
+          php -l tests/pg_v5_multiagreement_cases.php
+          php -l tests/pg_v5_multiagreement_fixture_seed.php
+          php -l tests/pg_v5_multiagreement_atomic_close_test.php
+          php -l tests/pg_v5_multiagreement_restored_replay_test.php
+      - name: Provision separate synthetic schemas, nonowner role and immutable grants
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_fin_lab_app LOGIN PASSWORD 'synthetic_ci_app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/001_signed_quote_nonce.sql
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/003_multiagreement_v5_drafts.sql
+          psql -v ON_ERROR_STOP=1 -c "REVOKE ALL ON SCHEMA perf_fin_lab, perf_fin_multi_lab FROM PUBLIC"
+          psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA perf_fin_lab, perf_fin_multi_lab TO perf_fin_lab_app"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_lab.signed_quote_nonces TO perf_fin_lab_app"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT ON perf_fin_multi_lab.agreement_quote_bindings TO perf_fin_lab_app"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_multi_lab.agreement_close_drafts TO perf_fin_lab_app"
+      - name: Pin each synthetic agreement to an independently minted signed Portal V5 quote (CI owner only)
+        run: |
+          php tests/pg_v5_multiagreement_fixture_seed.php > /tmp/perf-v5-multiagreement-fixture.sql
+          psql -v ON_ERROR_STOP=1 -f /tmp/perf-v5-multiagreement-fixture.sql
+          rm -f /tmp/perf-v5-multiagreement-fixture.sql
+      - name: Two contracts in same tenant-month, others months/tenants, atomic claim and safety
+        run: php tests/pg_v5_multiagreement_atomic_close_test.php
+      - name: Dump both synthetic namespaces and restore into separate ephemeral PG18 database
+        run: |
+          pg_dump --format=plain --no-owner --schema=perf_fin_lab --schema=perf_fin_multi_lab --file=/tmp/perf-v5-multiagreement-lab.sql
+          sed -i '/^SET transaction_timeout = 0;$/d' /tmp/perf-v5-multiagreement-lab.sql
+          createdb --template=template0 perf_fin_multi_restore
+          psql -X -v ON_ERROR_STOP=1 --dbname=perf_fin_multi_restore --file=/tmp/perf-v5-multiagreement-lab.sql
+      - name: Confirm immutable drafts, trusted bindings and nonce replay refusal AFTER restore
+        env:
+          PERF_LAB_RESTORE_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_multi_restore'
+        run: php tests/pg_v5_multiagreement_restored_replay_test.php
