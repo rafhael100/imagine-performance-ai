@@ -27,6 +27,9 @@ foreach(['review','budget','payment'] as $id){
  denied(fn()=>E::command($revoked['state'],array_replace($c,['actor'=>2]),array_replace($q,['action'=>'approval.consume','revision'=>3]),$now));
 }
 foreach(['sync','task'] as $id){$q=['action'=>'incident.ack','resource'=>$id,'revision'=>1,'confirmed'=>true];$r=E::command($s,$c,$q,$now);check($r['state']['incidents'][$id]['status']==='acknowledged');$q['revision']=2;$q['action']='incident.resolve';if($id==='sync')denied(fn()=>E::command($r['state'],$c,$q,$now));else check(E::command($r['state'],$c,$q,$now)['state']['incidents'][$id]['status']==='resolved');}
+$bad=$s;$bad['approvals']['review']['status']='approved';$bad['approvals']['review']['approved_by']=null;
+$a=$bad['approvals']['review'];$q=['action'=>'approval.consume','resource'=>'review','revision'=>1,'confirmed'=>true,'proposal_version'=>1,'proposal_digest'=>$a['digest']];
+denied(fn()=>E::command($bad,$c,$q,$now));
 check($s['channels']['chatgpt_ads']['status']==='unavailable');
 foreach($s['channels'] as $ch)check(!$ch['read_authorized']&&!$ch['write_authorized']&&!$ch['provider_verified']);
 echo "ADMIN ENGINE PASS: $n assertions; synthetic only, zero external effects.\n";

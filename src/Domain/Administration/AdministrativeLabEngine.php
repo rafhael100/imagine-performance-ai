@@ -43,7 +43,7 @@ final class AdministrativeLabEngine
             if($a['tenant']!==$context['tenant']||$a['expires_at']<=$now||$a['version']!==($command['proposal_version']??null)
                 ||!hash_equals($a['digest'], $command['proposal_digest']??''))throw new DomainException('EXPIRED_OR_CHANGED_PROPOSAL');
             if($action==='approval.consume'){
-                if($a['status']!=='approved'||$a['kind']!=='internal_note'||$a['approved_by']===$context['actor'])throw new DomainException('EXECUTION_BLOCKED');
+                if($a['status']!=='approved'||$a['kind']!=='internal_note'||(!is_int($a['approved_by'])||$a['approved_by']<1||$a['approved_by']===$context['actor']))throw new DomainException('EXECUTION_BLOCKED');
                 // Only an internal, synthetic review receipt. Never Ads or financial execution.
                 $a['status']='consumed';$a['executed_by']=$context['actor'];
             }elseif($action==='approval.revoke'){
