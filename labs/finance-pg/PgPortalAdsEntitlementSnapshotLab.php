@@ -16,7 +16,10 @@ use Throwable;
  */
 final class PgPortalAdsEntitlementSnapshotLab
 {
-    public function __construct(private readonly PDO $db) {}
+    public function __construct(
+        private readonly PDO $db,
+        private readonly ?\Closure $ciObservationClock = null
+    ) {}
 
     /**
      * @param array<string,string> $selector expected tenant, agreement, period, account
@@ -94,7 +97,13 @@ final class PgPortalAdsEntitlementSnapshotLab
             $data['source']='synthetic_registry';
             // Time of THIS DB read, not a client-supplied clock. The guard
             // evaluates freshness again with the same host's clock.
-            $data['observed_at']=time();
+            $observed = $this->ciObservationClock === null
+                ? time()
+                : ($this->ciObservationClock)();
+            if(!is_int($observed) || $observed<=0){
+                throw new RuntimeException('Invalid simulated observation clock.');
+            }
+            $data['observed_at']=$observed;
             return $data;
         } catch (Throwable) {
             // Do not return SQL errors, raw account rows or connection details.

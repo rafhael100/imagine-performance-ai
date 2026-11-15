@@ -95,8 +95,12 @@ $selectorB=[
     'tenant_id'=>$b,'agreement_id'=>$agreement,
     'period'=>$period,'account_id'=>$otherAccount,
 ];
-$readerA=new EntitlementReader($alpha);
-$readerB=new EntitlementReader($beta);
+// Pin the CI observation clock to the same test instant as the signed
+// synthetic grant. A real adapter would use a trusted server clock, but
+// wall-second drift during CI must not turn a valid snapshot into a future one.
+$ciClock=static fn():int=>$now;
+$readerA=new EntitlementReader($alpha,$ciClock);
+$readerB=new EntitlementReader($beta,$ciClock);
 pgEntMust($readerA->resolve($selectorA)['consent_status']==='synthetic_granted',
     'authenticated ALPHA can read its own consent snapshot');
 pgEntMust($readerB->resolve($selectorB)['owner_tenant_id']===$b,
