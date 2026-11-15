@@ -147,7 +147,8 @@ $append=static function(string $tenant,string $agreement,int $rev,
         'tenant'=>$tenant,'agreement'=>$agreement,'period'=>$period,
         'rev'=>$rev,'state'=>$state,'digest'=>$digest,
         'terms'=>$terms,'actor'=>'actor_lab_approver_123456',
-        'mfa'=>$mfa,'full_month'=>$full,
+        'mfa'=>$mfa?'true':'false',
+        'full_month'=>$full?'true':'false',
         'at'=>$time??$now-30,'expires'=>$now+3600,
     ]);
 };
