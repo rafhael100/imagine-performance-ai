@@ -18,6 +18,12 @@ final class AdministrativeServiceEnvelope
  /** resolve returns server-owned identity: secret, active, expires_at, companies, operations. */
  public static function verify(array $e,string $body,int $now,callable $resolve):array
  {
+  if(strlen($body)>4096)throw new InvalidArgumentException('Oversized service body');
+  $payload=json_decode($body,false,16,JSON_THROW_ON_ERROR);
+  if(!$payload instanceof \stdClass||array_diff(array_keys((array)$payload),['period','resource','page'])!==[])throw new InvalidArgumentException('Service body schema denied');
+  if(isset($payload->period)&&(!is_string($payload->period)||!preg_match('/\A[0-9]{4}-(0[1-9]|1[0-2])\z/D',$payload->period)))throw new InvalidArgumentException('Invalid period');
+  if(isset($payload->resource)&&(!is_string($payload->resource)||!preg_match('/\A[A-Za-z0-9_-]{1,96}\z/D',$payload->resource)))throw new InvalidArgumentException('Invalid resource');
+  if(isset($payload->page)&&(!is_int($payload->page)||$payload->page<1||$payload->page>10000))throw new InvalidArgumentException('Invalid page');
   $fields=['version','issuer','audience','key_id','company_id','operation','nonce','idempotency_key','correlation_id','body_sha256','issued_at','expires_at','signature'];
   $keys=array_keys($e);sort($keys);sort($fields);if($keys!==$fields)throw new InvalidArgumentException('Invalid envelope fields');
   foreach(['issuer','key_id','company_id','nonce','idempotency_key','correlation_id'] as $k)

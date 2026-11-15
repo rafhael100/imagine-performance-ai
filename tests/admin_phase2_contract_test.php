@@ -14,6 +14,9 @@ $ok(E::verify($e,'{}',$now,$resolve)===$e);
 foreach(['company_id'=>'company_beta','operation'=>'ads.campaign.write','audience'=>'browser_token','signature'=>str_repeat('0',64),'issued_at'=>$now+40,'expires_at'=>$now] as $k=>$v){$bad=$e;$bad[$k]=$v;$deny(fn()=>E::verify($bad,'{}',$now,$resolve));}
 $deny(fn()=>E::verify($e,'{"changed":true}',$now,$resolve));
 $bad=$e;$bad['browser_token']='forbidden';$deny(fn()=>E::verify($bad,'{}',$now,$resolve));
+$humanBody='{"token":"browser-token"}';
+$human=E::issue('portal_service','service_key_01','company_alfa','dashboard.read','nonce_human_0001','request_human_001',$humanBody,$now,$secret);
+$deny(fn()=>E::verify($human,$humanBody,$now,$resolve));
 $identity['active']=false;$deny(fn()=>E::verify($e,'{}',$now,$resolve));$identity['active']=true;
 $identity['companies']=[];$deny(fn()=>E::verify($e,'{}',$now,$resolve));
 $channels=['google_ads'=>['planned_cents'=>100000,'actual_cents'=>35000],'meta_ads'=>['planned_cents'=>70000,'actual_cents'=>400000]];
