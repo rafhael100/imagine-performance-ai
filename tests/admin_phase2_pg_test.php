@@ -35,9 +35,16 @@ $calls=0;$read=function()use(&$calls){$calls++;return ['status'=>'synthetic','me
 $inbox=new Inbox($owner);$e=$env('nonce_unique_001');$result=$inbox->receive($e,'{}',$now,$resolve,$read);$ok($result['billable']===false&&$calls===1);
 $deny(fn()=>$inbox->receive($e,'{}',$now,$resolve,$read));
 $second=new Inbox($connect('postgres','postgres'));
-$ok($second->receive($env('nonce_unique_002'),'{}',$now,$resolve,$read)===$result&&$calls===1);
+$ok($second->receive($env('nonce_unique_002'),'{}',$now,$resolve,$read)==$result&&$calls===1);
 $deny(fn()=>$second->receive($env('nonce_unique_003','request_unique_001','{"changed":true}'),'{"changed":true}',$now,$resolve,$read));
 $active=false;$deny(fn()=>$second->receive($env('nonce_unique_004'),'{}',$now,$resolve,$read));$active=true;
 $deny(fn()=>$second->receive($env('nonce_unique_005','request_unique_002'),'{}',$now,$resolve,fn()=>throw new RuntimeException('Provider timeout')));
 $ok($second->receive($env('nonce_unique_005','request_unique_002'),'{}',$now,$resolve,$read)['external_operations_enabled']===false);
+// A competing live connection cannot process the same idempotency scope while locked.
+$owner->beginTransaction();
+$lock=$owner->prepare('SELECT pg_advisory_xact_lock(hashtextextended(?,0))');
+$lock->execute(['portal_service/company_alfa/request_locked_001']);
+$deny(fn()=>$second->receive($env('nonce_lock_00001','request_locked_001'),'{}',$now,$resolve,$read));
+$owner->rollBack();
+$ok($second->receive($env('nonce_lock_00001','request_locked_001'),'{}',$now,$resolve,$read)['billable']===false);
 echo "OK: $n PG18 RLS/revocation/audit/persistent inbox assertions, two native identities; no deploy\n";
