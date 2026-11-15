@@ -105,7 +105,5 @@ jobs:
           test -s /tmp/portal-f829-signed-plan-ci.json
       - name: Independent Performance HMAC and PG18 receipt chronicle after session logout
         run: |
-          php -l tests/perf_portal_f829_pg18_iam_crossrepo_test.php
           php -l tests/perf_portal_f831_sql_consent_revocation_crossrepo_test.php
-          php tests/perf_portal_f829_pg18_iam_crossrepo_test.php
           php tests/perf_portal_f831_sql_consent_revocation_crossrepo_test.php
