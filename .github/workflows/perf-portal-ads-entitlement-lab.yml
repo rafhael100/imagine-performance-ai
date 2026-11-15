@@ -1,0 +1,54 @@
+name: Performance pinned Portal advertiser entitlement and consent lab
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/PortalAdsEntitlementSnapshotLab.php'
+      - 'src/Domain/Commercial/PortalAdsEntitledReadOnlySessionLab.php'
+      - 'tests/portal_ads_entitlement_snapshot_crossrepo_test.php'
+      - '.github/workflows/perf-portal-ads-entitlement-lab.yml'
+      - 'docs/performance-ai/PERF-P0-PORTAL-ADS-ENTITLEMENT-REVOCATION-LAB-2026-11-14.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portal-entitlements:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PORTAL_PERF_ADS_S2S_READ_GRANT_LAB: '1'
+      PERF_PORTAL_ADS_S2S_READ_GRANT_LAB: '1'
+      PERF_PORTAL_ENTITLEMENT_SNAPSHOT_LAB: '1'
+      PERF_ADS_READONLY_BOUNDARY_LAB: '1'
+      PERF_CHATGPT_AD_ACCOUNT_PREFLIGHT_LAB: '1'
+      PERF_CHATGPT_EXACT_WIRE_MONEY_LAB: '1'
+      PERF_CHATGPT_READONLY_SESSION_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check out exact Portal issuer reference, never moving branch
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 8760e7dbc6c6e643368f43fbb7f44d363182bf8c
+          path: portal-ads-read-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - name: PHP syntax for entitlement boundary and pinned Portal issuer
+        run: |
+          php -l portal-ads-read-reference/apps/portal/app/Homologation/Commerce/PortalPerformanceAdsReadGrantLabIssuer.php
+          php -l src/Domain/Commercial/PortalAdsEntitlementSnapshotLab.php
+          php -l src/Domain/Commercial/PortalAdsEntitledReadOnlySessionLab.php
+          php -l tests/portal_ads_entitlement_snapshot_crossrepo_test.php
+      - name: Assert revoked consent, expired agreement, ownership mismatch and HMAC replay fail closed
+        run: php tests/portal_ads_entitlement_snapshot_crossrepo_test.php
+      - name: Existing real Portal issuer parity and two GETs still valid
+        run: php tests/portal_ads_read_s2s_crossrepo_test.php

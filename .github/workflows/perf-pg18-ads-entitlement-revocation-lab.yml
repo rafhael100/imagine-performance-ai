@@ -1,0 +1,93 @@
+name: Performance PG18 Portal entitlement revocation and session-user RLS lab
+
+on:
+  pull_request:
+    paths:
+      - 'labs/finance-pg/008_ads_read_entitlement_snapshot_rls_lab.sql'
+      - 'labs/finance-pg/PgPortalAdsEntitlementSnapshotLab.php'
+      - 'tests/pg_portal_ads_entitlement_revocation_e2e_test.php'
+      - '.github/workflows/perf-pg18-ads-entitlement-revocation-lab.yml'
+      - 'docs/performance-ai/PERF-P0-PG18-PORTAL-ADS-ENTITLEMENT-REVOKE-NOGO-2026-11-14.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  consent-postgres18:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_ci_postgres_password
+          POSTGRES_DB: perf_fin_lab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d perf_fin_lab_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: testing
+      PORTAL_PERF_ADS_S2S_READ_GRANT_LAB: '1'
+      PERF_PORTAL_ADS_S2S_READ_GRANT_LAB: '1'
+      PERF_PG_ADS_S2S_NONCE_LAB: '1'
+      PERF_PG_V6_ROLE_LAB: '1'
+      PERF_PG_ADS_ENTITLEMENT_LAB: '1'
+      PERF_PORTAL_ENTITLEMENT_SNAPSHOT_LAB: '1'
+      PERF_ADS_READONLY_BOUNDARY_LAB: '1'
+      PERF_CHATGPT_AD_ACCOUNT_PREFLIGHT_LAB: '1'
+      PERF_CHATGPT_EXACT_WIRE_MONEY_LAB: '1'
+      PERF_CHATGPT_READONLY_SESSION_LAB: '1'
+      PGHOST: '127.0.0.1'
+      PGPORT: '5432'
+      PGDATABASE: perf_fin_lab_test
+      PGUSER: postgres
+      PGPASSWORD: synthetic_ci_postgres_password
+      PERF_PG_ADMIN_PASS: synthetic_ci_postgres_password
+      PERF_LAB_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=perf_fin_lab_test'
+      PERF_ROLE_ALPHA_PASS: synthetic_ci_alpha_role_password
+      PERF_ROLE_BETA_PASS: synthetic_ci_beta_role_password
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin exact Portal signed Ads grant issuer at reviewed commit
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 8760e7dbc6c6e643368f43fbb7f44d363182bf8c
+          path: portal-ads-read-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          tools: none
+          coverage: none
+      - name: Lint independent SQL entitlement reader and integration test
+        run: |
+          php -l labs/finance-pg/PgPortalAdsEntitlementSnapshotLab.php
+          php -l tests/pg_portal_ads_entitlement_revocation_e2e_test.php
+          php -l labs/finance-pg/PgPortalAdsReadGrantNonceLab.php
+          php -l src/Domain/Commercial/PortalAdsEntitledReadOnlySessionLab.php
+      - name: Create two unrelated authenticated tenant logins, no bypass privileges
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_v6_tenant_alpha LOGIN PASSWORD 'synthetic_ci_alpha_role_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE perf_v6_tenant_beta LOGIN PASSWORD 'synthetic_ci_beta_role_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+      - name: Create tenant registry, durable nonce and read-only entitlement tables
+        run: |
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/005_v6_session_role_isolation_lab.sql
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/007_portal_ads_s2s_read_grant_nonces.sql
+          psql -v ON_ERROR_STOP=1 -f labs/finance-pg/008_ads_read_entitlement_snapshot_rls_lab.sql
+          psql -v ON_ERROR_STOP=1 -c "INSERT INTO perf_fin_role_lab.login_tenant_registry(login_role,tenant_id) VALUES ('perf_v6_tenant_alpha','tenant_v6multi_alpha_123456'),('perf_v6_tenant_beta','tenant_v6multi_beta_567890')"
+          psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA perf_fin_role_lab TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
+          psql -v ON_ERROR_STOP=1 -c "GRANT EXECUTE ON FUNCTION perf_fin_role_lab.tenant_for_authenticated_session() TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT ON perf_fin_role_lab.ads_read_entitlement_snapshots TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
+          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT,INSERT ON perf_fin_role_lab.ads_read_grant_nonces TO perf_v6_tenant_alpha,perf_v6_tenant_beta"
+      - name: PG18 authoritative CI snapshot and revocation observed before provider Insights
+        run: php tests/pg_portal_ads_entitlement_revocation_e2e_test.php
