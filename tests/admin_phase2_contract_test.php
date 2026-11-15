@@ -1,0 +1,31 @@
+<?php
+declare(strict_types=1);
+require __DIR__.'/../src/Domain/Administration/AdministrativeServiceEnvelope.php';
+require __DIR__.'/../src/Domain/Administration/AdministrativeOperationalReview.php';
+require __DIR__.'/../src/Domain/Commercial/MonthlyManagementFeeFloorV7Candidate.php';
+use Imagine\Performance\Administration\AdministrativeServiceEnvelope as E;
+use Imagine\Performance\Administration\AdministrativeOperationalReview as R;
+$n=0;$ok=function(bool $value)use(&$n){if(!$value)throw new RuntimeException('Assertion '.($n+1));$n++;};
+$deny=function(callable $f)use($ok){try{$f();}catch(InvalidArgumentException|RuntimeException){$ok(true);return;}$ok(false);};
+$now=1794780000;$secret=str_repeat('S',48);$identity=['secret'=>$secret,'active'=>true,'expires_at'=>$now+120,'companies'=>['company_alfa'],'operations'=>E::OPERATIONS];
+$resolve=function($issuer,$key)use(&$identity){return $issuer==='portal_service'&&$key==='service_key_01'?$identity:null;};
+$e=E::issue('portal_service','service_key_01','company_alfa','dashboard.read','nonce_unique_001','request_unique_001','{}',$now,$secret);
+$ok(E::verify($e,'{}',$now,$resolve)===$e);
+foreach(['company_id'=>'company_beta','operation'=>'ads.campaign.write','audience'=>'browser_token','signature'=>str_repeat('0',64),'issued_at'=>$now+40,'expires_at'=>$now] as $k=>$v){$bad=$e;$bad[$k]=$v;$deny(fn()=>E::verify($bad,'{}',$now,$resolve));}
+$deny(fn()=>E::verify($e,'{"changed":true}',$now,$resolve));
+$bad=$e;$bad['browser_token']='forbidden';$deny(fn()=>E::verify($bad,'{}',$now,$resolve));
+$identity['active']=false;$deny(fn()=>E::verify($e,'{}',$now,$resolve));$identity['active']=true;
+$identity['companies']=[];$deny(fn()=>E::verify($e,'{}',$now,$resolve));
+$channels=['google_ads'=>['planned_cents'=>100000,'actual_cents'=>35000],'meta_ads'=>['planned_cents'=>70000,'actual_cents'=>400000]];
+$ok(R::financial('2026-11',$channels,'full_month','official_verified',1,1)['management_fee_cents']===97000);
+$ok(R::financial('2026-11',$channels,'full_month','synthetic',1,1)['management_fee_cents']===null);
+$ok(R::financial('2026-11',$channels,'partial_month','official_verified',1,1)['status']==='contract_policy_required');
+$ok(R::financial('2026-11',$channels,'channel_change','official_verified',1,1)['management_fee_cents']===null);
+$ok(R::financial('2026-11',$channels,'full_month','official_verified',2,1)['status']==='independent_revision_review_required');
+$ok(R::financial('2026-11',$channels,'full_month','official_verified',1,1)['charge_enabled']===false);
+$ok(R::unavailable('google_ads','credential_not_homologated')['metrics']===null);
+$u=['active'=>true,'session_epoch'=>2];$g=['company_id'=>'company_alfa','expires_at'=>$now+10,'role'=>'operations'];
+$ok(R::sessionAllowed($u,$g,'company_alfa',2,$now));
+$ok(!R::sessionAllowed($u,$g,'company_beta',2,$now));$ok(!R::sessionAllowed($u,$g,'company_alfa',1,$now));$ok(!R::sessionAllowed($u,$g,'company_alfa',2,$now+10));
+$g['revoked_at']=$now;$ok(!R::sessionAllowed($u,$g,'company_alfa',2,$now));
+echo "OK: $n phase2 protocol/session/finance contract assertions; no operational provider or charge\n";

@@ -1,0 +1,13 @@
+# Administração fase2 — contratos candidatos isolados
+
+DRAFT / NO-MERGE / NO-DEPLOY / NO-CHARGE / NO-ADS-WRITE.
+
+Este esquema separado NÃO migra as tabelas lab-alfa/lab-beta. Empresas referenciam IDs do Portal; usuários internos têm vínculo nominal, papel, expiração e revogação; serviços e contas possuem autorização por empresa/canal. RLS usa session_user nativo. Runtime não recebe escrita nas tabelas de autoridade; mudanças de concessão geram auditoria imutável.
+
+A prova CI usa dois logins PostgreSQL independentes. Não é uma ponte de identidade pronta para o pool HTTP do Portal: essa ponte exige revisão, sem SET ROLE/GUC fornecido pelo navegador. Revogação é reavaliada em cada statement READ COMMITTED; transações longas/snapshot não devem autorizar operações. Sessões também precisam validar epoch e MFA no Portal, além da concessão no banco. Nunca conceder BYPASSRLS ao runtime. Definir proprietário não-login e role de concessões antes de qualquer migração operacional.
+
+O envelope S2S v1 aceita apenas dashboard.read, clients.read e reports.read. Assina corpo, empresa, operação, audience, TTL60s, nonce, chave idempotente e correlação. Nenhum token humano é campo permitido. O resolvedor é exclusivamente servidor, revalida vínculo/chave/escopo inclusive antes de retornar recibo cacheado. Inbox PostgreSQL faz claim e recibo na mesma transação; replay é recusado, retry usa nonce novo e chave idempotente original. Alterar corpo/operação sob a mesma chave é conflito. Bloqueios têm timeout2s; falha/timeout do leitor faz rollback para permitir nova tentativa sem resultado falso. Não contém endpoint HTTP nem TLS remoto homologado. Transporte deverá impor connect/read timeout, orçamento de tentativas, backoff, mTLS ou HTTPS confiável e resolvedor operacional antes de ser habilitado.
+
+O contrato financeiro reutiliza V7 (20%, mínimo170/canal, implantação490/canal, mídia separada), mantém cobrança false. Evidência missing/synthetic/unverified bloqueia cálculo de fechamento; partial_month e channel_change exigem política aceita versionada, sem inventar rateio. Mudança de revisão invalida revisão anterior. official_verified é dado de uma futura fronteira verificadora, NÃO prova emitida pelo caller HTTP. Não expor esse método como atalho de faturamento. Asaas/C6 sandbox não executado: faltam provedores/credenciais homologados. Métricas indisponíveis são null/N/D, nunca zero ou fixture disfarçada.
+
+Pendências: revisão independente, identidade operacional Portal, integração do transport adapter com estes contratos, teste concorrente interprocessos/restore, APIs oficiais Google/Meta, extratos oficiais, sandbox gateways, domínio/TLS e deploy privado autorizado. ChatGPT Ads permanece sem conexão operacional.

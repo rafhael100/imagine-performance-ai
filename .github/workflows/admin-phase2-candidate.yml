@@ -1,0 +1,33 @@
+name: ADMIN phase2 isolated contracts and PG18 candidate
+on:
+  pull_request:
+    paths: ['src/Domain/Administration/**','contracts/admin/phase2/**','tests/admin_phase2*','.github/workflows/admin-phase2-candidate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts-and-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: admin_phase2_ci
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          coverage: none
+      - run: php tests/admin_phase2_contract_test.php
+      - run: php tests/admin_phase2_pg_test.php
+        env:
+          ADMIN_PHASE2_PG_CI: '1'
+          ADMIN_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=admin_phase2_ci'
