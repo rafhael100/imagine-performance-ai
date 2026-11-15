@@ -1,5 +1,7 @@
 # Imagine Performance AI
 
+> **Diretriz transversal (15/11/2026):** a Imagine passa a adotar **Visitas → Leads → Clientes** como assinatura estratégica. [Aplicação neste projeto](docs/METODOLOGIA-IMAGINE-VISITAS-LEADS-CLIENTES-2026-11-15.md). Somente documentação nesta PR; não modifica os gates de implementação ou produção.
+
 Repositório dedicado ao **planejamento funcional, arquitetura, governança, decisões e futuras especificações técnicas** do Imagine Performance AI.
 
 > **Estado:** planejamento em andamento; aprovações funcionais não equivalem a homologação técnica nem autorizam programação, operação real, anúncios, contratação de fornecedores ou gastos.
