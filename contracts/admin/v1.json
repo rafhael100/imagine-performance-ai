@@ -1,0 +1,14 @@
+{
+  "contract": "imagine.performance.admin.v1",
+  "authority": {"human_identity": "portal", "membership": "portal", "operations": "performance", "billing": "portal", "metrics": "provider_when_verified"},
+  "mode": "isolated_synthetic_lab_only",
+  "queries": ["summary", "clients", "channels", "campaigns", "agents", "approvals", "finance_evidence", "reports", "incidents", "history"],
+  "commands": ["agent.pause", "agent.resume", "approval.approve", "approval.reject", "approval.revoke", "approval.consume", "incident.ack", "incident.resolve"],
+  "required_context": ["actor", "tenant", "role", "active", "mfa_at"],
+  "required_command": ["action", "resource", "revision", "confirmed", "idempotency_key"],
+  "approval_binding": ["tenant", "resource", "version", "digest", "expires_at"],
+  "external_execution": false,
+  "human_session_forwarding": false,
+  "shared_database": false,
+  "note": "Local code adapter is test-only, not authenticated S2S. No remote endpoint or provider credential is enabled."
+}
