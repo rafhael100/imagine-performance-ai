@@ -1,0 +1,51 @@
+name: Performance Portal F419 V7 signed activation and monthly R170 parity lab
+
+on:
+  pull_request:
+    paths:
+      - 'src/Domain/Commercial/PortalF419SignedActivationReviewV7LabVerifier.php'
+      - 'tests/perf_portal_f419_signed_v7_crossrepo_test.php'
+      - 'docs/performance-ai/PERF-P0-PORTAL-F419-V7-SIGNED-ACTIVATION-REVIEW-2026-11-14.md'
+      - '.github/workflows/perf-portal-f419-v7-signed-review-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portal-f419-v7-compat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      APP_ENV: testing
+      PERF_PORTAL_F419_V7_REVIEW_LAB: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout actual F419 Portal issuer at immutable SHA
+        uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 6adc7351557da64501192a78c979061469869713
+          path: portal-f419-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Syntax checks on independent verifier and pinned Portal issuer
+        run: |
+          php -l src/Domain/Commercial/PortalF419SignedActivationReviewV7LabVerifier.php
+          php -l src/Domain/Commercial/MonthlyManagementFeeFloorV7Candidate.php
+          php -l tests/perf_portal_f419_signed_v7_crossrepo_test.php
+          php -l portal-f419-reference/apps/portal/app/Domain/Performance/PerformanceChannelReviewEnvelope.php
+          php -l portal-f419-reference/apps/portal/app/Domain/Performance/ActivationPostpaidPreview.php
+      - name: Validate HMAC fields, per-channel minima, activation, expiry, PSP/CRM review, and monthly parity
+        run: php tests/perf_portal_f419_signed_v7_crossrepo_test.php
+      - name: Preserve V4/V6 fee contracts and current V7 fee candidate
+        run: |
+          php tests/monthly_fee_reconciliation_test.php
+          php tests/monthly_fee_reconciliation_v6_test.php
+          php tests/monthly_management_fee_floor_v7_candidate_test.php
