@@ -1,0 +1,109 @@
+name: Performance F832 crossrepo PG18 terms receipt and revoked HMAC review
+
+on:
+  pull_request:
+    paths:
+      - 'tests/perf_portal_f832_terms_receipt_crossrepo_test.php'
+      - '.github/workflows/perf-portal-f832-terms-receipt-crossrepo.yml'
+      - 'docs/performance-ai/PERF-P0-PORTAL-F832-TERMS-RECEIPT-CROSSREPO-NOGO-2026-11-15.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  consent-revocation-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-laboratory-only
+          POSTGRES_DB: portal_identity_lab
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portal_identity_lab"
+          --health-interval 5s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      PORTAL_PERF_V7_PG18_IDENTITY_LAB: '1'
+      PORTAL_PERF_V7_EXPRESS_CONSENT_LAB: '1'
+      PORTAL_PERF_V7_TERMS_PRESENTATION_LAB: '1'
+      PORTAL_PERF_V7_PLAN_AGREEMENT_LAB: '1'
+      PORTAL_F829_EXPORT_SYNTHETIC: '1'
+      PERF_PORTAL_V7_SIGNED_PLAN_LAB: '1'
+      PERF_PORTAL_F419_V7_REVIEW_LAB: '1'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: portal_identity_lab
+      DB_USERNAME: postgres
+      DB_PASSWORD: ci-laboratory-only
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: portal_identity_lab
+      PGUSER: postgres
+      PGPASSWORD: ci-laboratory-only
+      F66_PG_ADMIN_PASSWORD: ci-laboratory-only
+      PORTAL_V7_PG_READER_PASSWORD: ci-f831-reader-only
+      PORTAL_V7_PG_UNPRIV_PASSWORD: ci-f831-unpriv-only
+      LOG_CHANNEL: stderr
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: rafhael100/imagine-portal
+          ref: df50af02ddb28edb85fb33aacb1dcb4adf7edfb2
+          path: portal-f832-reference
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo,pdo_pgsql,mbstring,dom,xml,curl,fileinfo,intl,bcmath,zip,sodium
+      - name: Prepare isolated Portal PG18 schema and original PHP dependencies
+        working-directory: portal-f832-reference/apps/portal
+        run: |
+          composer validate --strict --no-check-publish
+          composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
+          cp .env.example .env
+          php artisan key:generate --force --no-interaction
+          php artisan migrate --path=database/migrations/2026_11_09_000002_create_portal_identity_foundation.php --force --no-interaction
+          php artisan migrate --path=database/migrations/2026_11_10_000004_add_org_revision_to_portal_sessions.php --force --no-interaction
+          php artisan migrate --path=database/migrations/2026_11_10_000008_add_session_purpose_to_portal_auth_sessions.php --force --no-interaction
+      - name: Install restricted SQL function roles and V7 synthetic consent ledger
+        working-directory: portal-f832-reference/apps/portal
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE portal_f76_reader LOGIN PASSWORD 'ci-f76-unused-reader' NOSUPERUSER NOCREATEROLE NOCREATEDB NOINHERIT NOBYPASSRLS"
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE portal_v7_lab_reader LOGIN PASSWORD 'ci-f831-reader-only' NOSUPERUSER NOCREATEROLE NOCREATEDB NOINHERIT NOBYPASSRLS"
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE portal_v7_lab_unpriv LOGIN PASSWORD 'ci-f831-unpriv-only' NOSUPERUSER NOCREATEROLE NOCREATEDB NOINHERIT NOBYPASSRLS"
+          psql -v ON_ERROR_STOP=1 -c "GRANT CONNECT ON DATABASE portal_identity_lab TO portal_f76_reader,portal_v7_lab_reader,portal_v7_lab_unpriv"
+          psql -v ON_ERROR_STOP=1 -c "GRANT USAGE ON SCHEMA public TO portal_f76_reader,portal_v7_lab_reader,portal_v7_lab_unpriv"
+          psql -v ON_ERROR_STOP=1 -f labs/identity-f76/permission_gate.sql
+          psql -v ON_ERROR_STOP=1 -f labs/performance-v7-pg18/portal_v7_agreement_preflight.sql
+          psql -v ON_ERROR_STOP=1 -f labs/performance-v7-pg18/portal_v7_express_consent_events.sql
+          psql -v ON_ERROR_STOP=1 -f labs/performance-v7-pg18/portal_v7_terms_presentation_receipt.sql
+      - name: Run pinned Portal F832 terms presentation + receipt-backed acceptance E2E
+        working-directory: portal-f832-reference/apps/portal
+        run: |
+          php -l labs/performance-v7-pg18/test_portal_v7_pg18_identity_agreement.php
+          php -l labs/performance-v7-pg18/test_portal_v7_express_consent_pg18.php
+          php -l labs/performance-v7-pg18/test_portal_v7_terms_presentation_receipt.php
+          php labs/performance-v7-pg18/test_portal_v7_pg18_identity_agreement.php
+          test -s /tmp/portal-f829-signed-plan-ci.json
+      - name: Independent Performance HMAC and PG18 receipt chronicle after session logout
+        run: |
+          php -l tests/perf_portal_f832_terms_receipt_crossrepo_test.php
+          php tests/perf_portal_f832_terms_receipt_crossrepo_test.php
