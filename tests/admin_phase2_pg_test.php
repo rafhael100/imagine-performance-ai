@@ -52,4 +52,15 @@ $lock->execute(['portal_service/company_alfa/request_locked_001']);
 $deny(fn()=>$second->receive($env('nonce_lock_00001','request_locked_001'),'{}',$now,$resolve,$read));
 $owner->rollBack();
 $ok($second->receive($env('nonce_lock_00001','request_locked_001'),'{}',$now,$resolve,$read)['billable']===false);
+// Fresh time and authority after lock/read; rejection rolls back nonce and receipt.
+$clockNow=$now;
+$timed=new Inbox($connect('admin_phase2_inbox',$inboxPass),function()use(&$clockNow){return $clockNow;});
+$deny(function()use($timed,$env,$now,$resolve,&$clockNow){return $timed->receive($env('nonce_expire_001','request_expire_001'),'{}',$now,$resolve,function()use(&$clockNow,$now){$clockNow=$now+61;return ['status'=>'synthetic'];});});
+$clockNow=$now;
+$ok($timed->receive($env('nonce_expire_001','request_expire_001'),'{}',$now,$resolve,$read)['billable']===false);
+$deny(function()use($timed,$env,$now,$resolve,&$active){return $timed->receive($env('nonce_revoke_001','request_revoke_001'),'{}',$now,$resolve,function()use(&$active){$active=false;return ['status'=>'synthetic'];});});
+$active=true;
+$ok($timed->receive($env('nonce_revoke_001','request_revoke_001'),'{}',$now,$resolve,$read)['billable']===false);
+$deny(fn()=>$timed->receive($env('nonce_large_0001','request_large_001'),'{}',$now,$resolve,fn()=>['payload'=>str_repeat('x',65537)]));
+$ok($timed->receive($env('nonce_large_0001','request_large_001'),'{}',$now,$resolve,$read)['billable']===false);
 echo "OK: $n PG18 RLS/revocation/audit/persistent inbox assertions, two native identities; no deploy\n";
