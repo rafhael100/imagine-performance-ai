@@ -1,5 +1,27 @@
 name: imagine-performance-private-admin
 services:
+  database:
+    image: ${PERFORMANCE_PG_IMAGE:?reviewed immutable PostgreSQL image required}
+    environment:
+      POSTGRES_DB: performance_private
+      POSTGRES_USER: performance_migrator
+      POSTGRES_PASSWORD_FILE: /run/pg-private/bootstrap-password
+    command: ['postgres','-c','ssl=on','-c','ssl_cert_file=/run/pg-tls/server.pem','-c','ssl_key_file=/run/pg-tls/server.key','-c','hba_file=/run/pg-private/pg_hba.conf']
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ${PERFORMANCE_PG_PRIVATE_DIR:?private PG bootstrap material required}:/run/pg-private:ro
+      - ${PERFORMANCE_PG_TLS_DIR:?own PG TLS material required}:/run/pg-tls:ro
+    networks: [storage]
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 128
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ['CMD-SHELL','pg_isready -U performance_migrator -d performance_private']
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    logging: {driver: json-file, options: {max-size: 5m, max-file: '3'}}
   receiver:
     build:
       context: ../..
@@ -36,8 +58,10 @@ services:
     read_only: true
     tmpfs: ['/tmp:size=16m,mode=1777','/var/cache/nginx:size=16m']
     logging: {driver: json-file, options: {max-size: 5m, max-file: '3'}}
+volumes:
+  pgdata:
 networks:
   ingress: {internal: true}
   storage: {internal: true}
 # No host ports, shared/external networks, Docker socket, public ingress or auto-migrations.
-# Own PostgreSQL/TLS deployment must be reviewed separately; no reuse of product DBs.
+# PostgreSQL18 volume layout; operator must pin/review matching major and TLS/role bootstrap. No shared product DBs.

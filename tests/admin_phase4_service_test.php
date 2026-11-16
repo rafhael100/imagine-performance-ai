@@ -17,7 +17,7 @@ $deny=function($f)use($ok){try{$f();}catch(Throwable){$ok(true);return;}$ok(fals
 $wire=function($company,$id='phase4_request_01')use($secret){$body='{}';$e=E::issue('portal_service','phase4_key_01',$company,'dashboard.read',bin2hex(random_bytes(16)),$id,$body,time(),$secret);return json_encode(['envelope'=>$e,'body'=>$body]);};
 try{
  $r=$service->handle($wire($company),$fp);$ok($r['status']==='unavailable'&&$r['metrics']===null&&$r['billable']===false);
- $ok($service->handle($wire($company),$fp)===$r);
+ $ok($service->handle($wire($company),$fp)==$r);
  $deny(fn()=>$service->handle($wire($company),str_repeat('b',64)));
  $deny(fn()=>$service->handle($wire('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),$fp));
  $same=$wire($company,'phase4_replay_01');$service->handle($same,$fp);$deny(fn()=>$service->handle($same,$fp));

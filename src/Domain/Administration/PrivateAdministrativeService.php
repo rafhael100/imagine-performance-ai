@@ -10,7 +10,7 @@ final class PrivateAdministrativeService {
   if(strlen($wire)>16384||!preg_match('/\A[a-f0-9]{64}\z/D',$certificate))throw new RuntimeException('Private request denied');
   $request=json_decode($wire,true,16,JSON_THROW_ON_ERROR);$e=$request['envelope']??null;
   if(!is_array($e))throw new RuntimeException('Private request denied');
-  $profile=$this->db->query("SELECT rolsuper OR rolbypassrls OR rolcreatedb OR rolcreaterole OR rolreplication AS unsafe FROM pg_roles WHERE rolname=current_user")->fetch(PDO::FETCH_ASSOC);
+  $profile=$this->db->query("SELECT r.rolsuper OR r.rolbypassrls OR r.rolcreatedb OR r.rolcreaterole OR r.rolreplication OR bool_or(pg_has_role(current_user,c.relowner,'MEMBER')) OR bool_or(has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE')) AS unsafe FROM pg_roles r CROSS JOIN pg_class c WHERE r.rolname=current_user AND c.oid IN ('performance_admin_inbox.principals'::regclass,'performance_admin_inbox.service_delegations'::regclass) GROUP BY r.oid,r.rolsuper,r.rolbypassrls,r.rolcreatedb,r.rolcreaterole,r.rolreplication")->fetch(PDO::FETCH_ASSOC);
   if(!$profile||$profile['unsafe'])throw new RuntimeException('Unsafe runtime role');
   $lookup=function($issuer,$key,$company,$op)use($certificate){
    $s=$this->db->prepare('SELECT revision,expires_epoch FROM performance_admin_inbox.resolve_delegation(?,?,?,?,?)');$s->execute([$issuer,$key,$certificate,$company,$op]);return $s->fetch(PDO::FETCH_ASSOC)?:null;
