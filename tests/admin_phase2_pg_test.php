@@ -78,6 +78,8 @@ $peer='human_session';$deny(fn()=>$receiver->receive($wire('nonce_receiver03'),$
 $lease=null;$deny(fn()=>$receiver->receive($wire('nonce_receiver04'),$now));$lease=str_repeat('a',64);
 $deny(fn()=>$receiver->receive(str_repeat('x',16385),$now));
 $ok(count($events)===2);
+// A new delegation revision cannot reuse the previous delegation's cached receipt.
+$lease=str_repeat('b',64);$deny(fn()=>$receiver->receive($wire('nonce_newlease01'),$now));$lease=str_repeat('a',64);
 // Native service-login RLS protects cached receipts independently of PHP scope checks.
 $owner->exec("INSERT INTO performance_admin_inbox.receipts(issuer,company_id,idempotency_key,request_digest,response,correlation_id) VALUES('portal_service','company_beta','beta_request001',repeat('a',64),'{\"status\":\"unavailable\"}','beta_request001')");
 $ok((int)$runtime->query("SELECT count(*) FROM performance_admin_inbox.receipts WHERE company_id='company_beta'")->fetchColumn()===0);

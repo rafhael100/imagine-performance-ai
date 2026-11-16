@@ -10,10 +10,11 @@ final class AdministrativeServiceInbox
  private \Closure $clock;
  public function __construct(private PDO $db, ?\Closure $clock=null){$this->clock=$clock??static fn():int=>time();}
  private function current(int $started):int{return max($started,($this->clock)());}
- public function receive(array $envelope,string $body,int $now,callable $resolve,callable $read):array
+ public function receive(array $envelope,string $body,int $now,callable $resolve,callable $read,?string $authorizationRevision=null):array
  {
   $e=AdministrativeServiceEnvelope::verify($envelope,$body,$this->current($now),$resolve);
-  $digest=hash('sha256',$e['version']."\n".$e['operation']."\n".$e['body_sha256']);
+  if($authorizationRevision!==null&&!preg_match('/\A[a-f0-9]{64}\z/D',$authorizationRevision))throw new RuntimeException('Invalid authorization revision');
+  $digest=hash('sha256',$e['version']."\n".$e['operation']."\n".$e['body_sha256'].($authorizationRevision===null?'':"\n".$authorizationRevision));
   if($this->db->inTransaction())throw new RuntimeException('Inbox requires own transaction');
   $this->db->beginTransaction();
   try {
