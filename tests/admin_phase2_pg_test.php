@@ -10,6 +10,7 @@ $connect=fn($u,$p)=>new PDO(getenv('ADMIN_PG_DSN'),$u,$p,[PDO::ATTR_ERRMODE=>PDO
 $owner=$connect('postgres','postgres');
 $owner->exec(file_get_contents(__DIR__.'/../contracts/admin/phase2/001-access-candidate.sql'));
 $owner->exec(file_get_contents(__DIR__.'/../contracts/admin/phase2/002-service-inbox.sql'));
+$owner->exec(file_get_contents(__DIR__.'/../contracts/admin/phase2/003-service-inbox-native-rls.sql'));
 $a='11111111-1111-4111-8111-111111111111';$b='22222222-2222-4222-8222-222222222222';
 foreach(['alfa'=>$a,'beta'=>$b] as $name=>$company){
  $pass=bin2hex(random_bytes(24));$role='admin_phase2_'.$name;
@@ -34,7 +35,7 @@ $resolve=function()use(&$active,$now,$secret){return ['active'=>$active,'secret'
 $env=fn($nonce,$key='request_unique_001',$body='{}')=>E::issue('portal_service','service_key_01','company_alfa','dashboard.read',$nonce,$key,$body,$now,$secret);
 $calls=0;$read=function()use(&$calls){$calls++;return ['status'=>'synthetic','metrics'=>null];};
 $inboxPass=bin2hex(random_bytes(24));
-$owner->exec("CREATE ROLE admin_phase2_inbox LOGIN PASSWORD '$inboxPass' NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE; GRANT USAGE ON SCHEMA performance_admin_inbox TO admin_phase2_inbox; GRANT SELECT,INSERT ON ALL TABLES IN SCHEMA performance_admin_inbox TO admin_phase2_inbox");
+$owner->exec("CREATE ROLE admin_phase2_inbox LOGIN PASSWORD '$inboxPass' NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE; GRANT USAGE ON SCHEMA performance_admin_inbox TO admin_phase2_inbox; GRANT SELECT,INSERT ON performance_admin_inbox.receipts,performance_admin_inbox.nonces TO admin_phase2_inbox; GRANT EXECUTE ON FUNCTION performance_admin_inbox.can_scope(text,text),performance_admin_inbox.can_nonce(text) TO admin_phase2_inbox; INSERT INTO performance_admin_inbox.principals VALUES('admin_phase2_inbox','portal_service','company_alfa',true,now()+interval '1 hour',NULL)");
 $runtime=$connect('admin_phase2_inbox',$inboxPass);
 $deny(fn()=>$runtime->exec('DELETE FROM performance_admin_inbox.nonces'));
 $deny(fn()=>$runtime->query('SELECT * FROM performance_admin_candidate.internal_users'));
@@ -77,4 +78,17 @@ $peer='human_session';$deny(fn()=>$receiver->receive($wire('nonce_receiver03'),$
 $lease=null;$deny(fn()=>$receiver->receive($wire('nonce_receiver04'),$now));$lease=str_repeat('a',64);
 $deny(fn()=>$receiver->receive(str_repeat('x',16385),$now));
 $ok(count($events)===2);
+// A new delegation revision cannot reuse the previous delegation's cached receipt.
+$lease=str_repeat('b',64);$deny(fn()=>$receiver->receive($wire('nonce_newlease01'),$now));$lease=str_repeat('a',64);
+// Native service-login RLS protects cached receipts independently of PHP scope checks.
+$owner->exec("INSERT INTO performance_admin_inbox.receipts(issuer,company_id,idempotency_key,request_digest,response,correlation_id) VALUES('portal_service','company_beta','beta_request001',repeat('a',64),'{\"status\":\"unavailable\"}','beta_request001')");
+$ok((int)$runtime->query("SELECT count(*) FROM performance_admin_inbox.receipts WHERE company_id='company_beta'")->fetchColumn()===0);
+$deny(fn()=>$runtime->query('SELECT * FROM performance_admin_inbox.principals'));
+$runtime->exec("SET app.tenant_id='company_beta'");
+$ok((int)$runtime->query("SELECT count(*) FROM performance_admin_inbox.receipts WHERE company_id='company_beta'")->fetchColumn()===0);
+$owner->exec("UPDATE performance_admin_inbox.principals SET revoked_at=now() WHERE database_login='admin_phase2_inbox'");
+$ok((int)$runtime->query('SELECT count(*) FROM performance_admin_inbox.receipts')->fetchColumn()===0);
+$deny(fn()=>$timed->receive($env('nonce_rls_revoke1','request_rls_rev1'),'{}',$now,$resolve,$read));
+$ok((int)$owner->query('SELECT count(*) FROM performance_admin_inbox.principal_events')->fetchColumn()===2);
+$deny(fn()=>$owner->exec('DELETE FROM performance_admin_inbox.principal_events'));
 echo "OK: $n PG18 RLS/revocation/audit/persistent inbox assertions, two native identities; no deploy\n";

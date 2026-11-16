@@ -36,6 +36,6 @@ final class AdministrativeReadReceiver
   };
   // Record intent before DB commit; failure prevents execution. No raw request/key/metrics in audit.
   ($this->audit)('read_attempt',$envelope['company_id'],$envelope['operation'],$envelope['correlation_id']);
-  return $this->inbox->receive($envelope,$body,$now,$resolve,$read);
+  return $this->inbox->receive($envelope,$body,$now,$resolve,$read,$lease);
  }
 }
