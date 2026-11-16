@@ -3,7 +3,7 @@
 CREATE SCHEMA performance_admin_candidate;
 REVOKE ALL ON SCHEMA performance_admin_candidate FROM PUBLIC;
 CREATE TABLE performance_admin_candidate.companies (
- id uuid PRIMARY KEY, portal_company_id uuid NOT NULL UNIQUE,
+ id uuid PRIMARY KEY, portal_organization_ref varchar(100) NOT NULL UNIQUE CHECK(portal_organization_ref ~ '^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,99}$'),
  contract_status text NOT NULL CHECK(contract_status IN ('active','suspended','cancelled')),
  operational_status text NOT NULL CHECK(operational_status IN ('enabled','blocked'))
 );
