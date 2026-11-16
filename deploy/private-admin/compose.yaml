@@ -1,0 +1,43 @@
+name: imagine-performance-private-admin
+services:
+  receiver:
+    build:
+      context: ../..
+      dockerfile: deploy/private-admin/Dockerfile
+      args:
+        PHP_IMAGE: ${PERFORMANCE_PHP_IMAGE:?reviewed immutable PHP image required}
+    environment:
+      APP_ENV: staging
+      PERFORMANCE_PRIVATE_READ_ENABLED: '0'
+      PERFORMANCE_PRIVATE_PG_DSN: ${PERFORMANCE_PG_DSN:?private verify-full DSN required}
+      PERFORMANCE_PRIVATE_PG_USER: performance_reader
+      PERFORMANCE_PRIVATE_PG_PASSWORD_FILE: /run/private/db-password
+      PERFORMANCE_PRIVATE_KEYRING_FILE: /run/private/service-keyring.json
+    volumes:
+      - ${PERFORMANCE_PRIVATE_MATERIAL_DIR:?private material required}:/run/private:ro
+    networks: [ingress, storage]
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 64
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ['/tmp:size=16m,mode=1777']
+    logging: {driver: json-file, options: {max-size: 5m, max-file: '3'}}
+  proxy:
+    image: ${PERFORMANCE_NGINX_IMAGE:?reviewed immutable nginx image required}
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${PERFORMANCE_TLS_DIR:?TLS material and CRL required}:/run/tls:ro
+    networks: [ingress]
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 64
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ['/tmp:size=16m,mode=1777','/var/cache/nginx:size=16m']
+    logging: {driver: json-file, options: {max-size: 5m, max-file: '3'}}
+networks:
+  ingress: {internal: true}
+  storage: {internal: true}
+# No host ports, shared/external networks, Docker socket, public ingress or auto-migrations.
+# Own PostgreSQL/TLS deployment must be reviewed separately; no reuse of product DBs.
