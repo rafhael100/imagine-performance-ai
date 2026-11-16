@@ -32,3 +32,4 @@ jobs:
         run: |
           php -l deploy/private-admin/read.php
           php tests/admin_phase4_service_test.php
+          php tests/admin_phase4_ads_connector_test.php
