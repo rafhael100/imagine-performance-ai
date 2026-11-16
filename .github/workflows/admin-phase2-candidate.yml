@@ -1,0 +1,67 @@
+name: ADMIN phase2 isolated contracts and PG18 candidate
+on:
+  pull_request:
+    paths: ['src/Domain/Administration/**','contracts/admin/phase2/**','tests/admin_phase2*','.github/workflows/admin-phase2-candidate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts-and-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: admin_phase2_ci
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres -d admin_phase2_ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          coverage: none
+      - run: php tests/admin_phase2_contract_test.php
+      - run: php tests/admin_phase2_pg_test.php
+        env:
+          ADMIN_PHASE2_PG_CI: '1'
+          ADMIN_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=admin_phase2_ci'
+      - name: Encrypt dump, verify integrity and restore into separate disposable database
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          umask 077
+          openssl rand -hex 32 > "$RUNNER_TEMP/admin-backup-password"
+          integrity_key="$(openssl rand -hex 32)"
+          docker exec "$PG_CONTAINER" pg_dump -U postgres -d admin_phase2_ci -Fc \
+            | openssl enc -aes-256-cbc -pbkdf2 -salt -pass file:"$RUNNER_TEMP/admin-backup-password" \
+              -out "$RUNNER_TEMP/admin-backup.enc"
+          before="$(openssl dgst -sha256 -mac HMAC -macopt "key:$integrity_key" "$RUNNER_TEMP/admin-backup.enc")"
+          cp "$RUNNER_TEMP/admin-backup.enc" "$RUNNER_TEMP/admin-backup-tampered.enc"
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import os
+          p=Path(os.environ['RUNNER_TEMP'])/'admin-backup-tampered.enc'
+          b=bytearray(p.read_bytes());b[-1]^=1;p.write_bytes(b)
+          PYCODE
+          tampered="$(openssl dgst -sha256 -mac HMAC -macopt "key:$integrity_key" "$RUNNER_TEMP/admin-backup-tampered.enc" | awk '{print $NF}')"
+          test "${before##* }" != "$tampered"
+          after="$(openssl dgst -sha256 -mac HMAC -macopt "key:$integrity_key" "$RUNNER_TEMP/admin-backup.enc")"
+          test "$before" = "$after"
+          docker exec "$PG_CONTAINER" createdb -U postgres admin_phase2_restored_ci
+          openssl enc -d -aes-256-cbc -pbkdf2 -pass file:"$RUNNER_TEMP/admin-backup-password" \
+              -in "$RUNNER_TEMP/admin-backup.enc" \
+            | docker exec -i "$PG_CONTAINER" pg_restore -U postgres -d admin_phase2_restored_ci --exit-on-error
+      - run: php tests/admin_phase2_restore_test.php
+        env:
+          ADMIN_PHASE2_PG_CI: '1'
+          ADMIN_PG_DSN: 'pgsql:host=127.0.0.1;port=5432;dbname=admin_phase2_restored_ci'
+      - name: Remove disposable encrypted backup and key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/admin-backup-tampered.enc" "$RUNNER_TEMP/admin-backup.enc" "$RUNNER_TEMP/admin-backup-password"
