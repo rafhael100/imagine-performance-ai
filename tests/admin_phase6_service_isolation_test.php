@@ -14,9 +14,11 @@ $ok=function($v)use(&$n){if(!$v)throw new RuntimeException('Phase6 isolation ass
 $deny=function($f)use($ok){try{$f();}catch(Throwable){$ok(true);return;}$ok(false);};
 $resolve=function()use($db,$company,$fp,$secret){$s=$db->prepare('SELECT * FROM performance_admin_inbox.resolve_delegation(?,?,?,?,?)');$s->execute(['phase6_portal','phase6_key_01',$fp,$company,'dashboard.read']);return $s->fetch()?['secret'=>$secret,'active'=>true,'expires_at'=>time()+60,'companies'=>[$company],'operations'=>['dashboard.read']]:null;};
 $wire=fn()=>E::issue('phase6_portal','phase6_key_01',$company,'dashboard.read',bin2hex(random_bytes(16)),bin2hex(random_bytes(16)),'{}',time(),$secret);
-$db->exec("SET default_transaction_isolation='repeatable read'");$deny(fn()=>$i->receive($wire(),'{}',time(),$resolve,function()use(&$calls){$calls++;return [];}));$ok($calls===0);
+$ordinary=function()use(&$calls){$calls++;return [];};
+$revoke=function()use($owner,&$calls){$calls++;$owner->exec("UPDATE performance_admin_inbox.service_delegations SET active=false,revoked_at=clock_timestamp() WHERE database_login='phase6_reader'");return ['status'=>'synthetic'];};
+$db->exec("SET default_transaction_isolation='repeatable read'");$deny(fn()=>$i->receive($wire(),'{}',time(),$resolve,$ordinary));$ok($calls===0);
 $db->exec("SET default_transaction_isolation='read committed'");$db->beginTransaction();$deny(fn()=>$i->receive($wire(),'{}',time(),$resolve,fn()=>[]));$db->rollBack();
-$deny(fn()=>$i->receive($wire(),'{}',time(),$resolve,function()use($owner,&$calls){$calls++;$owner->exec("UPDATE performance_admin_inbox.service_delegations SET active=false,revoked_at=clock_timestamp() WHERE database_login='phase6_reader'");return ['status'=>'synthetic'];}));
+$deny(fn()=>$i->receive($wire(),'{}',time(),$resolve,$revoke));
 $ok($calls===1);$ok((int)$owner->query("SELECT count(*) FROM performance_admin_inbox.receipts WHERE issuer='phase6_portal'")->fetchColumn()===0);
 foreach(['TRUNCATE','UPDATE','DELETE'] as $priv){
  $owner->exec("GRANT $priv ON performance_admin_inbox.receipts TO phase6_reader");
