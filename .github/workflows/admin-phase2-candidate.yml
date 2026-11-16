@@ -1,7 +1,7 @@
 name: ADMIN phase2 isolated contracts and PG18 candidate
 on:
   pull_request:
-    paths: ['src/Domain/Administration/**','contracts/admin/phase2/**','tests/admin_phase2*','.github/workflows/admin-phase2-candidate.yml']
+    paths: ['src/Domain/Administration/**','contracts/admin/phase2/**','tests/admin_phase2*','tests/admin_phase3*','.github/workflows/admin-phase2-candidate.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,6 +26,7 @@ jobs:
           php-version: '8.4'
           extensions: pdo_pgsql
           coverage: none
+      - run: php tests/admin_phase3_read_plan_test.php
       - run: php tests/admin_phase2_contract_test.php
       - run: php tests/admin_phase2_pg_test.php
         env:
