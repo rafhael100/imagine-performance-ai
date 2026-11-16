@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__.'/../src/Domain/Administration/AdministrativeServiceEnvelope.php';
 require __DIR__.'/../src/Domain/Administration/AdministrativeServiceInbox.php';
+require __DIR__.'/../src/Domain/Administration/AdministrativeReadReceiver.php';
 use Imagine\Performance\Administration\AdministrativeServiceEnvelope as E;
 use Imagine\Performance\Administration\AdministrativeServiceInbox as Inbox;
 if(getenv('CI')!=='true'||getenv('ADMIN_PHASE2_PG_CI')!=='1')throw new RuntimeException('Disposable CI only');
@@ -63,4 +64,17 @@ $active=true;
 $ok($timed->receive($env('nonce_revoke_001','request_revoke_001'),'{}',$now,$resolve,$read)['billable']===false);
 $deny(fn()=>$timed->receive($env('nonce_large_0001','request_large_001'),'{}',$now,$resolve,fn()=>['payload'=>str_repeat('x',65537)]));
 $ok($timed->receive($env('nonce_large_0001','request_large_001'),'{}',$now,$resolve,$read)['billable']===false);
+// Receiver uses server transport identity plus a live delegation lease, never a human token.
+$peer='portal_service';$lease=str_repeat('a',64);$events=[];
+$receiver=new \Imagine\Performance\Administration\AdministrativeReadReceiver($timed,
+ function()use(&$peer){return $peer;},$resolve,
+ function()use(&$lease){return $lease;},fn()=>['status'=>'unavailable','metrics'=>null],
+ function(...$event)use(&$events){$events[]=$event;});
+$wire=fn($nonce)=>json_encode(['envelope'=>$env($nonce,'request_receiver1'),'body'=>'{}'],JSON_THROW_ON_ERROR);
+$ok($receiver->receive($wire('nonce_receiver01'),$now)['company_id']==='company_alfa');
+$ok($receiver->receive($wire('nonce_receiver02'),$now)['metrics']===null);
+$peer='human_session';$deny(fn()=>$receiver->receive($wire('nonce_receiver03'),$now));$peer='portal_service';
+$lease=null;$deny(fn()=>$receiver->receive($wire('nonce_receiver04'),$now));$lease=str_repeat('a',64);
+$deny(fn()=>$receiver->receive(str_repeat('x',16385),$now));
+$ok(count($events)===2);
 echo "OK: $n PG18 RLS/revocation/audit/persistent inbox assertions, two native identities; no deploy\n";
