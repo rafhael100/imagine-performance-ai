@@ -7,7 +7,7 @@ use Imagine\Performance\Administration\AdministrativeServiceInbox as Inbox;
 if(getenv('CI')!=='true'||getenv('ADMIN_PHASE2_PG_CI')!=='1')throw new RuntimeException('Disposable CI only');
 $db=new PDO(getenv('ADMIN_PG_DSN'),'postgres','postgres',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
 if((int)$db->query('SELECT count(*) FROM performance_admin_candidate.grant_audit')->fetchColumn()!==4)throw new RuntimeException('Restored audit missing');
-if((int)$db->query('SELECT count(*) FROM performance_admin_inbox.receipts')->fetchColumn()!==3)throw new RuntimeException('Restored durable receipts missing');
+if((int)$db->query('SELECT count(*) FROM performance_admin_inbox.receipts')->fetchColumn()!==6)throw new RuntimeException('Restored durable receipts missing');
 $now=time();$secret=random_bytes(48);
 $resolve=fn()=>['active'=>true,'secret'=>$secret,'expires_at'=>$now+120,'companies'=>['company_alfa'],'operations'=>E::OPERATIONS];
 $env=E::issue('portal_service','service_key_01','company_alfa','dashboard.read','nonce_unique_001','request_unique_001','{}',$now,$secret);
