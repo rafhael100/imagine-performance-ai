@@ -20,8 +20,12 @@ final class AdministrativeAdsReadConnector {
    if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    if(!is_array($page['rows']??null)||count($page['rows'])>10000)throw new RuntimeException('Provider rows denied');
    foreach($page['rows'] as $r){
+    $date=$r['date']??null;
+    if(!is_string($date)||!preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D',$date)
+     ||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4))
+     ||$date<$from||$date>$until)throw new RuntimeException('Provider report date denied');
     if(($r['account_id']??null)!==$account||!is_string($r['campaign_id']??null)||!preg_match('/\A[0-9]{1,32}\z/D',$r['campaign_id'])
-     ||!preg_match('/\A[A-Z]{3}\z/D',$r['currency']??'')||($r['date']??'')<$from||($r['date']??'')>$until)throw new RuntimeException('Provider scope denied');
+     ||!preg_match('/\A[A-Z]{3}\z/D',$r['currency']??''))throw new RuntimeException('Provider scope denied');
     if($currency!==null&&$currency!==$r['currency'])throw new RuntimeException('Mixed currency denied');$currency=$r['currency'];
     $cost=$r['spend']??null;
     if($cost!==null){
@@ -29,7 +33,7 @@ final class AdministrativeAdsReadConnector {
      if($provider==='google_ads'){$cost=str_pad($cost,7,'0',STR_PAD_LEFT);$cost=substr($cost,0,-6).'.'.substr($cost,-6);}
     }
     foreach(['impressions','clicks'] as $metric)if(isset($r[$metric])&&(!is_string($r[$metric])||!preg_match('/\A[0-9]{1,24}\z/D',$r[$metric])))throw new RuntimeException('Integer metric string required');
-    $rows[]=['account_id'=>$account,'campaign_id'=>$r['campaign_id'],'currency'=>$currency,'date'=>$r['date'],'spend'=>$cost,'impressions'=>$r['impressions']??null,'clicks'=>$r['clicks']??null];
+    $rows[]=['account_id'=>$account,'campaign_id'=>$r['campaign_id'],'currency'=>$currency,'date'=>$date,'spend'=>$cost,'impressions'=>$r['impressions']??null,'clicks'=>$r['clicks']??null];
     if(count($rows)>20000)throw new RuntimeException('Total rows exceeded');
    }
    $cursor=$page['next_cursor']??null;

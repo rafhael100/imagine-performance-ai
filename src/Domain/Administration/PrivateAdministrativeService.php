@@ -11,7 +11,27 @@ final class PrivateAdministrativeService {
   if(strlen($wire)>16384||!preg_match('/\A[a-f0-9]{64}\z/D',$certificate))throw new RuntimeException('Private request denied');
   $request=json_decode($wire,true,16,JSON_THROW_ON_ERROR);$e=$request['envelope']??null;
   if(!is_array($e))throw new RuntimeException('Private request denied');
-  $profile=$this->db->query("SELECT r.rolsuper OR r.rolbypassrls OR r.rolcreatedb OR r.rolcreaterole OR r.rolreplication OR bool_or(pg_has_role(current_user,c.relowner,'MEMBER')) OR bool_or(CASE WHEN c.relname IN ('principals','service_delegations') THEN has_table_privilege(current_user,c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE') OR has_any_column_privilege(current_user,c.oid,'INSERT,UPDATE') ELSE false END) OR bool_or(CASE WHEN c.relname IN ('receipts','nonces','request_audit') THEN has_table_privilege(current_user,c.oid,'UPDATE,DELETE,TRUNCATE') OR has_any_column_privilege(current_user,c.oid,'UPDATE') ELSE false END) OR bool_or(CASE WHEN c.relname='request_audit' THEN has_table_privilege(current_user,c.oid,'SELECT') ELSE false END) OR bool_or(CASE WHEN c.relname IN ('receipts','nonces','request_audit') THEN NOT(c.relrowsecurity AND c.relforcerowsecurity) ELSE false END) AS unsafe FROM pg_roles r CROSS JOIN pg_class c WHERE r.rolname=current_user AND c.oid IN ('performance_admin_inbox.principals'::regclass,'performance_admin_inbox.service_delegations'::regclass,'performance_admin_inbox.receipts'::regclass,'performance_admin_inbox.nonces'::regclass,'performance_admin_inbox.request_audit'::regclass) GROUP BY r.oid,r.rolsuper,r.rolbypassrls,r.rolcreatedb,r.rolcreaterole,r.rolreplication")->fetch(PDO::FETCH_ASSOC);
+  $profile=$this->db->query(<<<'SQL'
+SELECT r.rolsuper OR r.rolbypassrls OR r.rolcreatedb OR r.rolcreaterole OR r.rolreplication
+ OR bool_or(pg_has_role(current_user,c.relowner,'MEMBER'))
+ OR bool_or(CASE WHEN c.relname IN ('principals','service_delegations','principal_events')
+   THEN has_table_privilege(current_user,c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+     OR has_any_column_privilege(current_user,c.oid,'SELECT,INSERT,UPDATE,REFERENCES') ELSE false END)
+ OR bool_or(CASE WHEN c.relname IN ('receipts','nonces','request_audit')
+   THEN has_table_privilege(current_user,c.oid,'UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+     OR has_any_column_privilege(current_user,c.oid,'UPDATE,REFERENCES') ELSE false END)
+ OR bool_or(CASE WHEN c.relname='request_audit'
+   THEN has_table_privilege(current_user,c.oid,'SELECT')
+     OR has_any_column_privilege(current_user,c.oid,'SELECT') ELSE false END)
+ OR bool_or(CASE WHEN c.relname IN ('receipts','nonces','request_audit')
+   THEN NOT(c.relrowsecurity AND c.relforcerowsecurity) ELSE false END) AS unsafe
+FROM pg_roles r CROSS JOIN pg_class c
+WHERE r.rolname=current_user AND c.oid IN (
+ 'performance_admin_inbox.principals'::regclass,'performance_admin_inbox.service_delegations'::regclass,
+ 'performance_admin_inbox.principal_events'::regclass,'performance_admin_inbox.receipts'::regclass,
+ 'performance_admin_inbox.nonces'::regclass,'performance_admin_inbox.request_audit'::regclass)
+GROUP BY r.oid,r.rolsuper,r.rolbypassrls,r.rolcreatedb,r.rolcreaterole,r.rolreplication
+SQL)->fetch(PDO::FETCH_ASSOC);
   if(!$profile||$profile['unsafe'])throw new RuntimeException('Unsafe runtime role');
   $lookup=function($issuer,$key,$company,$op)use($certificate){
    $s=$this->db->prepare('SELECT revision,expires_epoch FROM performance_admin_inbox.resolve_delegation(?,?,?,?,?)');$s->execute([$issuer,$key,$certificate,$company,$op]);return $s->fetch(PDO::FETCH_ASSOC)?:null;

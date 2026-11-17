@@ -1,7 +1,7 @@
 name: ADMIN Phase6 reviewed private transport readiness
 on:
   push:
-    branches: ['fix/admin-phase6-private-postgres-policy-2026-11-16']
+    branches: ['fix/admin-phase6-private-postgres-policy-2026-11-16', 'feat/admin-phase7-read-flow-2026-11-17']
 permissions:
   contents: read
 jobs:
@@ -34,4 +34,5 @@ jobs:
           php tests/admin_phase6_postgres_policy_test.php
           php tests/admin_phase4_service_test.php
           php tests/admin_phase6_service_isolation_test.php
+          php tests/admin_phase7_runtime_privileges_test.php
           php tests/admin_phase4_ads_connector_test.php
