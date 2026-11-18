@@ -18,6 +18,10 @@ final class AdministrativeAdsReadHttpTransport
     private const MAX_HEADER_BYTES = 32768;
     private readonly array $reportPlan;
     private readonly array $accountPlan;
+    private readonly string $credentialMacKey;
+    private ?string $pinnedCredential = null;
+    private ?string $pinnedLease = null;
+    private ?int $readStartedNs = null;
 
     public function __construct(
         private readonly string $company,
@@ -28,15 +32,18 @@ final class AdministrativeAdsReadHttpTransport
         #[\SensitiveParameter] private readonly Closure $authorize,
         #[\SensitiveParameter] private readonly ?Closure $resolveCredential = null,
         private readonly int $connectTimeoutMs = 3000,
-        private readonly int $timeoutMs = 10000
+        private readonly int $timeoutMs = 10000,
+        private readonly int $readBudgetMs = 60000
     ) {
         if (!preg_match('/\A[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}\z/D', $company)
-            || $connectTimeoutMs < 100 || $timeoutMs < $connectTimeoutMs || $timeoutMs > 10000) {
+            || $connectTimeoutMs < 100 || $timeoutMs < $connectTimeoutMs || $timeoutMs > 10000
+            || $readBudgetMs < 100 || $readBudgetMs > 120000) {
             self::fail('request_denied');
         }
         try {
             $this->reportPlan = AdministrativeAdsReadPlan::prepare($provider, $account, $from, $until);
             $this->accountPlan = AdministrativeAdsReadPlan::prepareAccount($provider, $account);
+            $this->credentialMacKey = random_bytes(32);
         } catch (Throwable) {
             self::fail('request_denied');
         }
@@ -57,8 +64,11 @@ final class AdministrativeAdsReadHttpTransport
     /** Internal wire envelope only; callers must not log or expose its raw body. */
     public function __invoke(#[\SensitiveParameter] array $request): array
     {
+        $this->readStartedNs ??= hrtime(true);
+        $this->remainingReadBudgetMs();
         $this->validateRequest($request);
-        $lease = $this->currentLease();
+        $lease = $this->currentLease($this->pinnedLease);
+        $this->pinnedLease ??= $lease;
         if ($this->resolveCredential === null) self::fail('credentials_unavailable');
         try {
             $credential = ($this->resolveCredential)($this->company, $this->provider, $this->account, $lease);
@@ -68,6 +78,8 @@ final class AdministrativeAdsReadHttpTransport
         $this->currentLease($lease);
         if ($credential === null) self::fail('credentials_unavailable');
         $this->validateCredential($credential, $lease);
+        $this->pinCredential($credential);
+        $this->remainingReadBudgetMs();
         $headers = ['Accept: application/json', 'Accept-Encoding: identity',
             'Authorization: Bearer '.$credential['access_token']];
         if ($this->provider === 'google_ads') {
@@ -153,6 +165,31 @@ final class AdministrativeAdsReadHttpTransport
         if ($expiry <= time() + $reserve) self::fail('credentials_expired');
     }
 
+    /** Keep one native transport instance per report, without caching a bearer token. */
+    private function pinCredential(#[\SensitiveParameter] array $credential): void
+    {
+        $pin = hash_hmac('sha256', json_encode([
+            $credential['credential_ref'], $credential['access_token'],
+            $this->provider === 'google_ads' ? $credential['login_customer_id'] : null,
+        ], JSON_THROW_ON_ERROR), $this->credentialMacKey);
+        if ($this->pinnedCredential === null) {
+            $this->pinnedCredential = $pin;
+        } elseif (!hash_equals($this->pinnedCredential, $pin)) {
+            self::fail('credential_changed');
+        }
+    }
+
+    /** Global monotonic time budget includes callbacks and all pages. */
+    private function remainingReadBudgetMs(): int
+    {
+        if ($this->readStartedNs === null) self::fail('read_deadline_exceeded');
+        $elapsedNs = hrtime(true) - $this->readStartedNs;
+        if ($elapsedNs < 0) self::fail('read_deadline_exceeded');
+        $left = $this->readBudgetMs - intdiv($elapsedNs, 1000000);
+        if ($left <= 0) self::fail('read_deadline_exceeded');
+        return $left;
+    }
+
     private function perform(
         #[\SensitiveParameter] array $request,
         #[\SensitiveParameter] array $headers,
@@ -166,6 +203,7 @@ final class AdministrativeAdsReadHttpTransport
         $body = ''; $contentType = ''; $headerBytes = 0; $status = 0;
         $abort = null; $handle = null; $error = null; $ok = false; $errno = 0; $observedStatus = 0;
         $finalSeen = false; $seenHeaders = []; $contentLength = null; $chunked = false;
+        $remaining = $this->remainingReadBudgetMs();
         $writer = static function (#[\SensitiveParameter] CurlHandle $handle, #[\SensitiveParameter] string $chunk) use (&$body, &$abort): int {
             $length = strlen($chunk);
             if ($abort !== null) return 0;
@@ -228,7 +266,8 @@ final class AdministrativeAdsReadHttpTransport
                 CURLOPT_HTTPAUTH => CURLAUTH_NONE, CURLOPT_AUTOREFERER => false,
                 CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
-                CURLOPT_CONNECTTIMEOUT_MS => $this->connectTimeoutMs, CURLOPT_TIMEOUT_MS => $this->timeoutMs,
+                CURLOPT_CONNECTTIMEOUT_MS => min($this->connectTimeoutMs, $remaining),
+                CURLOPT_TIMEOUT_MS => min($this->timeoutMs, $remaining),
                 CURLOPT_NOSIGNAL => true, CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                 CURLOPT_FRESH_CONNECT => true, CURLOPT_FORBID_REUSE => true,
                 CURLOPT_RETURNTRANSFER => false, CURLOPT_HEADER => false, CURLOPT_VERBOSE => false,
@@ -249,6 +288,7 @@ final class AdministrativeAdsReadHttpTransport
             if (!curl_setopt_array($handle, $options)) self::fail('transport_unavailable');
             unset($options, $headers);
             $this->currentLease($lease); $this->checkExpiry($expiry, true);
+            $this->remainingReadBudgetMs();
             $ok = curl_exec($handle);
             $errno = curl_errno($handle);
             $observedStatus = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
@@ -261,6 +301,7 @@ final class AdministrativeAdsReadHttpTransport
             unset($handle, $headers, $writer, $headerReader);
         }
         $this->currentLease($lease); $this->checkExpiry($expiry, false);
+        $this->remainingReadBudgetMs();
         if ($error !== null) self::fail($error);
         if ($abort !== null) self::fail($abort, $status >= 100 ? $status : null);
         if ($ok !== true || $errno !== 0) {

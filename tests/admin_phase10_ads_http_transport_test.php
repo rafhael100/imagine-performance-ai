@@ -82,13 +82,14 @@ function httpTransport(
     #[\SensitiveParameter] ?Closure $authorize = null,
     #[\SensitiveParameter] ?Closure $resolver = null,
     int $connect = 500,
-    int $timeout = 2000
+    int $timeout = 2000,
+    int $readBudgetMs = 60000
 ): Transport {
     $authorize ??= static fn() => str_repeat('a', 64);
     $resolver ??= static fn(string $company, string $givenProvider, string $account, string $lease) => httpCredential($givenProvider, $lease);
     return new Transport(
         'company_alfa', $provider, httpAccount($provider), '2026-11-01', '2026-11-30',
-        $authorize, $resolver, $connect, $timeout
+        $authorize, $resolver, $connect, $timeout, $readBudgetMs
     );
 }
 function httpAdapter(string $provider, Transport $transport): Adapter
@@ -419,5 +420,84 @@ httpRuntimeDenied(
     'native connector company binding cannot be changed'
 );
 httpPeer($case, 0);
+
+
+/** Same lease and same ephemeral credential must cover account and every page. */
+foreach (['google_ads','meta_ads'] as $provider) {
+    foreach (['reference','token'] as $kind) {
+        $case = httpCase($provider.'-credential-switch-'.$kind,
+            [httpResponse(httpMetadata($provider))], [httpExpectation($provider,true)]);
+        $count = 0;
+        $resolver = static function(string $company,string $p,string $account,string $lease) use (&$count,$kind): array {
+            $c = httpCredential($p,$lease);
+            if (++$count === 2) {
+                if ($kind === 'reference') $c['credential_ref']='changed-reference';
+                else $c['access_token']='changedSyntheticBearer_321';
+            }
+            return $c;
+        };
+        httpFailure(fn()=>httpRead($provider,httpTransport($provider,null,$resolver)),
+            'credential_changed', $provider.' account/report '.$kind.' switch');
+        httpSame(2,$count,$provider.' credential resolver called for both requests');
+        httpPeer($case,1);
+    }
+    $case = httpCase($provider.'-expiry-extended', [
+        httpResponse(httpMetadata($provider)),httpResponse(httpReport($provider,1))
+    ],[httpExpectation($provider,true),httpExpectation($provider)]);
+    $n = 0;
+    $resolver = static function(string $company,string $p,string $account,string $lease) use (&$n):array {
+        $c=httpCredential($p,$lease);
+        $c['expires_at']=time()+(++$n===1?60:120);
+        return $c;
+    };
+    $r=httpRead($provider,httpTransport($provider,null,$resolver));
+    httpPeer($case,2);
+    httpSame(2,$n,$provider.' expiry extension permitted for same credential');
+    httpSame('unverified',$r['status'],$provider.' HTTP still not official');
+}
+
+$case=httpCase('google-manager-changed',
+    [httpResponse(httpMetadata('google_ads'))],[httpExpectation('google_ads',true)]);
+$n=0;
+$resolver=static function(string $company,string $p,string $account,string $lease)use(&$n):array {
+    $c=httpCredential($p,$lease);
+    if(++$n===2)$c['login_customer_id']=null;
+    return $c;
+};
+httpFailure(fn()=>httpRead('google_ads',httpTransport('google_ads',null,$resolver)),
+    'credential_changed','Google manager context changed');
+httpPeer($case,1);
+
+$case=httpCase('direct-authorization-lease-changed',
+    [httpResponse(httpMetadata('google_ads'))],[httpExpectation('google_ads',true)]);
+$leaseNow=str_repeat('a',64);
+$auth=static function()use(&$leaseNow):string{return $leaseNow;};
+$transport=httpTransport('google_ads',$auth);
+$transport($accountRequest);
+$leaseNow=str_repeat('b',64);
+httpFailure(fn()=>$transport(Plan::wireRequest(httpPlan('google_ads'))),
+    'authorization_revoked','direct client cannot switch original lease');
+httpPeer($case,1);
+
+$case=httpCase('deadline-in-credential-callback');
+$slow=static function(string $company,string $p,string $account,string $lease):array {
+    usleep(150000);return httpCredential($p,$lease);
+};
+httpFailure(fn()=>httpTransport('google_ads',null,$slow,500,2000,100)($accountRequest),
+    'read_deadline_exceeded','slow callback counts toward total budget');
+httpPeer($case,0);
+
+$case=httpCase('deadline-between-pages',
+    [httpResponse(httpMetadata('google_ads'))],[httpExpectation('google_ads',true)]);
+$transport=httpTransport('google_ads',null,null,500,2000,100);
+$transport($accountRequest);
+usleep(150000);
+httpFailure(fn()=>$transport(Plan::wireRequest(httpPlan('google_ads'))),
+    'read_deadline_exceeded','subsequent page cannot reset the budget');
+httpPeer($case,1);
+foreach([0,99,120001] as $badBudget) {
+    httpFailure(fn()=>httpTransport('google_ads',null,null,500,2000,$badBudget),
+        'request_denied','invalid read budget');
+}
 
 echo "OK: $assertions native HTTPS, TLS, credential custody, consent, bounded I/O and origin assertions; synthetic loopback peers only\n";

@@ -94,7 +94,8 @@ AdministrativeAdsReadHttpTransport::__construct(
     Closure $authorize,
     ?Closure $resolveCredential = null,
     int $connectTimeoutMs = 3000,
-    int $timeoutMs = 10000
+    int $timeoutMs = 10000,
+    int $readBudgetMs = 60000
 );
 ```
 
@@ -148,9 +149,13 @@ mesmo lease durante a sequência conta → páginas.
 
 Não há cache de credencial, aquisição/renovação OAuth, seleção de conta
 gerenciadora ou leitura de cofre nesta classe. O resolvedor é uma dependência de
-servidor ainda não ligada à operação. A resolução por pedido não prova uso do
-mesmo token ou `credential_ref` entre pedidos; essa identidade não é certificada
-pelo codec ou por compartilhar a callback.
+servidor ainda não ligada à operação. Um MAC em memória fixa a identidade de `credential_ref`, token bearer e
+`login_customer_id` (Google) desde o primeiro pedido da instância. Metadados
+e páginas precisam usar a mesma identidade; mudanças falham antes da próxima
+transmissão. A expiração pode ser prorrogada sem trocar a identidade. O token
+não é retido pelo mecanismo de pinagem nem seu hash bruto é divulgado.
+**Cada leitura cria uma instância nova de transporte.** Isso não autentica
+consentimento, titularidade nem origem oficial das contas ou tokens.
 
 ## Limites do HTTPS nativo
 
@@ -167,9 +172,12 @@ precisa fornecer uma cadeia de confiança válida; não há fallback para conex�
 sem verificação.
 
 `connectTimeoutMs` e `timeoutMs` ficam entre 100 e 10.000 ms, com conexão menor ou
-igual ao total. Os padrões são 3.000 e 10.000 ms. O total limita uma transferência
-libcurl; não é prazo global para todas as páginas nem para o tempo gasto nas
-callbacks de autorização/credencial. Antes de cada envio, `expires_at` precisa
+igual ao total. Os padrões são 3.000 e 10.000 ms. O timeout individual continua limitado a 10.000 ms. Um orçamento monotônico
+separado, por padrão 60.000 ms e configurável entre 100 e 120.000 ms,
+compreende callbacks de autorização/credenciais, metadados, páginas e transferências.
+Cada cURL usa o menor prazo disponível; ao expirar, a leitura falha sem liberar
+o corpo. Callbacks bloqueadas não são interrompidas imediatamente, mas o prazo
+é conferido assim que elas retornam. Antes de cada envio, `expires_at` precisa
 ser **maior** que `time() + ceil(timeoutMs / 1000)`; após a transferência precisa
 ser maior que `time()`. Credencial com reserva insuficiente é recusada.
 
