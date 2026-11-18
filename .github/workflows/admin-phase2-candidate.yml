@@ -1,11 +1,47 @@
 name: ADMIN phase2 isolated contracts and PG18 candidate
 on:
   pull_request:
-    paths: ['src/Domain/Administration/**','contracts/admin/phase2/**','tests/admin_phase2*','tests/admin_phase3*','.github/workflows/admin-phase2-candidate.yml']
+    paths: ['src/Domain/Administration/**','src/Domain/Commercial/ExactJsonNumberLexicalParser.php','contracts/admin/phase2/**','tests/admin_phase2*','tests/admin_phase3*','tests/admin_phase4_ads_connector_test.php','tests/admin_phase8_ads_wire_adapter_test.php','tests/chatgpt_ads_exact_wire_money_test.php','.github/workflows/admin-phase2-candidate.yml']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  ads-wire-protocol:
+    name: Ads read protocol PHP ${{ matrix.php }} without network
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Fetch official PHP image before isolated tests
+        run: docker pull "php:${{ matrix.php }}-cli"
+      - name: Provider wire, consent, pagination and legacy parser regressions
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --read-only \
+            --cap-drop=ALL --security-opt=no-new-privileges \
+            --user 65534:65534 \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/workspace,readonly" \
+            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --workdir /workspace \
+            "php:${{ matrix.php }}-cli" sh -ec '
+              php -l src/Domain/Administration/AdministrativeAdsWireFailure.php
+              php -l src/Domain/Administration/AdministrativeAdsReadWireAdapter.php
+              php -l src/Domain/Commercial/ExactJsonNumberLexicalParser.php
+              php tests/admin_phase3_read_plan_test.php
+              php tests/admin_phase4_ads_connector_test.php
+              php tests/admin_phase8_ads_wire_adapter_test.php
+              APP_ENV=testing \
+                PERF_ADS_READONLY_BOUNDARY_LAB=1 \
+                PERF_CHATGPT_AD_ACCOUNT_PREFLIGHT_LAB=1 \
+                PERF_CHATGPT_EXACT_WIRE_MONEY_LAB=1 \
+                php tests/chatgpt_ads_exact_wire_money_test.php
+            '
   contracts-and-postgres:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

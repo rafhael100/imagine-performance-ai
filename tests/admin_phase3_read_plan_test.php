@@ -9,7 +9,9 @@ $m=P::prepare('meta_ads','1234567890123','2026-11-01','2026-11-30');
 foreach([$g,$m] as $p){$ok($p['metrics']===null&&$p['official_evidence']===null);$ok($p['executable']===false&&$p['external_operations_enabled']===false&&$p['billable']===false);$ok(!str_contains(json_encode($p),'access_token'));}
 $ok($g['read_plan']['method']==='POST'&&str_ends_with($g['read_plan']['url'],'/googleAds:search'));
 $ok(!isset($g['read_plan']['json']['pageSize'])&&str_contains($g['read_plan']['json']['query'],'metrics.cost_micros'));
+$ok(str_contains($g['read_plan']['json']['query'],'customer.id'));
 $ok($m['read_plan']['method']==='GET'&&$m['read_plan']['query']['limit']===100);
+$ok($m['read_plan']['query']['time_increment']===1);
 $deny(fn()=>P::prepare('chatgpt_ads','1234567890','2026-11-01','2026-11-30'));
 $deny(fn()=>P::prepare('google_ads',"1234567890/../mutate",'2026-11-01','2026-11-30'));
 $deny(fn()=>P::prepare('google_ads','1234567890','2026-02-30','2026-03-01'));

@@ -23,12 +23,16 @@ final class ExactJsonNumberLexicalParser
     private int $nodes = 0;
     private int $length;
 
-    private function __construct(private readonly string $raw)
+    private function __construct(
+        #[\SensitiveParameter] private readonly string $raw,
+        private readonly int $maxNodes = 2000,
+        private readonly int $maxDepth = 12
+    )
     {
         $this->length = strlen($raw);
     }
 
-    public static function decode(string $raw): mixed
+    public static function decode(#[\SensitiveParameter] string $raw): mixed
     {
         if ($raw === '' || strlen($raw) > 65536) {
             throw new InvalidArgumentException('JSON response outside offline size limit.');
@@ -42,9 +46,24 @@ final class ExactJsonNumberLexicalParser
         return $value;
     }
 
+    /** Administrative paged responses; historical decode() limits stay unchanged. */
+    public static function decodeProviderPage(#[\SensitiveParameter] string $raw): mixed
+    {
+        if ($raw === '' || strlen($raw) > 1048576) {
+            throw new InvalidArgumentException('JSON response outside provider page limit.');
+        }
+        $parser = new self($raw, 200000, 32);
+        $value = $parser->value(0);
+        $parser->whitespace();
+        if ($parser->offset !== $parser->length) {
+            throw new InvalidArgumentException('Trailing tokens after JSON document.');
+        }
+        return $value;
+    }
+
     private function value(int $depth): mixed
     {
-        if ($depth > 12 || ++$this->nodes > 2000) {
+        if ($depth > $this->maxDepth || ++$this->nodes > $this->maxNodes) {
             throw new InvalidArgumentException('JSON nesting or node limit exceeded.');
         }
         $this->whitespace();

@@ -11,11 +11,12 @@ final class AdministrativeAdsReadConnector {
   if(!in_array($timezone,\DateTimeZone::listIdentifiers(),true))throw new RuntimeException('Account timezone required');
   $lease=($this->authorize)($company,$provider,$account);
   if(!is_string($lease)||!preg_match('/\A[a-f0-9]{64}\z/D',$lease))throw new RuntimeException('Account consent denied');
-  $rows=[];$cursor=null;$seen=[];$currency=null;$complete=false;
+  $rows=[];$cursor=null;$seen=[];$rowKeys=[];$currency=null;$complete=false;
   for($i=0;$i<10;$i++){
    if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    $page=($this->page)($plan,$cursor);
    if(!is_array($page)||($page['source_kind']??null)!=='laboratory_fixture')throw new RuntimeException('Operational provider not homologated');
+   if(array_key_exists('context_timezone',$page)&&$page['context_timezone']!==$timezone)throw new RuntimeException('Provider report timezone denied');
    $bytes=json_encode($page,JSON_THROW_ON_ERROR);if(strlen($bytes)>1048576)throw new RuntimeException('Provider response limit');
    if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    if(!is_array($page['rows']??null)||count($page['rows'])>10000)throw new RuntimeException('Provider rows denied');
@@ -33,12 +34,15 @@ final class AdministrativeAdsReadConnector {
      if($provider==='google_ads'){$cost=str_pad($cost,7,'0',STR_PAD_LEFT);$cost=substr($cost,0,-6).'.'.substr($cost,-6);}
     }
     foreach(['impressions','clicks'] as $metric)if(isset($r[$metric])&&(!is_string($r[$metric])||!preg_match('/\A[0-9]{1,24}\z/D',$r[$metric])))throw new RuntimeException('Integer metric string required');
+    $rowKey=$r['campaign_id'].':'.$date;
+    if(isset($rowKeys[$rowKey]))throw new RuntimeException('Duplicate campaign report date denied');
+    $rowKeys[$rowKey]=true;
     $rows[]=['account_id'=>$account,'campaign_id'=>$r['campaign_id'],'currency'=>$currency,'date'=>$date,'spend'=>$cost,'impressions'=>$r['impressions']??null,'clicks'=>$r['clicks']??null];
     if(count($rows)>20000)throw new RuntimeException('Total rows exceeded');
    }
    $cursor=$page['next_cursor']??null;
    if($cursor===null){$complete=true;break;}
-   if(!is_string($cursor)||!preg_match('/\A[A-Za-z0-9_=-]{1,1024}\z/D',$cursor)||isset($seen[$cursor]))throw new RuntimeException('Invalid pagination cursor');$seen[$cursor]=true;
+   if(!AdministrativeAdsReadPlan::validCursor($cursor)||isset($seen[$cursor]))throw new RuntimeException('Invalid pagination cursor');$seen[$cursor]=true;
   }
   return ['version'=>'imagine.performance.ads.read.result.v1','source_kind'=>'laboratory_fixture','status'=>$complete?'synthetic':'partial',
    'company_id'=>$company,'provider'=>$provider,'api_version'=>$plan['read_plan']['api_version'],'timezone'=>$timezone,'currency'=>$currency,'from'=>$from,'until'=>$until,
