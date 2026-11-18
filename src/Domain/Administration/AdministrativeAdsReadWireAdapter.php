@@ -12,8 +12,8 @@ use Throwable;
 
 /**
  * Google Search / Meta Insights wire codec for the existing injectable connector.
- * No HTTP implementation, credentials, OAuth, retry, or operational composition.
- * The injected callback must return a laboratory_fixture, never official evidence.
+ * A closure is fixture-only; the native transport retains http_unverified origin.
+ * No credentials, OAuth, retry, official evidence or operational composition here.
  * Authorization stays in the connector, around each account/report operation.
  */
 final class AdministrativeAdsReadWireAdapter
@@ -21,6 +21,8 @@ final class AdministrativeAdsReadWireAdapter
     private const MAX_BODY_BYTES = 1048576;
     private readonly array $plan;
     private readonly array $accountPlan;
+    private readonly string $sourceKind;
+    private readonly ?array $boundContext;
 
     public function __construct(
         private readonly string $provider,
@@ -28,7 +30,7 @@ final class AdministrativeAdsReadWireAdapter
         private readonly string $from,
         private readonly string $until,
         private readonly string $timezone,
-        private readonly Closure $httpFixture
+        #[\SensitiveParameter] private readonly Closure|AdministrativeAdsReadHttpTransport $httpFixture
     ) {
         $this->plan = AdministrativeAdsReadPlan::prepare($provider, $account, $from, $until);
         $this->accountPlan = AdministrativeAdsReadPlan::prepareAccount($provider, $account);
@@ -37,6 +39,20 @@ final class AdministrativeAdsReadWireAdapter
         }
         if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
             self::fail('timezone_denied');
+        }
+        $this->sourceKind = $httpFixture instanceof AdministrativeAdsReadHttpTransport
+            ? 'http_unverified' : 'laboratory_fixture';
+        $this->boundContext = $httpFixture instanceof AdministrativeAdsReadHttpTransport
+            ? $httpFixture->context() : null;
+        if ($this->boundContext !== null) {
+            $keys = array_keys($this->boundContext);
+            sort($keys, SORT_STRING);
+            if ($keys !== ['account_id', 'company_id', 'from', 'provider', 'until']
+                || !is_string($this->boundContext['company_id']) || $this->boundContext['company_id'] === ''
+                || $this->boundContext['provider'] !== $provider || $this->boundContext['account_id'] !== $account
+                || $this->boundContext['from'] !== $from || $this->boundContext['until'] !== $until) {
+                self::fail('request_denied');
+            }
         }
     }
 
@@ -48,12 +64,15 @@ final class AdministrativeAdsReadWireAdapter
         if ($cursor !== null && !AdministrativeAdsReadPlan::validCursor($cursor)) {
             self::fail('cursor_denied');
         }
-        return $this->exchange($this->request($this->plan['read_plan'], $cursor));
+        return $this->exchange(AdministrativeAdsReadPlan::wireRequest($this->plan, $cursor));
     }
 
     /** Compose metadata and report reads under the connector's single consent lease. */
-    public function connector(Closure $authorize): AdministrativeAdsReadConnector
+    public function connector(#[\SensitiveParameter] Closure $authorize): AdministrativeAdsReadConnector
     {
+        if ($this->boundContext !== null) {
+            return AdministrativeAdsReadConnector::fromHttpAdapter($authorize, $this);
+        }
         return new AdministrativeAdsReadConnector(
             $authorize,
             Closure::fromCallable($this),
@@ -61,37 +80,29 @@ final class AdministrativeAdsReadWireAdapter
         );
     }
 
+    /** Native scope only; no credential, lease or configurable source label. */
+    public function httpContext(): ?array
+    {
+        return $this->boundContext;
+    }
+
     /** Account request receives the bound report plan; no caller-controlled account URL. */
     public function account(#[\SensitiveParameter] array $reportPlan): array
     {
         if ($reportPlan !== $this->plan) self::fail('request_denied');
-        return $this->exchange($this->request($this->accountPlan['read_plan'], null), true);
-    }
-
-    private function request(array $source, #[\SensitiveParameter] ?string $cursor): array
-    {
-        $request = [
-            'method' => $source['method'],
-            'url' => $source['url'],
-            'headers' => ['Accept' => 'application/json'],
-            'follow_redirects' => false,
-            'max_response_bytes' => self::MAX_BODY_BYTES,
-        ];
-        if ($this->provider === 'google_ads') {
-            $request['headers']['Content-Type'] = 'application/json';
-            $request['json'] = $source['json'];
-            if ($cursor !== null) $request['json']['pageToken'] = $cursor;
-        } else {
-            $request['query'] = $source['query'];
-            if ($cursor !== null) $request['query']['after'] = $cursor;
-        }
-        return $request;
+        return $this->exchange(AdministrativeAdsReadPlan::wireRequest($this->accountPlan), true);
     }
 
     private function exchange(#[\SensitiveParameter] array $request, bool $accountMetadata = false): array
     {
         try {
             $http = ($this->httpFixture)($request);
+        } catch (AdministrativeAdsWireFailure $failure) {
+            if ($this->httpFixture instanceof AdministrativeAdsReadHttpTransport) {
+                // Native failures already carry a finite classification; never chain their trace.
+                self::fail($failure->reason, $failure->httpStatus);
+            }
+            self::fail('transport_failed');
         } catch (Throwable) {
             // The callback exception may contain credentials; do not retain it.
             self::fail('transport_failed');
@@ -105,7 +116,7 @@ final class AdministrativeAdsReadWireAdapter
         if (!is_array($http)) self::fail('response_denied');
         $keys = array_keys($http);
         sort($keys, SORT_STRING);
-        if ($keys !== $expected || $http['source_kind'] !== 'laboratory_fixture'
+        if ($keys !== $expected || $http['source_kind'] !== $this->sourceKind
             || !is_int($http['status']) || $http['status'] < 100 || $http['status'] > 599
             || $http['redirected'] !== false || !is_string($http['content_type'])
             || strlen($http['content_type']) > 128 || !is_string($http['body'])) {
@@ -209,7 +220,7 @@ final class AdministrativeAdsReadWireAdapter
 
     private function accountContext(string $currency, string $timezone): array
     {
-        return ['source_kind' => 'laboratory_fixture', 'provider' => $this->provider,
+        return ['source_kind' => $this->sourceKind, 'provider' => $this->provider,
             'api_version' => $this->accountPlan['read_plan']['api_version'], 'account_id' => $this->account,
             'currency' => $currency, 'timezone' => $timezone, 'context_timezone' => $this->timezone];
     }
@@ -355,7 +366,7 @@ final class AdministrativeAdsReadWireAdapter
 
     private function page(#[\SensitiveParameter] array $rows, #[\SensitiveParameter] ?string $cursor): array
     {
-        return ['source_kind' => 'laboratory_fixture', 'context_timezone' => $this->timezone, 'rows' => $rows, 'next_cursor' => $cursor];
+        return ['source_kind' => $this->sourceKind, 'context_timezone' => $this->timezone, 'rows' => $rows, 'next_cursor' => $cursor];
     }
 
     private static function fail(string $reason, ?int $httpStatus = null): never
