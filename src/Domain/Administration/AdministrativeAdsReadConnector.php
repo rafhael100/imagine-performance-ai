@@ -3,10 +3,28 @@ declare(strict_types=1);
 namespace Imagine\Performance\Administration;
 use Closure;
 use RuntimeException;
-/** Injectable LAB connector. No built-in network transport or operational grant. */
+/** Injectable read connector. Source labels never grant official evidence or product operations. */
 final class AdministrativeAdsReadConnector {
- public function __construct(private Closure $authorize,private Closure $page,private ?Closure $accountMetadata=null){}
+ private string $sourceKind='laboratory_fixture';
+ private ?array $boundContext=null;
+ public function __construct(#[\SensitiveParameter] private Closure $authorize,#[\SensitiveParameter] private Closure $page,#[\SensitiveParameter] private ?Closure $accountMetadata=null){}
+ /** HTTP origin can only be composed from the final codec bound to the native transport. */
+ public static function fromHttpAdapter(#[\SensitiveParameter] Closure $authorize,#[\SensitiveParameter] AdministrativeAdsReadWireAdapter $adapter):self {
+  $boundContext=$adapter->httpContext();
+  if($boundContext===null)throw new RuntimeException('Provider source context required');
+  $keys=array_keys($boundContext);sort($keys,SORT_STRING);
+  if($keys!==['account_id','company_id','from','provider','until'])throw new RuntimeException('Provider source context denied');
+  foreach($boundContext as $value)if(!is_string($value)||$value==='')throw new RuntimeException('Provider source context denied');
+  AdministrativeAdsReadPlan::prepare($boundContext['provider'],$boundContext['account_id'],$boundContext['from'],$boundContext['until']);
+  $connector=new self($authorize,Closure::fromCallable($adapter),Closure::fromCallable([$adapter,'account']));
+  $connector->sourceKind='http_unverified';$connector->boundContext=$boundContext;
+  return $connector;
+ }
  public function read(string $company,string $provider,string $account,string $from,string $until,string $timezone):array {
+  if($this->boundContext!==null){
+   foreach(['company_id'=>$company,'provider'=>$provider,'account_id'=>$account,'from'=>$from,'until'=>$until] as $key=>$value)
+    if($this->boundContext[$key]!==$value)throw new RuntimeException('Provider source context denied');
+  }
   $plan=AdministrativeAdsReadPlan::prepare($provider,$account,$from,$until);
   if(!in_array($timezone,\DateTimeZone::listIdentifiers(),true))throw new RuntimeException('Account timezone required');
   $lease=($this->authorize)($company,$provider,$account);
@@ -20,18 +38,18 @@ final class AdministrativeAdsReadConnector {
    if(!is_array($metadata))throw new RuntimeException('Provider account metadata denied');
    $metadataKeys=array_keys($metadata);sort($metadataKeys,SORT_STRING);
    if($metadataKeys!==['account_id','api_version','context_timezone','currency','provider','source_kind','timezone']
-    ||$metadata['source_kind']!=='laboratory_fixture'||$metadata['provider']!==$provider
+    ||$metadata['source_kind']!==$this->sourceKind||$metadata['provider']!==$provider
     ||$metadata['api_version']!==$plan['read_plan']['api_version']||$metadata['account_id']!==$account
     ||$metadata['context_timezone']!==$timezone||$metadata['timezone']!==$timezone
     ||!is_string($metadata['currency'])||!preg_match('/\A[A-Z]{3}\z/D',$metadata['currency']))throw new RuntimeException('Provider account metadata denied');
    $currency=$metadata['currency'];
-   $accountContext=['source_kind'=>'laboratory_fixture','provider'=>$provider,'api_version'=>$metadata['api_version'],
+   $accountContext=['source_kind'=>$this->sourceKind,'provider'=>$provider,'api_version'=>$metadata['api_version'],
     'account_id'=>$account,'currency'=>$currency,'timezone'=>$timezone];
   }
   for($i=0;$i<10;$i++){
    if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    $page=($this->page)($plan,$cursor);
-   if(!is_array($page)||($page['source_kind']??null)!=='laboratory_fixture')throw new RuntimeException('Operational provider not homologated');
+   if(!is_array($page)||($page['source_kind']??null)!==$this->sourceKind)throw new RuntimeException('Provider source denied');
    if(array_key_exists('context_timezone',$page)&&$page['context_timezone']!==$timezone)throw new RuntimeException('Provider report timezone denied');
    $bytes=json_encode($page,JSON_THROW_ON_ERROR);if(strlen($bytes)>1048576)throw new RuntimeException('Provider response limit');
    if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
@@ -60,8 +78,9 @@ final class AdministrativeAdsReadConnector {
    if($cursor===null){$complete=true;break;}
    if(!AdministrativeAdsReadPlan::validCursor($cursor)||isset($seen[$cursor]))throw new RuntimeException('Invalid pagination cursor');$seen[$cursor]=true;
   }
-  return ['version'=>'imagine.performance.ads.read.result.v1','source_kind'=>'laboratory_fixture','status'=>$complete?'synthetic':'partial',
+  return ['version'=>'imagine.performance.ads.read.result.v1','source_kind'=>$this->sourceKind,'status'=>$complete?($this->sourceKind==='http_unverified'?'unverified':'synthetic'):'partial',
    'company_id'=>$company,'provider'=>$provider,'api_version'=>$plan['read_plan']['api_version'],'timezone'=>$timezone,'currency'=>$currency,'from'=>$from,'until'=>$until,
-   'complete'=>$complete,'rows'=>$rows,'account_metadata'=>$accountContext,'official_evidence'=>null,'external_operations_enabled'=>false,'billable'=>false];
+   'complete'=>$complete,'rows'=>$rows,'account_metadata'=>$accountContext,'http_transport_used'=>$this->sourceKind==='http_unverified',
+   'official_evidence'=>null,'external_operations_enabled'=>false,'billable'=>false];
  }
 }

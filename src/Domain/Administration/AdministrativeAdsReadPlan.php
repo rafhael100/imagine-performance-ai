@@ -35,6 +35,27 @@ final class AdministrativeAdsReadPlan
    'reason'=>'live_consent_credentials_and_provider_homologation_required','metrics'=>null,'official_evidence'=>null,
    'external_operations_enabled'=>false,'billable'=>false,'executable'=>false,'max_response_bytes'=>1048576,'read_plan'=>$plan];
  }
+ /** Format an already prepared plan. This grants no authority to send it. */
+ public static function wireRequest(#[\SensitiveParameter] array $preparedPlan,#[\SensitiveParameter] ?string $cursor=null):array
+ {
+  $channel=$preparedPlan['channel']??null;$version=$preparedPlan['version']??null;
+  if(!in_array($channel,['google_ads','meta_ads'],true)
+   ||!in_array($version,['imagine.performance.ads.read.plan.v1','imagine.performance.ads.account.plan.v1'],true)
+   ||($preparedPlan['max_response_bytes']??null)!==1048576||!is_array($preparedPlan['read_plan']??null))throw new InvalidArgumentException('Prepared read plan required');
+  if($cursor!==null&&(!self::validCursor($cursor)||$version!=='imagine.performance.ads.read.plan.v1'))throw new InvalidArgumentException('Invalid pagination cursor');
+  $source=$preparedPlan['read_plan'];$payload=$channel==='google_ads'?'json':'query';
+  if(($source['method']??null)!==($channel==='google_ads'?'POST':'GET')||!is_string($source['url']??null)
+   ||!is_array($source[$payload]??null))throw new InvalidArgumentException('Prepared read request required');
+  $request=['method'=>$source['method'],'url'=>$source['url'],'headers'=>['Accept'=>'application/json'],
+   'follow_redirects'=>false,'max_response_bytes'=>$preparedPlan['max_response_bytes']];
+  if($channel==='google_ads'){
+   $request['headers']['Content-Type']='application/json';$request['json']=$source['json'];
+   if($cursor!==null)$request['json']['pageToken']=$cursor;
+  }else{
+   $request['query']=$source['query'];if($cursor!==null)$request['query']['after']=$cursor;
+  }
+  return $request;
+ }
  private static function validateAccount(string $channel,string $account):void
  {
   if(!in_array($channel,['google_ads','meta_ads'],true))throw new InvalidArgumentException('Provider unavailable');

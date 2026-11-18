@@ -1,4 +1,4 @@
-# Leitura administrativa: protocolo Google Search e Meta Insights
+# Leitura administrativa: protocolo e transporte Google Search / Meta Insights
 
 Data de revisão documental: 18/11/2026. Escopo de desenvolvimento autorizado na
 [matriz Portal #802](https://github.com/rafhael100/imagine-portal/issues/802).
@@ -13,10 +13,17 @@ Google Ads **Search**, em objeto paginado, e Meta **Insights**, em páginas diá
 por campanha. O normalizador financeiro histórico de SearchStream permanece
 separado porque seu formato é um array de batches.
 
-O novo adapter é um codec com callback injetado. Não contém cliente HTTP,
-credenciais, OAuth, busca em cofre, retry, logs ou ligação ao receiver. A composição
-`PrivateAdministrativeService` continua devolvendo `unavailable` / `metrics=null`.
-Não existe uma flag que transforme esta entrega em integração operacional.
+O caminho original do adapter continua sendo um codec com callback de fixture.
+`AdministrativeAdsReadHttpTransport` acrescenta uma implementação HTTPS nativa
+com libcurl para os mesmos pedidos, por composição explícita no servidor. O
+transporte não implementa OAuth, busca em cofre, persistência de credenciais,
+retry ou registro no runtime. Sua dependência de credencial é opcional e, quando
+ausente, a tentativa é recusada antes da conexão.
+
+A composição oficial `PrivateAdministrativeService` permanece inalterada,
+devolvendo `unavailable` / `metrics=null`. Este incremento não conecta o adapter
+ao receiver nem habilita métricas no Portal. Implementar o transporte e testar
+HTTPS sintético não homologa acesso às APIs ou aos dados de anunciantes.
 
 ## Composição e autoridade
 
@@ -28,20 +35,149 @@ reconstruído internamente; não se aceitam URLs, cabeçalhos, consultas ou flag
 adicionais. Não foi criado outro mecanismo de concessões.
 
 O conector continua responsável por chamar `authorize(company, provider, account)`
-antes e depois de **cada operação de conta ou página**, comparando o mesmo lease. Invocar o codec
-diretamente não concede autoridade de empresa ou conta. A callback não é uma
-prova de origem: precisa devolver `source_kind=laboratory_fixture` e nenhuma
-resposta 200 promove o resultado para evidência oficial.
+antes e depois de **cada operação de conta ou página**, comparando o mesmo lease
+de 64 caracteres hexadecimais. O transporte nativo também exige esse mecanismo
+quando invocado diretamente; executar o codec não concede autoridade.
+
+O sexto argumento do adapter mantém o nome `httpFixture` e aceita somente
+`Closure|AdministrativeAdsReadHttpTransport`. O tipo fixa a origem; não há
+parâmetro livre para atribuir autenticidade:
+
+| Composição | Origem exigida e propagada | Resultado completo | Observação |
+| --- | --- | --- | --- |
+| Closure histórica | `laboratory_fixture` | `status=synthetic` | `http_transport_used=false`; a callback não comprova ausência de rede por si só. |
+| Transporte nativo | `http_unverified` | `status=unverified` | `http_transport_used=true`, inclusive com peer HTTPS sintético. |
+
+`http_transport_used` indica o uso do transporte HTTP nativo nesta composição;
+não comprova consulta ao provedor oficial. O construtor público do conector
+permanece com os dois ou três callbacks legados, sempre fixture-only. A factory
+`AdministrativeAdsReadConnector::fromHttpAdapter($authorize, $adapter)` aceita
+somente o adapter final cujo `httpContext()` retorna contexto nativo não nulo,
+e fixa internamente os callbacks de conta e página desse objeto. Não aceita
+closures alternativas ou um rótulo de origem fornecido pelo chamador.
+
+`context()` do transporte e `httpContext()` do adapter expõem somente
+`company_id`, `provider`, `account_id`, `from` e `until`, sem credencial ou lease.
+O construtor do adapter confronta provider, conta e período; o conector compara
+todo o contexto, inclusive a empresa, antes de chamar autorização ou transporte.
+Uma instância ligada a uma empresa não pode relabelar o resultado para outra.
+Conta e todas as páginas devem conservar exatamente a mesma origem. Uma closure
+que devolva `http_unverified`, ou um transporte nativo que devolva fixture, é
+recusado. Nenhuma resposta HTTP 200 promove dados a evidência oficial.
 
 O resultado conserva `official_evidence=null`, `external_operations_enabled=false`
-e `billable=false`. Dados ausentes continuam ausentes; uma página vazia não é
-prova de gasto oficial zero. O fuso Google é confrontado com `customer.timeZone`.
+e `billable=false`. **`external_operations_enabled=false` representa ausência de
+concessão para operações do produto; não afirma ausência de tráfego HTTP.** A
+origem e `http_transport_used` registram essa distinção. Dados ausentes continuam
+ausentes; uma página vazia não é prova de gasto oficial zero. O fuso Google é
+confrontado com `customer.timeZone`.
 Cada página do adapter informa `context_timezone`, que o conector confronta com
 o fuso da leitura para impedir rotular dados de um contexto com outro fuso.
 O Insights da Meta não traz o fuso neste perfil. A composição nova o confronta
 com `timezone_name` da resposta separada da conta antes de ler o relatório.
-Essa concordância continua sendo sintética, sem autenticar a identidade da
-plataforma ou autorizar uso operacional.
+Essa concordância pode ser sintética ou HTTP não verificada, conforme a
+composição; não prova titularidade da conta, evidência financeira ou autorização
+de uso operacional.
+
+## API do transporte e credencial efêmera
+
+O construtor do transporte recebe o contexto fixado pelo servidor e dependências
+de autorização/credencial:
+
+```text
+AdministrativeAdsReadHttpTransport::__construct(
+    string $company,
+    string $provider,
+    string $account,
+    string $from,
+    string $until,
+    Closure $authorize,
+    ?Closure $resolveCredential = null,
+    int $connectTimeoutMs = 3000,
+    int $timeoutMs = 10000
+);
+```
+
+`__invoke(array $request): array` envia um pedido somente após comparar sua
+estrutura inteira com o pedido de conta ou relatório reconstruído a partir desse
+contexto. `AdministrativeAdsReadPlan::wireRequest($preparedPlan, $cursor)` é o
+formatter compartilhado: recebe o plano completo produzido por `prepare()` ou
+`prepareAccount()`, valida o cursor e recusa cursor no plano de conta. Formatar
+um plano não o torna autorizado ou operacional; seus marcadores `executable=false`
+e evidência ausente permanecem.
+
+A callback de credenciais tem o contrato
+`resolveCredential(company, provider, account, lease)` e devolve `null` ou um
+snapshot com campos exatos. Ela é resolvida a cada pedido e não recebe Request,
+cookie, sessão humana, URL ou cabeçalhos do navegador. A ausência da callback,
+retorno nulo ou exceção produz `credentials_unavailable`, sem tentar rede.
+
+| Campo do snapshot | Validação local |
+| --- | --- |
+| `company_id`, `provider`, `account_id` | Iguais ao contexto fixado no transporte. |
+| `lease` | String idêntica à concessão atual de empresa/provider/conta. |
+| `credential_ref` | Referência opaca, com 1 a 128 caracteres no perfil alfanumérico/`_.:-`; não é segredo ou prova de origem. |
+| `access_token` | String não vazia, no perfil de token de cabeçalho aceito e com até 4.096 bytes; CR/LF e campos de cabeçalho livres não são aceitos. |
+| `expires_at` | Inteiro de segundos Unix; deve cobrir a reserva de tempo antes do envio e continuar válido depois. |
+| `developer_token` — somente Google | Token de cabeçalho com até 128 bytes. |
+| `login_customer_id` — somente Google | Campo obrigatório no snapshot, com `null` para acesso direto ou string de dez dígitos para conta gerenciadora. |
+
+Google envia `Authorization: Bearer`, `developer-token` e, quando definido,
+`login-customer-id`. Meta envia o bearer token em cabeçalho, não na query. Esses
+valores não podem ser injetados pelo pedido do codec. O formato válido do
+snapshot não comprova que o provedor aceitou o token, que o consentimento é real
+ou que o operador possui a conta.
+
+Cada envio consulta o lease, resolve o snapshot, consulta novamente o mesmo
+lease e valida escopo/expiração. Imediatamente antes do `curl_exec`, revalida
+lease e reserva de expiração; depois da chamada, revalida lease e expiração
+antes de devolver qualquer corpo, inclusive após falha de transporte. Mudança
+ou revogação impede o retorno dos dados. O conector, adicionalmente, mantém o
+mesmo lease durante a sequência conta → páginas.
+
+Não há cache de credencial, aquisição/renovação OAuth, seleção de conta
+gerenciadora ou leitura de cofre nesta classe. O resolvedor é uma dependência de
+servidor ainda não ligada à operação. A resolução por pedido não prova uso do
+mesmo token ou `credential_ref` entre pedidos; essa identidade não é certificada
+pelo codec ou por compartilhar a callback.
+
+## Limites do HTTPS nativo
+
+O ambiente precisa de `ext-curl` com resolução DNS assíncrona
+(`CURL_VERSION_ASYNCHDNS`); sem isso, o transporte recusa com
+`transport_unavailable`. Os destinos são somente os pedidos exatos dos planos
+Google/Meta abaixo. A API da classe não oferece override de URL, resolução DNS,
+proxy, CA ou desligamento da verificação TLS.
+
+O transporte exige HTTPS, TLS mínimo 1.2, verificação do certificado do peer e
+do hostname. Usa HTTP/1.1, conexão nova por pedido, sem reutilização, proxy,
+credenciais `.netrc`, redirect, retry ou autenticação alternativa. O ambiente
+precisa fornecer uma cadeia de confiança válida; não há fallback para conexão
+sem verificação.
+
+`connectTimeoutMs` e `timeoutMs` ficam entre 100 e 10.000 ms, com conexão menor ou
+igual ao total. Os padrões são 3.000 e 10.000 ms. O total limita uma transferência
+libcurl; não é prazo global para todas as páginas nem para o tempo gasto nas
+callbacks de autorização/credencial. Antes de cada envio, `expires_at` precisa
+ser **maior** que `time() + ceil(timeoutMs / 1000)`; após a transferência precisa
+ser maior que `time()`. Credencial com reserva insuficiente é recusada.
+
+O corpo tem limite de **1 MiB durante o recebimento**, com interrupção no callback
+de escrita antes de anexar um chunk que ultrapasse o orçamento. `Content-Length`
+acima do limite é recusado já nos cabeçalhos; o limite de streaming também vale
+quando ele não está presente. O orçamento acumulado de cabeçalhos é **32 KiB**.
+O leitor recusa metadados HTTP conflitantes ou duplicados nos campos de framing,
+mistura de `Content-Length` e `Transfer-Encoding`, e transferências diferentes
+de `chunked` quando esse cabeçalho é usado. Solicita `Accept-Encoding: identity`,
+desliga a descompressão automática e recusa `Content-Encoding` diferente de
+`identity`. Respostas 3xx são interrompidas, sem seguir `Location`.
+
+O retorno do transporte contém exatamente `source_kind=http_unverified`,
+`status`, `content_type`, `redirected=false` e `body`. **Esse envelope HTTP bruto
+é interno.** Somente o DTO sanitizado, normalizado pelo codec/conector, pode sair
+da fronteira de integração. Não registrar nem expor body, token, cabeçalhos de
+autenticação, snapshot de credencial ou argumentos das callbacks. O transporte
+não produz logs e seu `__debugInfo()` não revela essas dependências.
 
 ## Metadados antes do relatório
 
@@ -52,22 +188,24 @@ plataforma ou autorizar uso operacional.
 | Google | Mesmo endpoint Search, consulta fixa `SELECT customer.id, customer.currency_code, customer.time_zone FROM customer`. Exatamente um customer e nenhuma continuação. |
 | Meta | `GET /v27.0/act_{id}` com `fields=id,account_id,currency,timezone_name`. `id` e `account_id` precisam corresponder à mesma conta. |
 
-`account($reportPlan)` usa o mesmo callback do adapter e o mesmo tratamento de
-HTTP, JSON e erros. O conector compara fonte sintética, provider, versão, conta,
+`account($reportPlan)` usa o mesmo transporte/callback do adapter e o mesmo tratamento de
+HTTP, JSON e erros. O conector compara a origem fixada, provider, versão, conta,
 fuso de contexto e fuso retornado; os campos aceitos são exatos. A moeda da conta
 inicializa a moeda do relatório e deve concordar com **todas** as linhas, inclusive
 a primeira. O contexto sanitizado fica em `account_metadata`.
 
-Uma resposta de relatório vazia pode conservar moeda/fuso observados na fixture
-da conta, com `rows=[]`; nenhum gasto é criado. Uma conta ausente, ambígua ou
+Uma resposta de relatório vazia pode conservar moeda/fuso observados nos
+metadados da conta, preservando sua origem e `rows=[]`; nenhum gasto é criado.
+Uma conta ausente, ambígua ou
 divergente impede a consulta de métricas. Revogação ou mudança do lease entre
 metadados e relatório também impede a próxima chamada. Uma nova leitura consulta
 a conta novamente; não há cache de contexto compartilhado entre empresas.
 
 O callback opcional mantém compatibilidade com o conector histórico, cujo
 `account_metadata` permanece `null`. Esse caminho legado não comprova leitura da
-conta. Compartilhar uma callback entre as operações tampouco prova uso de uma
-mesma credencial real, pois não existem credenciais nesta composição.
+conta. A factory nativa sempre liga os dois métodos do mesmo adapter, preservando
+empresa, conta, período e origem durante a leitura. Isso não transforma os dados
+em extrato oficial nem certifica a identidade de uma credencial real.
 
 ## Pedidos e paginação
 
@@ -115,17 +253,26 @@ aprovação financeira. `summaryRow` não foi solicitado e é recusado.
 `AdministrativeAdsWireFailure` expõe somente uma classificação estável e,
 quando disponível, o status HTTP. Não conserva a exceção original como
 `previous`, corpo, cabeçalhos ou URL de paginação. Os parâmetros brutos do codec
-e parser recebem `SensitiveParameter` para reduzir exposição em stack traces.
+e parser, os pedidos do formatter e os argumentos sensíveis do transporte
+recebem `SensitiveParameter` para reduzir exposição em stack traces.
 Consumidores também não devem registrar os argumentos, callback ou resposta
 bruta por conta própria.
+
+O codec preserva a classificação sanitizada emitida pelo transporte nativo,
+sem encadear a exceção. Exemplos são `transport_timeout`, `tls_failed`,
+`response_limit`, `response_headers_denied`, `response_encoding_denied` e
+`redirect_denied`. Exceções de callbacks de fixture continuam mascaradas como
+`transport_failed`; uma closure não pode usar esse caminho para expor uma
+mensagem arbitrária como falha nativa.
 
 401/403/429 são classificados como autenticação/permissão/limite. Timeout ou
 exceção da callback não é repetido. 408 e 5xx indicam indisponibilidade. O envelope
 de erro Meta também é considerado, inclusive com HTTP 200 ou 400: 190/102 para
 autenticação, 10/200–299 para permissão, 4/17/80000 para limite. Erro Google com
 `UNAUTHENTICATED`, `PERMISSION_DENIED`, `RESOURCE_EXHAUSTED`, `UNAVAILABLE` ou
-`DEADLINE_EXCEEDED` mantém classificação sanitizada. Não há renovação de token,
-troca de credencial, espera ou retry automático.
+`DEADLINE_EXCEEDED` mantém classificação sanitizada. O transporte não renova
+tokens, não seleciona outra credencial, não espera por quota e não repete pedidos
+automaticamente.
 
 ## Validação e limites da prova
 
@@ -134,20 +281,30 @@ respostas HTTP/JSON sintéticas. `tests/admin_phase9_ads_account_test.php` exerc
 conta → relatório, resultados vazios, divergências e revogação entre operações.
 O workflow `admin-phase2-candidate.yml` roda os
 testes em PHP 8.3 e 8.4, com container `--network none`, fonte somente de leitura
-e sem credenciais. Também roda os testes de plano, conector e regressão do
+e sem credenciais operacionais. Também roda os testes de plano, conector e regressão do
 parser financeiro. A imagem oficial é obtida antes de isolar o processo de
 testes; isso não é uma consulta a contas de anúncios.
 
-Os limites do parser são limites sobre uma string já recebida pela callback.
-Não constituem prova de streaming, timeout ou bloqueio de egress de um futuro
-cliente HTTP. Uma callback arbitrária poderia abrir rede; a prova de ausência
-de rede dos testes depende do isolamento efetivo do container.
+Os testes históricos por callback continuam sendo provas do codec, não de TLS,
+streaming ou timeout. Uma callback arbitrária poderia abrir rede; a prova de
+isolamento depende do container, não do rótulo `laboratory_fixture`.
+
+**O resultado do ensaio de HTTP/TLS deve ser conferido nos logs da SHA exata.**
+Seu cenário é HTTP real dentro de Docker `--network none`, com os hosts fixos
+mapeados para loopback no ambiente de teste e uma CA sintética no trust store.
+Isso não acrescenta opção de URL/resolve/CA ou bypass TLS ao código do transporte.
+Os cenários incluem conta → relatório, origem não verificada, vínculo da mesma
+empresa, limite durante streaming, cabeçalhos excessivos, timeout, redirects
+sem segundo destino, certificado/hostname incorretos e revogação. Contagens e
+aprovação precisam ser registradas somente depois da CI na SHA correspondente;
+esta documentação não declara esses testes verdes.
 
 Nenhuma conta oficial foi consultada para criar as fixtures. Compatibilidade
 estrutural não homologa permissões, titularidade, consentimento, completude de
-extratos, custo real, identidade TLS ou conciliação financeira. O inventário
+extratos, custo real, identidade TLS dos provedores ou conciliação financeira. O inventário
 autenticado da VPS continua sendo a próxima dependência da implantação do
-pacote Portal #927; não é uma exigência para desenvolver este codec offline.
+pacote Portal #927; não é uma exigência para desenvolver o transporte e seus
+testes isolados. A composição oficial continua indisponível e sem faturamento.
 
 ## Fontes primárias consultadas
 
@@ -174,10 +331,18 @@ pacote Portal #927; não é uma exigência para desenvolver este codec offline.
   [tabela geral de versões](https://developers.facebook.com/docs/graph-api/changelog/versions/)
   ainda mostra Marketing v25.0: essa divergência documental é registrada, sem
   inventar data de suporte de v27 ou afirmar disponibilidade para um app real.
+- [Google: autorização e cabeçalhos HTTP](https://developers.google.com/google-ads/api/rest/auth):
+  bearer OAuth, developer token e `login-customer-id` para o contexto gerenciador.
+- [libcurl: callback de escrita](https://curl.se/libcurl/c/CURLOPT_WRITEFUNCTION.html)
+  e [prazo total em milissegundos](https://curl.se/libcurl/c/CURLOPT_TIMEOUT_MS.html):
+  recebimento por chunks e orçamento por transferência.
+- [libcurl: verificação do peer](https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html)
+  e [verificação do hostname](https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html):
+  verificações distintas, ambas mantidas ativas no transporte.
 
 O [escopo OAuth Google](https://developers.google.com/google-ads/api/rest/auth)
 `adwords` também permite escritas; a restrição deste
 incremento está nos pedidos permitidos, não em chamá-lo de escopo OAuth somente
 de leitura. A [permissão de relatórios Meta](https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/authorization)
-é `ads_read`. A autenticação real e
-seu perfil de permissões permanecem fora desta composição.
+é `ads_read`. A aquisição de credenciais e a homologação real do perfil de
+permissões permanecem fora desta composição.
