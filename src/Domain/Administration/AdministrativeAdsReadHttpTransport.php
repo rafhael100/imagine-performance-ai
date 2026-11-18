@@ -264,7 +264,8 @@ final class AdministrativeAdsReadHttpTransport
         if ($abort !== null) self::fail($abort, $status >= 100 ? $status : null);
         if ($ok !== true || $errno !== 0) {
             if ($errno === CURLE_OPERATION_TIMEDOUT) self::fail('transport_timeout');
-            if (in_array($errno, [CURLE_SSL_CONNECT_ERROR, CURLE_PEER_FAILED_VERIFICATION, CURLE_SSL_CERTPROBLEM, CURLE_SSL_CACERT_BADFILE], true)) self::fail('tls_failed');
+            // PHP exposes the CA verification code under its historical name.
+            if (in_array($errno, [CURLE_SSL_CONNECT_ERROR, CURLE_SSL_CACERT, CURLE_SSL_PEER_CERTIFICATE, CURLE_SSL_CERTPROBLEM, CURLE_SSL_CACERT_BADFILE], true)) self::fail('tls_failed');
             self::fail('transport_failed');
         }
         if (!$finalSeen || $observedStatus !== $status || $status < 200 || $status > 599) self::fail('response_headers_denied');
