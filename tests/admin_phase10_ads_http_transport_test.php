@@ -73,7 +73,6 @@ function httpCredential(string $provider, string $lease): array
         'access_token' => SYNTHETIC_ACCESS,
     ];
     if ($provider === 'google_ads') {
-        $credential['developer_token'] = SYNTHETIC_DEVELOPER;
         $credential['login_customer_id'] = '1234567890';
     }
     return $credential;
@@ -142,8 +141,8 @@ function httpExpectation(string $provider, bool $account = false, ?string $curso
     $request['headers']['Authorization'] = 'Bearer '.SYNTHETIC_ACCESS;
     $request['headers']['Accept-Encoding'] = 'identity';
     if ($provider === 'google_ads') {
-        $request['headers']['developer-token'] = SYNTHETIC_DEVELOPER;
         $request['headers']['login-customer-id'] = '1234567890';
+        $request['absent_headers'] = ['developer-token'];
     } else {
         $request['absent_headers'] = ['developer-token', 'login-customer-id', 'Content-Type'];
     }
@@ -236,6 +235,28 @@ sort($keys, SORT_STRING);
 httpSame(['body', 'content_type', 'redirected', 'source_kind', 'status'], $keys, 'native response has exact envelope');
 httpSame('http_unverified', $raw['source_kind'], 'raw native response origin');
 httpSame(false, $raw['redirected'], 'raw native response did not redirect');
+httpPeer($case, 1);
+
+// Sunset developer tokens may remain in a legacy server snapshot, but are
+// discarded and never sent. New snapshots do not need the obsolete field.
+foreach ([SYNTHETIC_DEVELOPER, null] as $legacyDeveloperToken) {
+    $case = httpCase('legacy-developer-token-discarded', [httpResponse(httpMetadata('google_ads'))], [httpExpectation('google_ads', true)]);
+    $credential = httpCredential('google_ads', str_repeat('a', 64));
+    $credential['developer_token'] = $legacyDeveloperToken;
+    $raw = httpTransport('google_ads', null, static fn() => $credential)($accountRequest);
+    httpSame(200, $raw['status'], 'safe or null legacy developer token does not block account read');
+    httpSame('http_unverified', $raw['source_kind'], 'legacy field does not change HTTP provenance');
+    httpPeer($case, 1);
+}
+$directExpectation = httpExpectation('google_ads', true);
+unset($directExpectation['headers']['login-customer-id']);
+$directExpectation['absent_headers'][] = 'login-customer-id';
+$case = httpCase('google-direct-account', [httpResponse(httpMetadata('google_ads'))], [$directExpectation]);
+$directCredential = httpCredential('google_ads', str_repeat('a', 64));
+$directCredential['login_customer_id'] = null;
+$raw = httpTransport('google_ads', null, static fn() => $directCredential)($accountRequest);
+httpSame(200, $raw['status'], 'direct Google account without manager header succeeds');
+httpSame('http_unverified', $raw['source_kind'], 'direct Google account still has unverified provenance');
 httpPeer($case, 1);
 
 // Mutated requests are rejected before authorization, credential resolution or I/O.

@@ -73,7 +73,6 @@ final class AdministrativeAdsReadHttpTransport
         if ($this->provider === 'google_ads') {
             $headers[] = 'Content-Type: application/json';
             $headers[] = 'Expect:';
-            $headers[] = 'developer-token: '.$credential['developer_token'];
             if ($credential['login_customer_id'] !== null) $headers[] = 'login-customer-id: '.$credential['login_customer_id'];
         }
         $expiry = $credential['expires_at'];
@@ -120,7 +119,9 @@ final class AdministrativeAdsReadHttpTransport
         if (!is_array($credential)) self::fail('credentials_denied');
         $expected = ['access_token', 'account_id', 'company_id', 'credential_ref', 'expires_at', 'lease', 'provider'];
         if ($this->provider === 'google_ads') {
-            $expected[] = 'developer_token'; $expected[] = 'login_customer_id';
+            $expected[] = 'login_customer_id';
+            // Sunset on 2026-09-09: tolerate a legacy snapshot field, never send it.
+            if (array_key_exists('developer_token', $credential)) $expected[] = 'developer_token';
         }
         $keys = array_keys($credential); sort($keys, SORT_STRING); sort($expected, SORT_STRING);
         if ($keys !== $expected || $credential['company_id'] !== $this->company
@@ -131,7 +132,7 @@ final class AdministrativeAdsReadHttpTransport
             || !self::headerToken($credential['access_token'], 4096)
             || !is_int($credential['expires_at'])) self::fail('credentials_denied');
         if ($this->provider === 'google_ads'
-            && (!self::headerToken($credential['developer_token'], 128)
+            && ((isset($credential['developer_token']) && !self::headerToken($credential['developer_token'], 128))
                 || ($credential['login_customer_id'] !== null
                     && (!is_string($credential['login_customer_id'])
                         || !preg_match('/\A[0-9]{10}\z/D', $credential['login_customer_id']))))) {

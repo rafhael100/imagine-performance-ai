@@ -119,14 +119,25 @@ retorno nulo ou exceção produz `credentials_unavailable`, sem tentar rede.
 | `credential_ref` | Referência opaca, com 1 a 128 caracteres no perfil alfanumérico/`_.:-`; não é segredo ou prova de origem. |
 | `access_token` | String não vazia, no perfil de token de cabeçalho aceito e com até 4.096 bytes; CR/LF e campos de cabeçalho livres não são aceitos. |
 | `expires_at` | Inteiro de segundos Unix; deve cobrir a reserva de tempo antes do envio e continuar válido depois. |
-| `developer_token` — somente Google | Token de cabeçalho com até 128 bytes. |
 | `login_customer_id` — somente Google | Campo obrigatório no snapshot, com `null` para acesso direto ou string de dez dígitos para conta gerenciadora. |
+| `developer_token` — legado opcional, somente Google | Pode estar ausente, ser `null` ou conter string válida no perfil seguro de token, com até 128 bytes. É aceito apenas para compatibilidade de snapshots, descartado e nunca enviado. |
 
-Google envia `Authorization: Bearer`, `developer-token` e, quando definido,
-`login-customer-id`. Meta envia o bearer token em cabeçalho, não na query. Esses
-valores não podem ser injetados pelo pedido do codec. O formato válido do
+Google envia `Authorization: Bearer` e, quando definido, `login-customer-id`.
+O transporte **não exige nem envia `developer-token`**, mesmo quando o snapshot
+legado contém esse campo. Meta envia o bearer token em cabeçalho, não na query.
+Esses valores não podem ser injetados pelo pedido do codec. O formato válido do
 snapshot não comprova que o provedor aceitou o token, que o consentimento é real
 ou que o operador possui a conta.
+
+A política específica do Google registra o sunset dos developer tokens em
+**09/09/2026** e vincula os níveis de acesso ao projeto Google Cloud que gerou as
+credenciais OAuth. O header antigo é opcional e ignorado pelo provedor; este
+transporte o omite. O `Page Summary` de `rest/auth` ainda conserva uma exigência
+antiga, em conflito com o corpo da política, a página de níveis de acesso, o
+registro de deprecações e o anúncio oficial concordantes. Essas fontes
+específicas prevalecem para este requisito. **Nenhum projeto Cloud, nível de
+acesso, credencial OAuth ou conta real foi aprovado ou homologado por esta
+implementação**; sua verificação continua sendo uma dependência operacional.
 
 Cada envio consulta o lease, resolve o snapshot, consulta novamente o mesmo
 lease e valida escopo/expiração. Imediatamente antes do `curl_exec`, revalida
@@ -295,7 +306,10 @@ mapeados para loopback no ambiente de teste e uma CA sintética no trust store.
 Isso não acrescenta opção de URL/resolve/CA ou bypass TLS ao código do transporte.
 Os cenários incluem conta → relatório, origem não verificada, vínculo da mesma
 empresa, limite durante streaming, cabeçalhos excessivos, timeout, redirects
-sem segundo destino, certificado/hostname incorretos e revogação. Contagens e
+sem segundo destino, certificado/hostname incorretos e revogação. Os positivos
+Google usam snapshot sem `developer_token` por padrão e exigem ausência desse
+header; também exercitam o campo legado descartado e o acesso direto com
+`login_customer_id=null`, sem header de conta gerenciadora. Contagens e
 aprovação precisam ser registradas somente depois da CI na SHA correspondente;
 esta documentação não declara esses testes verdes.
 
@@ -332,7 +346,16 @@ testes isolados. A composição oficial continua indisponível e sem faturamento
   ainda mostra Marketing v25.0: essa divergência documental é registrada, sem
   inventar data de suporte de v27 ou afirmar disponibilidade para um app real.
 - [Google: autorização e cabeçalhos HTTP](https://developers.google.com/google-ads/api/rest/auth):
-  bearer OAuth, developer token e `login-customer-id` para o contexto gerenciador.
+  bearer OAuth e `login-customer-id` para o contexto gerenciador; a indicação antiga
+  de developer token no `Page Summary` não define o requisito vigente.
+- [Google: política de sunset dos developer tokens](https://developers.google.com/google-ads/api/docs/api-policy/developer-token)
+  e [níveis de acesso](https://developers.google.com/google-ads/api/docs/api-policy/access-levels):
+  sunset em 09/09/2026, header antigo opcional/ignorado e acesso gerido pelo
+  projeto Google Cloud associado às credenciais OAuth.
+- [Google: registro de deprecações](https://developers.google.com/google-ads/api/docs/deprecations)
+  e [anúncio oficial da nova experiência de onboarding](https://developers.google.com/ads/blog/posts/2026/09/new-onboarding-experience-for-google-ads-api):
+  confirmação da mudança de política; não constitui aprovação do projeto ou
+  acesso a contas da Imagine.
 - [libcurl: callback de escrita](https://curl.se/libcurl/c/CURLOPT_WRITEFUNCTION.html)
   e [prazo total em milissegundos](https://curl.se/libcurl/c/CURLOPT_TIMEOUT_MS.html):
   recebimento por chunks e orçamento por transferência.
