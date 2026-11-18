@@ -5,13 +5,29 @@ use Closure;
 use RuntimeException;
 /** Injectable LAB connector. No built-in network transport or operational grant. */
 final class AdministrativeAdsReadConnector {
- public function __construct(private Closure $authorize,private Closure $page){}
+ public function __construct(private Closure $authorize,private Closure $page,private ?Closure $accountMetadata=null){}
  public function read(string $company,string $provider,string $account,string $from,string $until,string $timezone):array {
   $plan=AdministrativeAdsReadPlan::prepare($provider,$account,$from,$until);
   if(!in_array($timezone,\DateTimeZone::listIdentifiers(),true))throw new RuntimeException('Account timezone required');
   $lease=($this->authorize)($company,$provider,$account);
   if(!is_string($lease)||!preg_match('/\A[a-f0-9]{64}\z/D',$lease))throw new RuntimeException('Account consent denied');
   $rows=[];$cursor=null;$seen=[];$rowKeys=[];$currency=null;$complete=false;
+  $accountContext=null;
+  if($this->accountMetadata!==null){
+   if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
+   $metadata=($this->accountMetadata)($plan);
+   if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
+   if(!is_array($metadata))throw new RuntimeException('Provider account metadata denied');
+   $metadataKeys=array_keys($metadata);sort($metadataKeys,SORT_STRING);
+   if($metadataKeys!==['account_id','api_version','context_timezone','currency','provider','source_kind','timezone']
+    ||$metadata['source_kind']!=='laboratory_fixture'||$metadata['provider']!==$provider
+    ||$metadata['api_version']!==$plan['read_plan']['api_version']||$metadata['account_id']!==$account
+    ||$metadata['context_timezone']!==$timezone||$metadata['timezone']!==$timezone
+    ||!is_string($metadata['currency'])||!preg_match('/\A[A-Z]{3}\z/D',$metadata['currency']))throw new RuntimeException('Provider account metadata denied');
+   $currency=$metadata['currency'];
+   $accountContext=['source_kind'=>'laboratory_fixture','provider'=>$provider,'api_version'=>$metadata['api_version'],
+    'account_id'=>$account,'currency'=>$currency,'timezone'=>$timezone];
+  }
   for($i=0;$i<10;$i++){
    if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    $page=($this->page)($plan,$cursor);
@@ -46,6 +62,6 @@ final class AdministrativeAdsReadConnector {
   }
   return ['version'=>'imagine.performance.ads.read.result.v1','source_kind'=>'laboratory_fixture','status'=>$complete?'synthetic':'partial',
    'company_id'=>$company,'provider'=>$provider,'api_version'=>$plan['read_plan']['api_version'],'timezone'=>$timezone,'currency'=>$currency,'from'=>$from,'until'=>$until,
-   'complete'=>$complete,'rows'=>$rows,'official_evidence'=>null,'external_operations_enabled'=>false,'billable'=>false];
+   'complete'=>$complete,'rows'=>$rows,'account_metadata'=>$accountContext,'official_evidence'=>null,'external_operations_enabled'=>false,'billable'=>false];
  }
 }

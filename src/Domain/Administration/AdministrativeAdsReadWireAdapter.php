@@ -14,12 +14,13 @@ use Throwable;
  * Google Search / Meta Insights wire codec for the existing injectable connector.
  * No HTTP implementation, credentials, OAuth, retry, or operational composition.
  * The injected callback must return a laboratory_fixture, never official evidence.
- * Caller authorization stays in AdministrativeAdsReadConnector, around every page.
+ * Authorization stays in the connector, around each account/report operation.
  */
 final class AdministrativeAdsReadWireAdapter
 {
     private const MAX_BODY_BYTES = 1048576;
     private readonly array $plan;
+    private readonly array $accountPlan;
 
     public function __construct(
         private readonly string $provider,
@@ -30,6 +31,10 @@ final class AdministrativeAdsReadWireAdapter
         private readonly Closure $httpFixture
     ) {
         $this->plan = AdministrativeAdsReadPlan::prepare($provider, $account, $from, $until);
+        $this->accountPlan = AdministrativeAdsReadPlan::prepareAccount($provider, $account);
+        if ($this->accountPlan['read_plan']['api_version'] !== $this->plan['read_plan']['api_version']) {
+            self::fail('request_denied');
+        }
         if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
             self::fail('timezone_denied');
         }
@@ -43,7 +48,28 @@ final class AdministrativeAdsReadWireAdapter
         if ($cursor !== null && !AdministrativeAdsReadPlan::validCursor($cursor)) {
             self::fail('cursor_denied');
         }
-        $source = $this->plan['read_plan'];
+        return $this->exchange($this->request($this->plan['read_plan'], $cursor));
+    }
+
+    /** Compose metadata and report reads under the connector's single consent lease. */
+    public function connector(Closure $authorize): AdministrativeAdsReadConnector
+    {
+        return new AdministrativeAdsReadConnector(
+            $authorize,
+            Closure::fromCallable($this),
+            Closure::fromCallable([$this, 'account'])
+        );
+    }
+
+    /** Account request receives the bound report plan; no caller-controlled account URL. */
+    public function account(#[\SensitiveParameter] array $reportPlan): array
+    {
+        if ($reportPlan !== $this->plan) self::fail('request_denied');
+        return $this->exchange($this->request($this->accountPlan['read_plan'], null), true);
+    }
+
+    private function request(array $source, #[\SensitiveParameter] ?string $cursor): array
+    {
         $request = [
             'method' => $source['method'],
             'url' => $source['url'],
@@ -59,16 +85,21 @@ final class AdministrativeAdsReadWireAdapter
             $request['query'] = $source['query'];
             if ($cursor !== null) $request['query']['after'] = $cursor;
         }
+        return $request;
+    }
+
+    private function exchange(#[\SensitiveParameter] array $request, bool $accountMetadata = false): array
+    {
         try {
             $http = ($this->httpFixture)($request);
         } catch (Throwable) {
             // The callback exception may contain credentials; do not retain it.
             self::fail('transport_failed');
         }
-        return $this->decodeHttp($http);
+        return $this->decodeHttp($http, $accountMetadata);
     }
 
-    private function decodeHttp(#[\SensitiveParameter] mixed $http): array
+    private function decodeHttp(#[\SensitiveParameter] mixed $http, bool $accountMetadata): array
     {
         $expected = ['body', 'content_type', 'redirected', 'source_kind', 'status'];
         if (!is_array($http)) self::fail('response_denied');
@@ -96,10 +127,11 @@ final class AdministrativeAdsReadWireAdapter
         if ($http['body'] === '') self::fail('invalid_json', $status);
         if (!$body instanceof stdClass) self::fail('response_denied', $status);
         if (property_exists($body, 'error')) self::fail($this->errorReason($status, $body), $status);
+        if ($accountMetadata) return $this->provider === 'google_ads' ? $this->googleAccount($body) : $this->metaAccount($body);
         return $this->provider === 'google_ads' ? $this->google($body) : $this->meta($body);
     }
 
-    private function google(#[\SensitiveParameter] stdClass $body): array
+    private function googleResults(#[\SensitiveParameter] stdClass $body): array
     {
         self::allowedKeys($body, ['results', 'nextPageToken', 'fieldMask', 'totalResultsCount', 'queryResourceConsumption', 'metricAttributes']);
         if (property_exists($body, 'metricAttributes')
@@ -107,6 +139,12 @@ final class AdministrativeAdsReadWireAdapter
         // ProtoJSON may omit an empty repeated field; this remains an unverified empty result.
         $results = property_exists($body, 'results') ? $body->results : [];
         self::rowList($results);
+        return $results;
+    }
+
+    private function google(#[\SensitiveParameter] stdClass $body): array
+    {
+        $results = $this->googleResults($body);
         $rows = [];
         foreach ($results as $result) {
             if (!($result instanceof stdClass) || !(($result->customer ?? null) instanceof stdClass)
@@ -140,6 +178,40 @@ final class AdministrativeAdsReadWireAdapter
         if ($cursor === '') $cursor = null;
         elseif (!AdministrativeAdsReadPlan::validCursor($cursor)) self::fail('pagination_denied');
         return $this->page($rows, $cursor);
+    }
+
+    private function googleAccount(#[\SensitiveParameter] stdClass $body): array
+    {
+        $results = $this->googleResults($body);
+        if (count($results) !== 1 || !($results[0] instanceof stdClass)
+            || !(($results[0]->customer ?? null) instanceof stdClass)) self::fail('scope_denied');
+        if (property_exists($body, 'nextPageToken') && $body->nextPageToken !== '') self::fail('pagination_denied');
+        self::allowedKeys($results[0], ['customer'], 'scope_denied');
+        $customer = $results[0]->customer;
+        self::allowedKeys($customer, ['id', 'currencyCode', 'timeZone', 'resourceName'], 'scope_denied');
+        if (($customer->id ?? null) !== $this->account
+            || (property_exists($customer, 'resourceName') && $customer->resourceName !== 'customers/'.$this->account)) {
+            self::fail('scope_denied');
+        }
+        if (($customer->timeZone ?? null) !== $this->timezone) self::fail('timezone_denied');
+        return $this->accountContext(self::currency($customer->currencyCode ?? null), $customer->timeZone);
+    }
+
+    private function metaAccount(#[\SensitiveParameter] stdClass $body): array
+    {
+        self::allowedKeys($body, ['id', 'account_id', 'currency', 'timezone_name'], 'scope_denied');
+        if (($body->id ?? null) !== 'act_'.$this->account || ($body->account_id ?? null) !== $this->account) {
+            self::fail('scope_denied');
+        }
+        if (($body->timezone_name ?? null) !== $this->timezone) self::fail('timezone_denied');
+        return $this->accountContext(self::currency($body->currency ?? null), $body->timezone_name);
+    }
+
+    private function accountContext(string $currency, string $timezone): array
+    {
+        return ['source_kind' => 'laboratory_fixture', 'provider' => $this->provider,
+            'api_version' => $this->accountPlan['read_plan']['api_version'], 'account_id' => $this->account,
+            'currency' => $currency, 'timezone' => $timezone, 'context_timezone' => $this->timezone];
     }
 
     private function meta(#[\SensitiveParameter] stdClass $body): array

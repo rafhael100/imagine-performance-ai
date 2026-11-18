@@ -21,13 +21,14 @@ Não existe uma flag que transforme esta entrega em integração operacional.
 ## Composição e autoridade
 
 O adapter é vinculado a provider, conta, intervalo e fuso no construtor. Seu
-`__invoke($plan, $cursor)` pode ser usado com `Closure::fromCallable($adapter)` no
-parâmetro `page` do conector existente. O plano inteiro deve ser idêntico ao
+`connector($authorize)` compõe a leitura dos metadados da conta e das páginas do
+relatório. `__invoke($plan, $cursor)` continua disponível como callback de página
+para consumidores históricos. O plano inteiro deve ser idêntico ao
 reconstruído internamente; não se aceitam URLs, cabeçalhos, consultas ou flags
 adicionais. Não foi criado outro mecanismo de concessões.
 
 O conector continua responsável por chamar `authorize(company, provider, account)`
-antes e depois de **cada página**, comparando o mesmo lease. Invocar o codec
+antes e depois de **cada operação de conta ou página**, comparando o mesmo lease. Invocar o codec
 diretamente não concede autoridade de empresa ou conta. A callback não é uma
 prova de origem: precisa devolver `source_kind=laboratory_fixture` e nenhuma
 resposta 200 promove o resultado para evidência oficial.
@@ -37,9 +38,36 @@ e `billable=false`. Dados ausentes continuam ausentes; uma página vazia não é
 prova de gasto oficial zero. O fuso Google é confrontado com `customer.timeZone`.
 Cada página do adapter informa `context_timezone`, que o conector confronta com
 o fuso da leitura para impedir rotular dados de um contexto com outro fuso.
-O Insights da Meta não traz o fuso neste perfil: o argumento de contexto ainda
-não é uma verificação da conta Meta. Uma consulta de metadados da conta e a
-vinculação autenticada continuam necessárias antes de qualquer uso operacional.
+O Insights da Meta não traz o fuso neste perfil. A composição nova o confronta
+com `timezone_name` da resposta separada da conta antes de ler o relatório.
+Essa concordância continua sendo sintética, sem autenticar a identidade da
+plataforma ou autorizar uso operacional.
+
+## Metadados antes do relatório
+
+`prepareAccount(provider, account)` prepara um pedido separado e não executável:
+
+| Provedor | Metadados solicitados |
+| --- | --- |
+| Google | Mesmo endpoint Search, consulta fixa `SELECT customer.id, customer.currency_code, customer.time_zone FROM customer`. Exatamente um customer e nenhuma continuação. |
+| Meta | `GET /v27.0/act_{id}` com `fields=id,account_id,currency,timezone_name`. `id` e `account_id` precisam corresponder à mesma conta. |
+
+`account($reportPlan)` usa o mesmo callback do adapter e o mesmo tratamento de
+HTTP, JSON e erros. O conector compara fonte sintética, provider, versão, conta,
+fuso de contexto e fuso retornado; os campos aceitos são exatos. A moeda da conta
+inicializa a moeda do relatório e deve concordar com **todas** as linhas, inclusive
+a primeira. O contexto sanitizado fica em `account_metadata`.
+
+Uma resposta de relatório vazia pode conservar moeda/fuso observados na fixture
+da conta, com `rows=[]`; nenhum gasto é criado. Uma conta ausente, ambígua ou
+divergente impede a consulta de métricas. Revogação ou mudança do lease entre
+metadados e relatório também impede a próxima chamada. Uma nova leitura consulta
+a conta novamente; não há cache de contexto compartilhado entre empresas.
+
+O callback opcional mantém compatibilidade com o conector histórico, cujo
+`account_metadata` permanece `null`. Esse caminho legado não comprova leitura da
+conta. Compartilhar uma callback entre as operações tampouco prova uso de uma
+mesma credencial real, pois não existem credenciais nesta composição.
 
 ## Pedidos e paginação
 
@@ -102,7 +130,9 @@ troca de credencial, espera ou retry automático.
 ## Validação e limites da prova
 
 `tests/admin_phase8_ads_wire_adapter_test.php` compõe adapter e conector com
-respostas HTTP/JSON sintéticas. O workflow `admin-phase2-candidate.yml` roda os
+respostas HTTP/JSON sintéticas. `tests/admin_phase9_ads_account_test.php` exercita
+conta → relatório, resultados vazios, divergências e revogação entre operações.
+O workflow `admin-phase2-candidate.yml` roda os
 testes em PHP 8.3 e 8.4, com container `--network none`, fonte somente de leitura
 e sem credenciais. Também roda os testes de plano, conector e regressão do
 parser financeiro. A imagem oficial é obtida antes de isolar o processo de
@@ -129,6 +159,9 @@ pacote Portal #927; não é uma exigência para desenvolver este codec offline.
   e representação exata de inteiros de 64 bits.
 - [Google release notes](https://developers.google.com/google-ads/api/docs/release-notes):
   v26.2 publicada em 11/11/2026; o caminho REST permanece v26.
+- [Customer Google v26](https://developers.google.com/google-ads/api/fields/v26/customer)
+  e [Ad Account Meta v27](https://developers.facebook.com/docs/graph-api/reference/ad-account/):
+  identidade, moeda e fuso da conta independentes de linhas de métricas.
 - [Meta Insights](https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights),
   [referência de parâmetros](https://developers.facebook.com/documentation/ads-commerce/marketing-api/reference/ad-account/insights)
   e [resultados paginados](https://developers.facebook.com/docs/graph-api/results/):
@@ -142,7 +175,9 @@ pacote Portal #927; não é uma exigência para desenvolver este codec offline.
   ainda mostra Marketing v25.0: essa divergência documental é registrada, sem
   inventar data de suporte de v27 ou afirmar disponibilidade para um app real.
 
-O escopo OAuth Google `adwords` também permite escritas; a restrição deste
+O [escopo OAuth Google](https://developers.google.com/google-ads/api/rest/auth)
+`adwords` também permite escritas; a restrição deste
 incremento está nos pedidos permitidos, não em chamá-lo de escopo OAuth somente
-de leitura. A permissão de relatórios Meta é `ads_read`. A autenticação real e
+de leitura. A [permissão de relatórios Meta](https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/authorization)
+é `ads_read`. A autenticação real e
 seu perfil de permissões permanecem fora desta composição.
