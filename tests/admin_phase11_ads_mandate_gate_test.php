@@ -78,6 +78,23 @@ $ok(!str_contains(json_encode($gate->__debugInfo()), 'vault'), 'no vault refs in
 
 $originalService = $service;
 $originalMandate = $mandate;
+
+// A SQL projection or associative resolver may reorder keys without changing
+// the persisted revision/consent/credential. This must NOT invalidate a lease
+// mid-pagination, whereas every actual change remains covered below.
+$service = array_reverse($originalService, true);
+$mandate = array_reverse($originalMandate, true);
+$ok($gate->lease($company, 'google_ads', $account) === $initial['lease'],
+    'reordered service and mandate keys preserve exact scoped lease');
+$ok($gate->credentialReference($company, 'google_ads', $account, $initial['lease']) === 'vault-ads-alpha-001',
+    'key order alone cannot revoke an unchanged credential reference');
+$service = $originalService;
+$mandate = array_reverse($originalMandate, true);
+$ok($gate->lease($company, 'google_ads', $account) === $initial['lease'],
+    'only one resolver reordering still preserves lease');
+$service = $originalService;
+$mandate = $originalMandate;
+
 foreach ([
     ['active', false], ['revoked_at', $now], ['expires_at', $now],
     ['operation', 'dashboard.read'], ['company_id', 'company_beta'],
