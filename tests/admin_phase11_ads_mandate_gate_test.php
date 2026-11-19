@@ -37,6 +37,7 @@ $service = [
 $mandate = [
     'version' => Gate::VERSION,
     'company_id' => $company,
+    'service_principal' => $principal,
     'provider' => 'google_ads',
     'account_id' => $account,
     'purpose' => Gate::PURPOSE,
@@ -55,7 +56,7 @@ $getService = static function(string $p, string $c, string $op) use (&$service, 
     $serviceCalls++;
     return $service;
 };
-$getMandate = static function(string $c, string $p, string $a, string $op) use (&$mandate, &$accountCalls): array {
+$getMandate = static function(string $c, string $p, string $a, string $op, string $principal) use (&$mandate, &$accountCalls): array {
     $accountCalls++;
     return $mandate;
 };
@@ -90,7 +91,8 @@ foreach ([
 foreach ([
     ['status', 'suspended'], ['revoked_at', $now], ['expires_at', $now],
     ['purpose', 'ads_write'], ['operation', 'dashboard.read'], ['company_id', 'company_beta'],
-    ['provider', 'meta_ads'], ['account_id', '9876543210'], ['revision', 0],
+    ['provider', 'meta_ads'], ['account_id', '9876543210'],
+    ['service_principal', 'imagine_other_s2s'], ['revision', 0],
     ['credential_ref', '../path'], ['consent_reference', 'bad'], ['version', 'unknown'],
 ] as [$field, $value]) {
     $service = $originalService;
@@ -108,6 +110,27 @@ $mandate = $originalMandate;
 
 $ok($gate->lease('company_beta','google_ads',$account) === null,'same provider account cannot cross companies');
 $ok($gate->lease($company,'meta_ads',$account) === null,'provider swap denied');
+
+// A company-wide delegated principal MUST NOT inherit a mandate issued to a
+// different S2S principal, even for the same company/provider/account.
+$otherPrincipal = 'imagine_other_s2s';
+$otherService = $originalService;
+$otherService['principal'] = $otherPrincipal;
+$gateOther = new Gate(
+    $otherPrincipal,
+    static function(string $p, string $c, string $op) use (&$otherService): array { return $otherService; },
+    $getMandate,
+    static function() use (&$now): int { return $now; }
+);
+$ok($gateOther->lease($company,'google_ads',$account) === null,
+    'company reports.read is not another S2S principal account mandate');
+$mandate['service_principal'] = $otherPrincipal;
+$ok($gateOther->lease($company,'google_ads',$account) !== null,
+    'explicit same-account mandate for second principal works');
+$ok($gate->lease($company,'google_ads',$account) === null,
+    'original principal cannot use second principal account mandate');
+$mandate = $originalMandate;
+
 $ok($gate->lease($company,'google_ads','1111111111') === null,'account swap denied');
 $ok($gate->lease($company,'google_ads','malformed') === null,'invalid account denied');
 
