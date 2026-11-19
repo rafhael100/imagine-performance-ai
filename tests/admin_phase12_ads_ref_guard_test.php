@@ -204,7 +204,7 @@ $ok($expiryAfterGate($company,'google_ads',$account,$lease) === null,
     'credential expires during second mandate validation denied');
 $ok($secretClockCalls === 2, 'boundary checked bearer lifetime again after lease');
 $validClock = new Guard($gate, $readByReference, static function() use (&$now): int { return $now; });
-$ok($validClock($company,'google_ads',$account,$lease) === $validEnvelope,
+$ok($validClock($company,'google_ads',$account,$lease) === $secrets,
     'valid unexpired token still allowed with deterministic clock');
 $invalidClock = new Guard($gate, $readByReference, static fn(): string => 'invalid');
 $ok($invalidClock($company,'google_ads',$account,$lease) === null,
