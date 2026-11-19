@@ -404,4 +404,23 @@ $denied(fn() => $rollbackGate->current($company,'google_ads',$account),
     'rollback in post-resolver clock denied even with valid snapshots');
 $ok($rollbackClockReads === 2, 'rollback post-resolver clock was observed');
 
+// Expiry and clock rollback during the SECOND nominal account lookup
+// must be checked after that callback completes (not just after S2S).
+foreach ([
+    ['third_now' => $originalMandate['expires_at'], 'name' => 'account expired on final clock'],
+    ['third_now' => $now - 1, 'name' => 'clock regressed during second account read'],
+] as $clockScenario) {
+    $readNumber = 0;
+    $lastReadClock = static function() use (&$readNumber, $now, $clockScenario): int {
+        return ++$readNumber === 3 ? $clockScenario['third_now'] : $now;
+    };
+    $lastReadGate = new Gate($principal,
+        static function() use ($originalService): array { return $originalService; },
+        static function() use ($originalMandate): array { return $originalMandate; },
+        $lastReadClock);
+    $denied(fn() => $lastReadGate->current($company,'google_ads',$account),
+        $clockScenario['name']);
+    $ok($readNumber === 3, 'final clock observed after two authority reads');
+}
+
 echo "OK: $checks scoped account mandate, S2S delegation, cross-tenant, rotation, revocation and fail-closed assertions; no provider called\n";
