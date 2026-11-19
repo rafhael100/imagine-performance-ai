@@ -53,6 +53,16 @@ final class AdministrativeAdsAccountMandateGate
             self::serviceIsCurrent($service, $this->principal, $company, $now);
             self::mandateIsCurrent($mandate, $this->principal, $company, $provider, $account, $now);
 
+            // Resolvers may take long enough for a previously valid service or
+            // account mandate to expire. Do not issue a lease from a snapshot
+            // that was current only BEFORE those server-side callbacks ran.
+            $afterResolvers = $this->clock === null ? time() : ($this->clock)();
+            if (!is_int($afterResolvers) || $afterResolvers <= 0
+                || !self::future($service['expires_at'], $afterResolvers)
+                || !self::future($mandate['expires_at'], $afterResolvers)) {
+                self::deny();
+            }
+
             // The source must supply the persisted revisions; merely knowing
             // account_id or holding a token cannot produce a valid grant.
             // Resolver array insertion order is not authority state. Keep the

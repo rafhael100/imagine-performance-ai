@@ -117,3 +117,21 @@ O relógio injetável é exclusivo da prova offline, e o padrão usa o relógio
 local do servidor; não equivale a sincronização IAM/cofre ou controle de
 validade do transporte HTTP em cada página. A suíte cobre a transição
 temporal, o caso válido e relógio de tipo inválido, sem credenciais reais.
+
+
+## Validade da autorização após latência de resolução (laboratório)
+
+O gate valida os snapshots de delegação S2S e mandato nominal uma
+segunda vez quanto à **expiração** depois que os dois callbacks de fonte
+terminam. Um mandato válido no início, mas vencido enquanto o servidor
+aguarda a fonte de autoridade, não pode emitir lease ou referência opaca.
+O mesmo vale para a delegação técnica; relógio de segundo estágio
+inválido também nega a operação. O relógio é injetável nos testes offline,
+e na execução padrão vem do relógio do servidor.
+
+Esta proteção complementa, mas não substitui, a revalidação do token do
+resolvedor de custódia: cada fronteira checa sua própria validade depois
+de suas dependências lentas. Não equivale a fonte autenticada
+SQL001→S2S, assinatura, consentimento real, IAM, cofre, leitura Google/Meta
+ou validação em ambiente Leaseweb. Ficam mantidos DRAFT / NO-GO,
+`synthetic_candidate` e ausência de escrita em main/produção.

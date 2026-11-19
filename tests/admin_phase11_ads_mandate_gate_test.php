@@ -186,4 +186,50 @@ $mandate = $originalMandate;
 
 $ok($gate->credentialReference($company,'google_ads',$account,$originalLease)==='vault-ads-alpha-001',
     'current grant restored after negative tests');
+// Clock advancement DURING server-side resolver callbacks is a separate
+// race from expiry while obtaining a bearer. Both authority sources must
+// remain current at the instant a lease is issued.
+$service = $originalService;
+$mandate = $originalMandate;
+$now = 2000000000;
+$mandateClockReads = 0;
+$expiringMandateClock = static function() use (&$mandateClockReads, &$now, &$originalMandate): int {
+    $mandateClockReads++;
+    return $mandateClockReads === 1 ? $now : $originalMandate['expires_at'];
+};
+$gateMandateLate = new Gate($principal, $getService, $getMandate, $expiringMandateClock);
+$denied(fn() => $gateMandateLate->current($company,'google_ads',$account),
+    'mandate expired while resolving delegated authority');
+$ok($mandateClockReads === 2, 'mandate expiry checked after both callbacks');
+
+$serviceSoon = $originalService;
+$serviceSoon['expires_at'] = $now + 100;
+$serviceClockReads = 0;
+$serviceSoonSource = static function(string $p, string $c, string $op) use (&$serviceSoon): array {
+    return $serviceSoon;
+};
+$expiringServiceClock = static function() use (&$serviceClockReads, &$now): int {
+    $serviceClockReads++;
+    return $serviceClockReads === 1 ? $now : $now + 100;
+};
+$gateServiceLate = new Gate($principal, $serviceSoonSource, $getMandate, $expiringServiceClock);
+$denied(fn() => $gateServiceLate->current($company,'google_ads',$account),
+    'S2S delegation expired while resolving account authority');
+$ok($serviceClockReads === 2, 'S2S expiry checked after both callbacks');
+
+// A bad second clock reading must not bypass the time-of-use check.
+// An unchanged clock and two still-valid snapshots continue to work.
+$invalidSecondClockReads = 0;
+$invalidSecondClock = static function() use (&$invalidSecondClockReads, &$now): int|string {
+    return ++$invalidSecondClockReads === 1 ? $now : 'invalid';
+};
+$gateBadSecondClock = new Gate($principal, $getService, $getMandate, $invalidSecondClock);
+$denied(fn() => $gateBadSecondClock->current($company,'google_ads',$account),
+    'invalid time after authority resolution');
+$ok($invalidSecondClockReads === 2, 'invalid second clock was observed');
+$gateStableClock = new Gate($principal, $getService, $getMandate,
+    static function() use (&$now): int { return $now; });
+$ok($gateStableClock->lease($company,'google_ads',$account) === $originalLease,
+    'valid S2S and account lease stable after second time check');
+
 echo "OK: $checks scoped account mandate, S2S delegation, cross-tenant, rotation, revocation and fail-closed assertions; no provider called\n";
