@@ -251,4 +251,16 @@ $secrets=$validEnvelope;
 $ok($guard($company,'google_ads',$account,$lease)===$validEnvelope,
     'valid Google mandate remains accessible after Meta negative checks');
 
+// A stale second clock must not authorize a bearer using an earlier
+// instant than the envelope validation, even with unchanged grants.
+$rollbackSecretClockReads = 0;
+$rollbackSecretClock = static function() use (&$rollbackSecretClockReads, &$now): int {
+    return ++$rollbackSecretClockReads === 1 ? $now + 20 : $now;
+};
+$rollbackSecretGuard = new Guard($gate, $readByReference, $rollbackSecretClock);
+$ok($rollbackSecretGuard($company,'google_ads',$account,$lease) === null,
+    'custody clock rollback denied despite valid credential and mandate');
+$ok($rollbackSecretClockReads === 2,
+    'custody rollback observed after second lease check');
+
 echo "OK: $checks offline credential reference/scope/lease/rotation and no-secret-leak checks; no live vault or Ads API\n";
