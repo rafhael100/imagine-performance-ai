@@ -49,8 +49,11 @@ final class AdministrativeAdsAccountMandateGate
             if (!is_int($now) || $now <= 0) self::deny();
 
             $service = ($this->resolveService)($this->principal, $company, self::OPERATION);
-            $mandate = ($this->resolveAccount)($company, $provider, $account, self::OPERATION, $this->principal);
+            // Do not even query the account authority when delegation is absent
+            // or revoked. This is a privileged server-side resolver boundary,
+            // not just a check before issuing a final read-only lease.
             self::serviceIsCurrent($service, $this->principal, $company, $now);
+            $mandate = ($this->resolveAccount)($company, $provider, $account, self::OPERATION, $this->principal);
             self::mandateIsCurrent($mandate, $this->principal, $company, $provider, $account, $now);
 
             // Resolvers may take long enough for a previously valid service or
