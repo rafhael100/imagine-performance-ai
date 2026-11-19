@@ -41,16 +41,40 @@ final class AdministrativeAdsBoundCredentialResolver
             $candidate = ($this->readByReference)(
                 $reference, $company, $provider, $account, $expectedLease
             );
-            if (!is_array($candidate)
-                || !isset($candidate['credential_ref'], $candidate['company_id'],
-                    $candidate['provider'], $candidate['account_id'], $candidate['lease'])
+            // A credential source must not use the bound lookup as a carrier
+            // for extra claims, tenant metadata or unvalidated headers.
+            // Match the exact read-only transport envelope before returning.
+            $expectedFields = [
+                'access_token', 'account_id', 'company_id', 'credential_ref',
+                'expires_at', 'lease', 'provider',
+            ];
+            if ($provider === 'google_ads') {
+                $expectedFields[] = 'login_customer_id';
+                if (is_array($candidate) && array_key_exists('developer_token', $candidate)) {
+                    // Legacy Google field is validated but never forwarded.
+                    $expectedFields[] = 'developer_token';
+                }
+            }
+            $actualFields = is_array($candidate) ? array_keys($candidate) : [];
+            sort($actualFields, SORT_STRING);
+            sort($expectedFields, SORT_STRING);
+            if (!is_array($candidate) || $actualFields !== $expectedFields
                 || !is_string($candidate['credential_ref'])
                 || !hash_equals($reference, $candidate['credential_ref'])
                 || $candidate['company_id'] !== $company
                 || $candidate['provider'] !== $provider
                 || $candidate['account_id'] !== $account
                 || !is_string($candidate['lease'])
-                || !hash_equals($expectedLease, $candidate['lease'])) {
+                || !hash_equals($expectedLease, $candidate['lease'])
+                || !self::headerToken($candidate['access_token'], 4096)
+                || !is_int($candidate['expires_at'])
+                || $candidate['expires_at'] <= time()
+                || ($provider === 'google_ads'
+                    && ($candidate['login_customer_id'] !== null
+                        && (!is_string($candidate['login_customer_id'])
+                            || preg_match('/\A[0-9]{10}\z/D', $candidate['login_customer_id']) !== 1)))
+                || ($provider === 'google_ads' && array_key_exists('developer_token', $candidate)
+                    && !self::headerToken($candidate['developer_token'], 128))) {
                 return null;
             }
 
@@ -62,4 +86,10 @@ final class AdministrativeAdsBoundCredentialResolver
             return null;
         }
     }
+    private static function headerToken(#[\SensitiveParameter] mixed $value, int $max): bool
+    {
+        return is_string($value) && strlen($value) <= $max
+            && preg_match('/\A[A-Za-z0-9._~+\/-]+=*\z/D', $value) === 1;
+    }
+
 }
