@@ -91,7 +91,7 @@ final class AdministrativeAdsBoundCredentialResolver
             // checked. Never return an already expired bearer, even if both
             // mandate snapshots remain unchanged.
             $afterGate = $this->clock === null ? time() : ($this->clock)();
-            return is_int($afterGate) && $afterGate > 0
+            return is_int($afterGate) && $afterGate > 0 && $afterGate >= $now
                 && $candidate['expires_at'] > $afterGate ? $candidate : null;
         } catch (Throwable) {
             // Never surface callback exception text or chain to callers.
