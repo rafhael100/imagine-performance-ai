@@ -105,3 +105,15 @@ e só pode ser usado com callbacks confiáveis do servidor, ainda inexistentes
 para SQL001→S2S. A fonte Portal permanece `synthetic_candidate`,
 `operational_enabled=false`; não há consentimento real, cofre, IAM,
 acesso Google/Meta, emissão de Ads, merge, deploy ou aprovação de produção.
+
+
+## Revisão de validade do bearer após o segundo gate (somente laboratório)
+
+O resolvedor de referência sintética agora observa a expiração do envelope
+duas vezes: após a consulta de custódia e após revalidar delegação S2S e
+mandato por conta. Um token que vencer durante a revalidação é recusado,
+mesmo que a revisão do mandato e a referência opaca permaneçam estáveis.
+O relógio injetável é exclusivo da prova offline, e o padrão usa o relógio
+local do servidor; não equivale a sincronização IAM/cofre ou controle de
+validade do transporte HTTP em cada página. A suíte cobre a transição
+temporal, o caso válido e relógio de tipo inválido, sem credenciais reais.
