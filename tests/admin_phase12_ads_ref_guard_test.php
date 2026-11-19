@@ -23,7 +23,7 @@ $service = [
     'expires_at'=>$now+500,'revoked_at'=>null,
 ];
 $mandate = [
-    'version'=>Gate::VERSION,'company_id'=>$company,'provider'=>'google_ads',
+    'version'=>Gate::VERSION,'company_id'=>$company,'service_principal'=>$principal,'provider'=>'google_ads',
     'account_id'=>$account,'purpose'=>Gate::PURPOSE,'operation'=>Gate::OPERATION,
     'consent_reference'=>'synthetic-consent-001','credential_ref'=>'synthetic-vault-001',
     'status'=>'active','revision'=>5,'expires_at'=>$now+400,'revoked_at'=>null,
