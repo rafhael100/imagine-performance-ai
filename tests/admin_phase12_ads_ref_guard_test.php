@@ -191,4 +191,45 @@ $throwsSecret = new Guard($gate, static function (): never {
 $ok($throwsSecret($company,'google_ads',$account,$lease) === null,'secret provider exception denied without chain');
 $ok($guard($company,'google_ads',$account,$lease) === $secrets, 'recovered valid scope still succeeds');
 
+// Meta has an independent account scope and a smaller custody envelope.
+// Google-only login and legacy developer claims must NEVER be accepted for Meta.
+$mandate['provider']='meta_ads';
+$mandate['account_id']='987654321';
+$mandate['consent_reference']='synthetic-consent-meta-001';
+$mandate['credential_ref']='synthetic-vault-meta-001';
+$mandate['revision']++;
+$metaAccount='987654321';
+$metaLease=$gate->lease($company,'meta_ads',$metaAccount);
+$ok(is_string($metaLease) && $metaLease!==$lease, 'Meta account has independent lease');
+$metaSecrets = [
+    'company_id'=>$company,'provider'=>'meta_ads','account_id'=>$metaAccount,
+    'credential_ref'=>'synthetic-vault-meta-001','lease'=>$metaLease,
+    'access_token'=>'synthetic_meta_token_private','expires_at'=>$now+300,
+];
+$secrets=$metaSecrets;
+$ok($guard($company,'meta_ads',$metaAccount,$metaLease)===$metaSecrets,
+    'Meta allows only correctly bound custody envelope');
+$ok($guard($company,'google_ads',$account,$lease)===null,
+    'Meta mandate never authorizes old Google account');
+$secrets['login_customer_id']=null;
+$ok($guard($company,'meta_ads',$metaAccount,$metaLease)===null,
+    'Meta forbids Google login customer claim even when null');
+$secrets=$metaSecrets;
+$secrets['developer_token']='syntheticDeveloperToken_XYZ';
+$ok($guard($company,'meta_ads',$metaAccount,$metaLease)===null,
+    'Meta forbids legacy Google developer token claim');
+$secrets=$metaSecrets;
+$secrets['account_id']=$account;
+$ok($guard($company,'meta_ads',$metaAccount,$metaLease)===null,
+    'Meta callback cannot substitute Google account');
+$secrets=$metaSecrets;
+$secrets['credential_ref']='synthetic-vault-001';
+$ok($guard($company,'meta_ads',$metaAccount,$metaLease)===null,
+    'Meta callback cannot use Google opaque reference');
+$secrets=$metaSecrets;
+$mandate=$originalMandate;
+$secrets=$validEnvelope;
+$ok($guard($company,'google_ads',$account,$lease)===$validEnvelope,
+    'valid Google mandate remains accessible after Meta negative checks');
+
 echo "OK: $checks offline credential reference/scope/lease/rotation and no-secret-leak checks; no live vault or Ads API\n";
