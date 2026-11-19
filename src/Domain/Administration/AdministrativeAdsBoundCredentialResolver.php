@@ -16,7 +16,8 @@ final class AdministrativeAdsBoundCredentialResolver
 {
     public function __construct(
         private readonly AdministrativeAdsAccountMandateGate $gate,
-        #[\SensitiveParameter] private readonly Closure $readByReference
+        #[\SensitiveParameter] private readonly Closure $readByReference,
+        #[\SensitiveParameter] private readonly ?Closure $clock = null
     ) {}
 
     public function __debugInfo(): array
@@ -56,6 +57,9 @@ final class AdministrativeAdsBoundCredentialResolver
                 }
             }
             $actualFields = is_array($candidate) ? array_keys($candidate) : [];
+            // The injected clock exists only for deterministic, offline tests;
+            // production defaults to the local server clock. Validate type.
+            $now = $this->clock === null ? time() : ($this->clock)();
             sort($actualFields, SORT_STRING);
             sort($expectedFields, SORT_STRING);
             if (!is_array($candidate) || $actualFields !== $expectedFields
@@ -68,7 +72,8 @@ final class AdministrativeAdsBoundCredentialResolver
                 || !hash_equals($expectedLease, $candidate['lease'])
                 || !self::headerToken($candidate['access_token'], 4096)
                 || !is_int($candidate['expires_at'])
-                || $candidate['expires_at'] <= time()
+                || !is_int($now) || $now <= 0
+                || $candidate['expires_at'] <= $now
                 || ($provider === 'google_ads'
                     && ($candidate['login_customer_id'] !== null
                         && (!is_string($candidate['login_customer_id'])
@@ -80,7 +85,14 @@ final class AdministrativeAdsBoundCredentialResolver
 
             // Fail closed when the source changes during a slow secret lookup.
             $latest = $this->gate->credentialReference($company, $provider, $account, $expectedLease);
-            return $latest !== null && hash_equals($reference, $latest) ? $candidate : null;
+            if ($latest === null || !hash_equals($reference, $latest)) return null;
+
+            // A secret may expire while the second S2S/account gate is being
+            // checked. Never return an already expired bearer, even if both
+            // mandate snapshots remain unchanged.
+            $afterGate = $this->clock === null ? time() : ($this->clock)();
+            return is_int($afterGate) && $afterGate > 0
+                && $candidate['expires_at'] > $afterGate ? $candidate : null;
         } catch (Throwable) {
             // Never surface callback exception text or chain to callers.
             return null;

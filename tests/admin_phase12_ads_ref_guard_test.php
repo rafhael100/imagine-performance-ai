@@ -191,6 +191,25 @@ $throwsSecret = new Guard($gate, static function (): never {
 $ok($throwsSecret($company,'google_ads',$account,$lease) === null,'secret provider exception denied without chain');
 $ok($guard($company,'google_ads',$account,$lease) === $secrets, 'recovered valid scope still succeeds');
 
+// Credential expiry can change while the second mandate/lease check runs.
+// The first clock observation is valid, the second equals expires_at.
+// The secret must be denied AFTER revalidation even when both grants are stable.
+$secretClockCalls = 0;
+$advancingClock = static function() use (&$secretClockCalls, &$now): int {
+    $secretClockCalls++;
+    return $secretClockCalls === 1 ? $now : $now + 300;
+};
+$expiryAfterGate = new Guard($gate, $readByReference, $advancingClock);
+$ok($expiryAfterGate($company,'google_ads',$account,$lease) === null,
+    'credential expires during second mandate validation denied');
+$ok($secretClockCalls === 2, 'boundary checked bearer lifetime again after lease');
+$validClock = new Guard($gate, $readByReference, static function() use (&$now): int { return $now; });
+$ok($validClock($company,'google_ads',$account,$lease) === $secrets,
+    'valid unexpired token still allowed with deterministic clock');
+$invalidClock = new Guard($gate, $readByReference, static fn(): string => 'invalid');
+$ok($invalidClock($company,'google_ads',$account,$lease) === null,
+    'invalid custody clock fails closed without leaked exception');
+
 // Meta has an independent account scope and a smaller custody envelope.
 // Google-only login and legacy developer claims must NEVER be accepted for Meta.
 $mandate['provider']='meta_ads';
