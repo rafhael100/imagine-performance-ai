@@ -167,3 +167,26 @@ retrocesso e mantêm os casos positivos de relógio estável. Trata-se de
 proteção fail-closed contra relógio injetado ou dessincronizado, não garantia
 de tempo monotônico entre máquinas nem autorização real de Ads. Sem ponte
 SQL001→S2S, IAM/cofre, consentimento, acesso oficial ou homologação.
+
+## Segunda leitura da autoridade nominal após S2S (laboratório, NO-GO)
+
+O gate revalida a delegação S2S **antes** de repetir a consulta privilegiada da
+conta. Agora compara dois snapshots completos e atuais do mandato por conta,
+incluindo empresa, principal, consentimento, credencial, revisão, status e
+expiração. Revogação, suspensão, troca de referência, consentimento ou
+identidade durante a segunda consulta S2S não podem produzir um lease a
+partir do mandato nominal anterior. Exceções no segundo resolvedor são
+sanitizadas e negadas; uma reordenação das chaves sem alteração de valores
+continua válida. O relógio também é verificado **após** a segunda consulta
+de conta, incluindo expiração e retrocesso.
+
+Cada leitura autorizada do contrato sintético agora requer **duas** consultas
+S2S e **duas** consultas nominais; a primeira S2S deve ser válida antes de
+consultar mandatos. As provas PHP 8.3/8.4 exercitam sete mutações negativas,
+falha do segundo callback, expiração/retrocesso depois da segunda leitura,
+e caso positivo com snapshots reordenados. Não se trata de transação distribuída
+nem garantia de revogação instantânea; entre a última leitura de uma fonte e a
+outra ainda existe janela TOCTOU. SQL001→S2S, fonte real de consentimento,
+cofre/IAM, autorização Google/Meta, revisão AppSec/DBA/LGPD e homologação
+Leaseweb **continuam ausentes e bloqueiam GO**. Sem operação Ads, merge,
+deploy ou mudanças de produção.
