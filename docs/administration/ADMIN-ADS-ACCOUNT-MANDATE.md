@@ -64,3 +64,22 @@ RLS/PostgreSQL e revisão independente. Sem bridge SQL001→S2S e sem GO.
 O contrato anterior de laboratório (`account-mandate.v1`) não incluía `service_principal` no snapshot por conta. Isso permitiria que outra delegação S2S legítima da mesma empresa herdasse indevidamente a conta. A versão `v2` é **incompatível e falha fechada** com o snapshot `v1`: requer `service_principal` no conjunto exato, exige igualdade com a identidade do gate e passa esse principal como quinto argumento ao resolvedor de conta. Uma delegação ampla `reports.read` nunca deve virar concessão de outra identidade.
 
 O Portal #973 já guarda `service_principal` na tabela sintética; isso **não cria** uma ponte autorizada para o receiver, nem transforma `candidate` em `active`. As suites negativas do engine incluem dois principais na mesma empresa e mesma conta, e demonstram negação cruzada. O futuro resolvedor persistido terá de filtrar pela identidade técnica verificada e consentimento por conta, sob AppSec/DBA/LGPD.
+
+## Validação antecipada de envelope de cofre (somente laboratório)
+
+O boundary `AdministrativeAdsBoundCredentialResolver` exige agora o mesmo
+**conjunto fechado de chaves** esperado pelo transporte HTTPS read-only:
+identidade de empresa/provedor/conta, referência opaca vinculada ao mandato,
+lease, access token de formato seguro para header, validade futura e
+`login_customer_id` quando Google. O campo legado `developer_token` só
+pode existir no Google e tem formato restrito; o transporte continua sem
+enviá-lo. Campos extras, expiração, tipos errados, token ausente ou com
+controle de linha são recusados **antes** de entregar o envelope ao
+transporte. A segunda verificação de mandato/revogação permanece intacta.
+
+A suíte sintética cobre aceitação do envelope nominal e recusa de tokens
+com CRLF/espaço, formato inválido de login, prazo vencido, atributo
+inesperado e token ausente. Isto não é um cofre e não concede token nem
+permissão operacional. A fonte Portal permanece `synthetic_candidate`
+e o receiver real continua inacessível para Ads, aguardando IAM/consentimento,
+AppSec/DBA/LGPD e homologação Leaseweb.
