@@ -55,10 +55,17 @@ final class AdministrativeAdsAccountMandateGate
 
             // The source must supply the persisted revisions; merely knowing
             // account_id or holding a token cannot produce a valid grant.
+            // Resolver array insertion order is not authority state. Keep the
+            // lease stable for identical snapshots returned by different
+            // PostgreSQL projections while still binding every validated field.
+            $serviceSnapshot = $service;
+            $accountSnapshot = $mandate;
+            ksort($serviceSnapshot, SORT_STRING);
+            ksort($accountSnapshot, SORT_STRING);
             $canonical = json_encode([
-                'domain' => 'imagine.performance.ads.account-mandate.lease.v1',
-                'service' => $service,
-                'account' => $mandate,
+                'domain' => 'imagine.performance.ads.account-mandate.lease.v2',
+                'service' => $serviceSnapshot,
+                'account' => $accountSnapshot,
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
 
             return [

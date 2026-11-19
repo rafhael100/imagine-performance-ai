@@ -83,3 +83,25 @@ inesperado e token ausente. Isto não é um cofre e não concede token nem
 permissão operacional. A fonte Portal permanece `synthetic_candidate`
 e o receiver real continua inacessível para Ads, aguardando IAM/consentimento,
 AppSec/DBA/LGPD e homologação Leaseweb.
+
+
+## Lease determinístico por conteúdo validado (revisão de laboratório)
+
+O lease é um digest **local e não autenticado**, utilizado somente para
+detectar mudança de mandatos durante uma sessão sintética. A ordem de inserção
+das chaves devolvidas pelos callbacks não faz parte do contrato de autoridade:
+uma projeção de SQL ou serialização diferente pode devolver os mesmos campos
+em outra ordem. Antes do hash, o engine passa a ordenar alfabeticamente por
+chave os **dois snapshots já validados** (delegação S2S e mandato nominal);
+usa domínio de hash `account-mandate.lease.v2` para não misturar serializações.
+As chaves permitidas são fechadas e os valores são escalares tipados, portanto
+essa normalização não autoriza atributos extras nem coercão.
+
+Teste positivo: o mesmo serviço/mandato, com ordem de chaves alterada,
+mantém lease e credencial opaca por referência. Testes negativos preexistentes
+continuam exigindo novo lease para alteração de revisão, credencial,
+consentimento ou escopo. O lease **não é assinatura nem autenticação**
+e só pode ser usado com callbacks confiáveis do servidor, ainda inexistentes
+para SQL001→S2S. A fonte Portal permanece `synthetic_candidate`,
+`operational_enabled=false`; não há consentimento real, cofre, IAM,
+acesso Google/Meta, emissão de Ads, merge, deploy ou aprovação de produção.
