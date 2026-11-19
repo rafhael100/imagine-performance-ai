@@ -67,6 +67,7 @@ final class AdministrativeAdsAccountMandateGate
             // that was current only BEFORE those server-side callbacks ran.
             $afterResolvers = $this->clock === null ? time() : ($this->clock)();
             if (!is_int($afterResolvers) || $afterResolvers <= 0
+                || $afterResolvers < $now
                 || !self::future($service['expires_at'], $afterResolvers)
                 || !self::future($mandate['expires_at'], $afterResolvers)) {
                 self::deny();
