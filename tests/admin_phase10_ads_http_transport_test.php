@@ -515,7 +515,7 @@ $service = [
 ];
 $mandate = [
     'version' => MandateGate::VERSION,
-    'company_id' => 'company_alfa', 'provider' => 'google_ads',
+    'company_id' => 'company_alfa', 'service_principal' => $principal, 'provider' => 'google_ads',
     'account_id' => httpAccount('google_ads'), 'purpose' => MandateGate::PURPOSE,
     'operation' => MandateGate::OPERATION,
     'consent_reference' => 'consent-20261119-approved',
