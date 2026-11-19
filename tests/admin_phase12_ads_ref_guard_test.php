@@ -28,11 +28,10 @@ $mandate = [
     'consent_reference'=>'synthetic-consent-001','credential_ref'=>'synthetic-vault-001',
     'status'=>'active','revision'=>5,'expires_at'=>$now+400,'revoked_at'=>null,
 ];
-$serviceSource = static fn(string $p,string $c,string $op): array => $service;
 // The mutable fixture is deliberately captured by reference.
 $serviceSource = static function (string $p,string $c,string $op) use (&$service): array { return $service; };
 $accountSource = static function (string $c,string $p,string $a,string $op) use (&$mandate): array { return $mandate; };
-$gate = new Gate($principal, $serviceSource, $accountSource, static fn(): int => $now);
+$gate = new Gate($principal, $serviceSource, $accountSource, static function () use (&$now): int { return $now; });
 
 $originalService = $service;
 $originalMandate = $mandate;
@@ -119,6 +118,22 @@ $changeConsent = new Guard($gate, static function (
 });
 $ok($changeConsent($company,'google_ads',$account,$lease) === null,'consent replaced mid-read denied');
 $mandate=$originalMandate;
+$changeCredential = new Guard($gate, static function (
+    string $ref,string $c,string $p,string $a,string $expected
+) use (&$mandate,&$secrets): array {
+    $mandate['credential_ref']='synthetic-vault-002';
+    return $secrets;
+});
+$ok($changeCredential($company,'google_ads',$account,$lease) === null,'credential ref rotated mid-read denied');
+$mandate=$originalMandate;
+$expireMidRead = new Guard($gate, static function (
+    string $ref,string $c,string $p,string $a,string $expected
+) use (&$now,&$mandate,&$secrets): array {
+    $now=$mandate['expires_at'];
+    return $secrets;
+});
+$ok($expireMidRead($company,'google_ads',$account,$lease) === null,'mandate expiry mid-read denied');
+$now=2000000000;
 $changeService = new Guard($gate, static function (
     string $ref,string $c,string $p,string $a,string $expected
 ) use (&$service,&$secrets): array {
