@@ -36,3 +36,25 @@ NÃO há merge, deploy, DNS, credenciais, contas oficiais, faturamento, escrita 
 ## Prova de transporte HTTP com mandato sintético
 
 O ensaio `tests/admin_phase10_ads_http_transport_test.php` agora compõe o gate com o transporte nativo dentro de Docker `--network none`, por meio de dois resolvedores locais independentes. Exercita uma leitura válida da conta Google e uma página, nega conta revogada, empresa cruzada e serviço técnico desabilitado **antes de usar a rede**; uma rotação de revisão entre metadados e relatório impede o segundo pedido. Esse teste não instala a autoridade no receiver operacional, nem transforma o HTTPS de peer sintético em prova de consentimento ou extrato oficial.
+
+## Custódia por referência — boundary adicional em laboratório
+
+`AdministrativeAdsBoundCredentialResolver` recebe o `credential_ref` da
+**fonte de mandato corrente** do gate, nunca do request HTTP. A closure
+confiável de cofre (ainda **sintética**) recebe essa referência junto com
+empresa, provider, conta e lease. A resposta deve ter exatamente a mesma
+referência opaca e escopo. Antes de devolver o envelope ao transporte, o
+resolver reconsulta as duas autoridades para recusar revogação/rotação
+durante a consulta de credencial.
+
+`tests/admin_phase12_ads_ref_guard_test.php` inclui rejeições de referência
+adulterada, empresa, conta, provider, lease, principal/serviço suspenso,
+mandato revogado, revisão/consentimento/delegação alterados durante a
+consulta e erro de fonte sem divulgação. O teste HTTPS existente usa o
+novo boundary e exige **zero requests** quando a resposta devolve um
+`credential_ref` diferente do mandato. Roda com PHP 8.3/8.4 isolado.
+
+**Limite:** esse guard é apenas composição candidata. Ele não autentica
+a fonte Portal nem fala com cofre, OAuth, Google/Meta ou o receiver.
+Não substitui IAM, prova de consentimento, principal S2S autorizado,
+RLS/PostgreSQL e revisão independente. Sem bridge SQL001→S2S e sem GO.
