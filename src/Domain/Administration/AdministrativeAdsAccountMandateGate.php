@@ -56,28 +56,45 @@ final class AdministrativeAdsAccountMandateGate
             $mandate = ($this->resolveAccount)($company, $provider, $account, self::OPERATION, $this->principal);
             self::mandateIsCurrent($mandate, $this->principal, $company, $provider, $account, $now);
 
-            // The privileged account lookup can outlive or revoke the S2S
-            // delegation. A valid snapshot taken BEFORE that lookup is not
-            // sufficient: require the same current service snapshot AFTER it.
-            // This is a lab-only consistency check, not an atomic SQL read.
+            // Reading the nominal account authority can change the S2S
+            // delegation. Revalidate S2S before making another privileged
+            // account lookup; changes cannot inherit an earlier grant.
             $serviceAfterAccount = ($this->resolveService)($this->principal, $company, self::OPERATION);
-
-            // Resolvers may take long enough for a previously valid service or
-            // account mandate to expire. Do not issue a lease from a snapshot
-            // that was current only BEFORE those server-side callbacks ran.
-            $afterResolvers = $this->clock === null ? time() : ($this->clock)();
-            if (!is_int($afterResolvers) || $afterResolvers <= 0
-                || $afterResolvers < $now
-                || !self::future($service['expires_at'], $afterResolvers)
-                || !self::future($mandate['expires_at'], $afterResolvers)) {
+            $beforeAccountRecheck = $this->clock === null ? time() : ($this->clock)();
+            if (!is_int($beforeAccountRecheck) || $beforeAccountRecheck <= 0
+                || $beforeAccountRecheck < $now
+                || !self::future($service['expires_at'], $beforeAccountRecheck)
+                || !self::future($mandate['expires_at'], $beforeAccountRecheck)) {
                 self::deny();
             }
-            self::serviceIsCurrent($serviceAfterAccount, $this->principal, $company, $afterResolvers);
+            self::serviceIsCurrent($serviceAfterAccount, $this->principal, $company, $beforeAccountRecheck);
             $serviceBeforeComparison = $service;
             $serviceAfterComparison = $serviceAfterAccount;
             ksort($serviceBeforeComparison, SORT_STRING);
             ksort($serviceAfterComparison, SORT_STRING);
             if ($serviceBeforeComparison !== $serviceAfterComparison) self::deny();
+
+            // An independent account authority can itself change during the
+            // second S2S lookup (revocation, consent or credential rotation).
+            // A lease must never be issued using that earlier account state.
+            $mandateAfterService = ($this->resolveAccount)(
+                $company, $provider, $account, self::OPERATION, $this->principal
+            );
+            $afterResolvers = $this->clock === null ? time() : ($this->clock)();
+            if (!is_int($afterResolvers) || $afterResolvers <= 0
+                || $afterResolvers < $beforeAccountRecheck
+                || !self::future($service['expires_at'], $afterResolvers)
+                || !self::future($mandate['expires_at'], $afterResolvers)) {
+                self::deny();
+            }
+            self::mandateIsCurrent(
+                $mandateAfterService, $this->principal, $company, $provider, $account, $afterResolvers
+            );
+            $accountBeforeComparison = $mandate;
+            $accountAfterComparison = $mandateAfterService;
+            ksort($accountBeforeComparison, SORT_STRING);
+            ksort($accountAfterComparison, SORT_STRING);
+            if ($accountBeforeComparison !== $accountAfterComparison) self::deny();
 
             // The source must supply the persisted revisions; merely knowing
             // account_id or holding a token cannot produce a valid grant.
