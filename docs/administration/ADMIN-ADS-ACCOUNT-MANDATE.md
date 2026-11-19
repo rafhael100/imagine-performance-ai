@@ -135,3 +135,24 @@ de suas dependências lentas. Não equivale a fonte autenticada
 SQL001→S2S, assinatura, consentimento real, IAM, cofre, leitura Google/Meta
 ou validação em ambiente Leaseweb. Ficam mantidos DRAFT / NO-GO,
 `synthetic_candidate` e ausência de escrita em main/produção.
+
+
+## Revalidação S2S após consulta nominal (laboratório)
+
+A consulta do mandato nominal pode demorar ou alterar o estado da delegação
+técnica. O contrato passa a consultar a fonte S2S **duas vezes**, antes e
+depois do resolvedor privilegiado de conta, exigindo snapshots equivalentes
+por conteúdo, inclusive revisão, status, principal, empresa e prazo. Uma
+revogação, troca de principal, rotação de revisão, expiração ou erro na
+segunda consulta falha fechado e não emite lease ou referência opaca.
+A reordenação das chaves do snapshot sem alteração de valores permanece válida.
+
+A prova PHP offline adiciona cinco mutações adversariais entre as consultas,
+um erro sanitizado da segunda fonte e o caminho positivo (duas consultas S2S
+e uma consulta nominal). O isolamento do resolvedor de conta quando a primeira
+delegação é inválida permanece obrigatório. **Não existe leitura atômica entre
+dois sistemas**: esta barreira reduz uma janela determinística, mas não
+promete revogação instantânea ou consistência transacional em fonte remota.
+Faltam ponte SQL001→S2S, prova de identidade e consentimento reais,
+IAM/cofre, revisão AppSec/DBA/LGPD e homologação Leaseweb. Contrato,
+credenciais e contas seguem exclusivamente sintéticos, sem GO operacional.

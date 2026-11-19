@@ -171,6 +171,73 @@ $ok(is_string($allowedGate->lease($company,'google_ads',$account)),
 $ok($allowedAccountReads === 1,
     'valid S2S invokes account authority once');
 
+// A valid S2S snapshot can be revoked/rotated WHILE a privileged account
+// resolver runs. The second service read must detect this TOCTOU boundary;
+// no digest or opaque credential reference is issued from the stale grant.
+foreach ([
+    ['active' => false],
+    ['revoked_at' => $now],
+    ['principal' => 'imagine_other_s2s'],
+    ['revision' => $originalService['revision'] + 1],
+    ['expires_at' => $now],
+] as $serviceChangedDuringAccount) {
+    $midService = $originalService;
+    $midServiceReads = 0;
+    $midAccountReads = 0;
+    $midServiceResolver = static function() use (&$midService, &$midServiceReads): array {
+        $midServiceReads++;
+        return $midService;
+    };
+    $midAccountResolver = static function() use (
+        &$midService, &$midAccountReads, $serviceChangedDuringAccount, $originalMandate
+    ): array {
+        $midAccountReads++;
+        $midService = array_replace($midService, $serviceChangedDuringAccount);
+        return $originalMandate;
+    };
+    $midGate = new Gate($principal, $midServiceResolver, $midAccountResolver,
+        static function() use (&$now): int { return $now; });
+    $denied(fn() => $midGate->current($company,'google_ads',$account),
+        'S2S mutation during privileged account lookup denied');
+    $ok($midServiceReads === 2 && $midAccountReads === 1,
+        'S2S rechecked after exactly one account lookup');
+}
+// Failure of the second service lookup is also sanitized and cannot
+// accidentally accept the initially valid snapshot.
+$serviceOnSecondReads = 0;
+$serviceOnSecond = static function() use (&$serviceOnSecondReads, $originalService): array {
+    if (++$serviceOnSecondReads === 2) throw new RuntimeException('SECRET_S2S_SOURCE_FAILURE');
+    return $originalService;
+};
+$secondAccountReads = 0;
+$secondAccountSource = static function() use (&$secondAccountReads, $originalMandate): array {
+    $secondAccountReads++;
+    return $originalMandate;
+};
+$secondGate = new Gate($principal, $serviceOnSecond, $secondAccountSource,
+    static function() use (&$now): int { return $now; });
+$denied(fn() => $secondGate->current($company,'google_ads',$account),
+    'second S2S resolver exception sanitized');
+$ok($serviceOnSecondReads === 2 && $secondAccountReads === 1,
+    'second S2S failure occurs only after the account lookup');
+// The second source may reorder its fields without changing its meaning.
+$reorderedServiceReads = 0;
+$reorderedService = static function() use (&$reorderedServiceReads, $originalService): array {
+    return ++$reorderedServiceReads === 1
+        ? $originalService : array_reverse($originalService, true);
+};
+$reorderedAccountReads = 0;
+$reorderedAccount = static function() use (&$reorderedAccountReads, $originalMandate): array {
+    $reorderedAccountReads++;
+    return $originalMandate;
+};
+$reorderedGate = new Gate($principal, $reorderedService, $reorderedAccount,
+    static function() use (&$now): int { return $now; });
+$ok($reorderedGate->lease($company,'google_ads',$account) === $initial['lease'],
+    'identical reordered S2S snapshot stays authorized');
+$ok($reorderedServiceReads === 2 && $reorderedAccountReads === 1,
+    'positive case also revalidates S2S exactly twice');
+
 // A company-wide delegated principal MUST NOT inherit a mandate issued to a
 // different S2S principal, even for the same company/provider/account.
 $otherPrincipal = 'imagine_other_s2s';
