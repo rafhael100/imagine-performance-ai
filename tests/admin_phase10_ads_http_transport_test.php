@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsReadPlan.php';
 require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsAccountMandateGate.php';
+require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsBoundCredentialResolver.php';
 require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsReadConnector.php';
 require_once __DIR__.'/../src/Domain/Commercial/ExactJsonNumberLexicalParser.php';
 require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsWireFailure.php';
@@ -11,6 +12,7 @@ require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsReadWireAda
 
 use Imagine\Performance\Administration\AdministrativeAdsReadPlan as Plan;
 use Imagine\Performance\Administration\AdministrativeAdsAccountMandateGate as MandateGate;
+use Imagine\Performance\Administration\AdministrativeAdsBoundCredentialResolver as BoundGuard;
 use Imagine\Performance\Administration\AdministrativeAdsReadConnector as Connector;
 use Imagine\Performance\Administration\AdministrativeAdsReadHttpTransport as Transport;
 use Imagine\Performance\Administration\AdministrativeAdsReadWireAdapter as Adapter;
@@ -513,7 +515,7 @@ $service = [
 ];
 $mandate = [
     'version' => MandateGate::VERSION,
-    'company_id' => 'company_alfa', 'provider' => 'google_ads',
+    'company_id' => 'company_alfa', 'service_principal' => $principal, 'provider' => 'google_ads',
     'account_id' => httpAccount('google_ads'), 'purpose' => MandateGate::PURPOSE,
     'operation' => MandateGate::OPERATION,
     'consent_reference' => 'consent-20261119-approved',
@@ -528,13 +530,17 @@ $accountSource = static function(string $c, string $p, string $a, string $o) use
 };
 $gate = new MandateGate($principal, $serviceSource, $accountSource);
 $authority = static fn(string $c, string $p, string $a): ?string => $gate->lease($c, $p, $a);
-$readCredential = static function(string $c, string $p, string $a, string $lease) use ($gate): ?array {
-    $ref = $gate->credentialReference($c, $p, $a, $lease);
-    if ($ref === null) return null;
+// An independent vault-like lab callback receives the mandate-selected
+// reference. The guard refuses a different returned reference/scope and
+// reconfirms the lease after the secret read, before the HTTP transfer.
+$secretLab = static function(string $ref, string $c, string $p, string $a, string $lease): array {
     $token = httpCredential($p, $lease);
     $token['credential_ref'] = $ref;
     return $token;
 };
+$credentialGuard = new BoundGuard($gate, $secretLab);
+$readCredential = static fn(string $c, string $p, string $a, string $lease): ?array
+    => $credentialGuard($c, $p, $a, $lease);
 $case = httpCase('account-mandate-https', [
     httpResponse(httpMetadata('google_ads')),
     httpResponse(httpReport('google_ads', 1)),
@@ -544,6 +550,24 @@ httpPeer($case, 2);
 httpSame('unverified', $result['status'], 'mandate passed HTTPS remains unverified');
 httpSame(false, $result['billable'], 'mandate passed HTTPS cannot be billed');
 httpSame(null, $result['official_evidence'], 'mandate never makes official evidence');
+
+// A secret callback cannot replace the current opaque ref with one belonging
+// to another provider/company while keeping the same signed-like lease digest.
+$wrongRefGuard = new BoundGuard($gate, static function(
+    string $ref, string $c, string $p, string $a, string $lease
+): array {
+    $token = httpCredential($p, $lease);
+    $token['credential_ref'] = 'vault-other-tenant-001';
+    return $token;
+});
+$wrongRef = static fn(string $c, string $p, string $a, string $lease): ?array
+    => $wrongRefGuard($c, $p, $a, $lease);
+$case = httpCase('mandate-wrong-secret-reference');
+httpFailure(
+    fn() => httpRead('google_ads', httpTransport('google_ads', $authority, $wrongRef), $authority),
+    'credentials_unavailable', 'wrong vault reference denied before HTTP'
+);
+httpPeer($case, 0);
 
 // A current company-wide reports.read delegation is NOT an account mandate.
 $mandate['status'] = 'revoked';

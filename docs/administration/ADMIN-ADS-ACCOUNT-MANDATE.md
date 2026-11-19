@@ -9,7 +9,7 @@ O Portal continua autoridade de identidade humana, sessão/MFA, contrato e empre
 `AdministrativeAdsAccountMandateGate` é um validador puramente local que exige **duas fontes independentes, atuais, fornecidas pelo servidor**, sem ler request/body/header, OAuth, cofre ou banco de dados:
 
 1. `resolveService(principal, company_id, reports.read)`: delegação técnica de uma identidade S2S para a empresa e operação.
-2. `resolveAccount(company_id, provider, account_id, reports.read)`: mandato da conta exata, finalidade `ads_reporting_read`, consentimento e referência opaca da credencial.
+2. `resolveAccount(company_id, provider, account_id, reports.read, service_principal)`: mandato da conta exata, finalidade `ads_reporting_read`, consentimento e referência opaca da credencial.
 
 Ambas as closures são **dependências de confiança externas a esta classe**. Fixture ou closure arbitrária não é prova de autorização real. A ligação à fonte persistente do Portal e sua revogação transacional continuam sem implementação operacional, sujeitas a AppSec/DBA/LGPD e homologação.
 
@@ -17,9 +17,9 @@ Ambas as closures são **dependências de confiança externas a esta classe**. F
 
 A delegação usa versão `imagine.performance.ads.service-delegation.v1` e o conjunto exato: `version`, `principal`, `company_id`, `operation`, `active`, `revision`, `expires_at`, `revoked_at`.
 
-O mandato usa versão `imagine.performance.ads.account-mandate.v1` e o conjunto exato: `version`, `company_id`, `provider`, `account_id`, `purpose`, `operation`, `consent_reference`, `credential_ref`, `status`, `revision`, `expires_at`, `revoked_at`.
+O mandato usa versão `imagine.performance.ads.account-mandate.v2` e o conjunto exato: `version`, `company_id`, `service_principal`, `provider`, `account_id`, `purpose`, `operation`, `consent_reference`, `credential_ref`, `status`, `revision`, `expires_at`, `revoked_at`.
 
-O validador só aceita `operation=reports.read`, `active=true` na delegação, `status=active` no mandato, revisão positiva, expiração futura, nenhuma revogação e igualdade estrita de principal/empresa/provedor/conta. IDs de conta Google têm dez dígitos; Meta aceita de 5 a 32. Referências são opacas, sem caminhos, espaços ou URLs. Chaves extras, campos ausentes e tipos inesperados são recusados.
+O validador só aceita `operation=reports.read`, `active=true` na delegação, `status=active` no mandato, revisão positiva, expiração futura, nenhuma revogação e igualdade estrita de principal S2S no mandato e na delegação, empresa/provedor/conta. IDs de conta Google têm dez dígitos; Meta aceita de 5 a 32. Referências são opacas, sem caminhos, espaços ou URLs. Chaves extras, campos ausentes e tipos inesperados são recusados.
 
 `current()` reconfirma ambas as fontes e retorna somente `lease` (digest do conjunto versionado), `credential_ref`, `consent_reference`, `expires_at` e `version`. **O digest é detector de alteração, não assinatura de mandato.** `lease()` devolve `null` em qualquer negação; `credentialReference(..., expectedLease)` revalida as duas fontes e recusa o uso de referência se a revisão, titularidade, consentimento, credencial ou delegação mudar. Sem token na resposta nem exceção de callback encadeada.
 
@@ -36,3 +36,31 @@ NÃO há merge, deploy, DNS, credenciais, contas oficiais, faturamento, escrita 
 ## Prova de transporte HTTP com mandato sintético
 
 O ensaio `tests/admin_phase10_ads_http_transport_test.php` agora compõe o gate com o transporte nativo dentro de Docker `--network none`, por meio de dois resolvedores locais independentes. Exercita uma leitura válida da conta Google e uma página, nega conta revogada, empresa cruzada e serviço técnico desabilitado **antes de usar a rede**; uma rotação de revisão entre metadados e relatório impede o segundo pedido. Esse teste não instala a autoridade no receiver operacional, nem transforma o HTTPS de peer sintético em prova de consentimento ou extrato oficial.
+
+## Custódia por referência — boundary adicional em laboratório
+
+`AdministrativeAdsBoundCredentialResolver` recebe o `credential_ref` da
+**fonte de mandato corrente** do gate, nunca do request HTTP. A closure
+confiável de cofre (ainda **sintética**) recebe essa referência junto com
+empresa, provider, conta e lease. A resposta deve ter exatamente a mesma
+referência opaca e escopo. Antes de devolver o envelope ao transporte, o
+resolver reconsulta as duas autoridades para recusar revogação/rotação
+durante a consulta de credencial.
+
+`tests/admin_phase12_ads_ref_guard_test.php` inclui rejeições de referência
+adulterada, empresa, conta, provider, lease, principal/serviço suspenso,
+mandato revogado, revisão/consentimento/delegação alterados durante a
+consulta e erro de fonte sem divulgação. O teste HTTPS existente usa o
+novo boundary e exige **zero requests** quando a resposta devolve um
+`credential_ref` diferente do mandato. Roda com PHP 8.3/8.4 isolado.
+
+**Limite:** esse guard é apenas composição candidata. Ele não autentica
+a fonte Portal nem fala com cofre, OAuth, Google/Meta ou o receiver.
+Não substitui IAM, prova de consentimento, principal S2S autorizado,
+RLS/PostgreSQL e revisão independente. Sem bridge SQL001→S2S e sem GO.
+
+## Correção de isolamento por principal na v2
+
+O contrato anterior de laboratório (`account-mandate.v1`) não incluía `service_principal` no snapshot por conta. Isso permitiria que outra delegação S2S legítima da mesma empresa herdasse indevidamente a conta. A versão `v2` é **incompatível e falha fechada** com o snapshot `v1`: requer `service_principal` no conjunto exato, exige igualdade com a identidade do gate e passa esse principal como quinto argumento ao resolvedor de conta. Uma delegação ampla `reports.read` nunca deve virar concessão de outra identidade.
+
+O Portal #973 já guarda `service_principal` na tabela sintética; isso **não cria** uma ponte autorizada para o receiver, nem transforma `candidate` em `active`. As suites negativas do engine incluem dois principais na mesma empresa e mesma conta, e demonstram negação cruzada. O futuro resolvedor persistido terá de filtrar pela identidade técnica verificada e consentimento por conta, sob AppSec/DBA/LGPD.
