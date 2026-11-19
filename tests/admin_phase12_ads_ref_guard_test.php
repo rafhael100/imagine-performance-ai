@@ -63,6 +63,39 @@ $ok(!str_contains(json_encode($guard->__debugInfo(),JSON_THROW_ON_ERROR),'synthe
 $ok(!str_contains(json_encode($guard->__debugInfo(),JSON_THROW_ON_ERROR),'synthetic-vault-001'),
     'debug info never includes opaque reference');
 
+// Rejected by the custody boundary itself (not delegated to HTTP validation).
+$validEnvelope = $secrets;
+foreach ([
+    ['access_token','contains whitespace'],
+    ['access_token',"synthetic\r\nheader"],
+    ['access_token',[]],
+    ['expires_at','2000000300'],
+    ['expires_at',time()-1],
+    ['login_customer_id','bad-login'],
+    ['login_customer_id',1234567890],
+] as [$field,$bad]) {
+    $secrets[$field]=$bad;
+    $ok($guard($company,'google_ads',$account,$lease) === null,
+        'malformed custody envelope '.$field.' denied');
+    $secrets=$validEnvelope;
+}
+$secrets['unexpected_scope_claim']='forbidden';
+$ok($guard($company,'google_ads',$account,$lease) === null,
+    'additional untrusted credential claim denied');
+$secrets=$validEnvelope;
+unset($secrets['access_token']);
+$ok($guard($company,'google_ads',$account,$lease) === null,
+    'missing access token denied before transport');
+$secrets=$validEnvelope;
+$secrets['developer_token']='invalid developer token';
+$ok($guard($company,'google_ads',$account,$lease) === null,
+    'legacy developer token shape checked before transport');
+$secrets=$validEnvelope;
+$secrets['developer_token']='syntheticDeveloperToken_XYZ';
+$ok($guard($company,'google_ads',$account,$lease) === $secrets,
+    'valid legacy Google field accepted only in expected envelope');
+$secrets=$validEnvelope;
+
 // A spoofed payload is not trusted merely because company/account/lease match.
 foreach ([
     ['credential_ref','synthetic-vault-other'],
