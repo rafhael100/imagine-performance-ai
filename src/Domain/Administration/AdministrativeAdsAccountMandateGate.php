@@ -56,6 +56,12 @@ final class AdministrativeAdsAccountMandateGate
             $mandate = ($this->resolveAccount)($company, $provider, $account, self::OPERATION, $this->principal);
             self::mandateIsCurrent($mandate, $this->principal, $company, $provider, $account, $now);
 
+            // The privileged account lookup can outlive or revoke the S2S
+            // delegation. A valid snapshot taken BEFORE that lookup is not
+            // sufficient: require the same current service snapshot AFTER it.
+            // This is a lab-only consistency check, not an atomic SQL read.
+            $serviceAfterAccount = ($this->resolveService)($this->principal, $company, self::OPERATION);
+
             // Resolvers may take long enough for a previously valid service or
             // account mandate to expire. Do not issue a lease from a snapshot
             // that was current only BEFORE those server-side callbacks ran.
@@ -65,6 +71,12 @@ final class AdministrativeAdsAccountMandateGate
                 || !self::future($mandate['expires_at'], $afterResolvers)) {
                 self::deny();
             }
+            self::serviceIsCurrent($serviceAfterAccount, $this->principal, $company, $afterResolvers);
+            $serviceBeforeComparison = $service;
+            $serviceAfterComparison = $serviceAfterAccount;
+            ksort($serviceBeforeComparison, SORT_STRING);
+            ksort($serviceAfterComparison, SORT_STRING);
+            if ($serviceBeforeComparison !== $serviceAfterComparison) self::deny();
 
             // The source must supply the persisted revisions; merely knowing
             // account_id or holding a token cannot produce a valid grant.
