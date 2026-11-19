@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsReadPlan.php';
+require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsAccountMandateGate.php';
 require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsReadConnector.php';
 require_once __DIR__.'/../src/Domain/Commercial/ExactJsonNumberLexicalParser.php';
 require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsWireFailure.php';
@@ -9,6 +10,7 @@ require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsReadHttpTra
 require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsReadWireAdapter.php';
 
 use Imagine\Performance\Administration\AdministrativeAdsReadPlan as Plan;
+use Imagine\Performance\Administration\AdministrativeAdsAccountMandateGate as MandateGate;
 use Imagine\Performance\Administration\AdministrativeAdsReadConnector as Connector;
 use Imagine\Performance\Administration\AdministrativeAdsReadHttpTransport as Transport;
 use Imagine\Performance\Administration\AdministrativeAdsReadWireAdapter as Adapter;
@@ -499,5 +501,92 @@ foreach([0,99,120001] as $badBudget) {
     httpFailure(fn()=>httpTransport('google_ads',null,null,500,2000,$badBudget),
         'request_denied','invalid read budget');
 }
+
+
+/** Verify two independent server-owned scopes actually gate HTTPS operations. */
+$principal = 'imagine_portal_s2s';
+$service = [
+    'version' => MandateGate::SERVICE_VERSION,
+    'principal' => $principal, 'company_id' => 'company_alfa',
+    'operation' => MandateGate::OPERATION, 'active' => true,
+    'revision' => 4, 'expires_at' => time() + 120, 'revoked_at' => null,
+];
+$mandate = [
+    'version' => MandateGate::VERSION,
+    'company_id' => 'company_alfa', 'provider' => 'google_ads',
+    'account_id' => httpAccount('google_ads'), 'purpose' => MandateGate::PURPOSE,
+    'operation' => MandateGate::OPERATION,
+    'consent_reference' => 'consent-20261119-approved',
+    'credential_ref' => 'vault-ads-alpha-001', 'status' => 'active',
+    'revision' => 9, 'expires_at' => time() + 120, 'revoked_at' => null,
+];
+$serviceSource = static function(string $p, string $c, string $o) use (&$service): array {
+    return $service;
+};
+$accountSource = static function(string $c, string $p, string $a, string $o) use (&$mandate): array {
+    return $mandate;
+};
+$gate = new MandateGate($principal, $serviceSource, $accountSource);
+$authority = static fn(string $c, string $p, string $a): ?string => $gate->lease($c, $p, $a);
+$readCredential = static function(string $c, string $p, string $a, string $lease) use ($gate): ?array {
+    $ref = $gate->credentialReference($c, $p, $a, $lease);
+    if ($ref === null) return null;
+    $token = httpCredential($p, $lease);
+    $token['credential_ref'] = $ref;
+    return $token;
+};
+$case = httpCase('account-mandate-https', [
+    httpResponse(httpMetadata('google_ads')),
+    httpResponse(httpReport('google_ads', 1)),
+], [httpExpectation('google_ads', true), httpExpectation('google_ads')]);
+$result = httpRead('google_ads', httpTransport('google_ads', $authority, $readCredential), $authority);
+httpPeer($case, 2);
+httpSame('unverified', $result['status'], 'mandate passed HTTPS remains unverified');
+httpSame(false, $result['billable'], 'mandate passed HTTPS cannot be billed');
+httpSame(null, $result['official_evidence'], 'mandate never makes official evidence');
+
+// A current company-wide reports.read delegation is NOT an account mandate.
+$mandate['status'] = 'revoked';
+$case = httpCase('mandate-denied-before-http');
+httpRuntimeDenied(
+    fn() => httpRead('google_ads', httpTransport('google_ads', $authority, $readCredential), $authority),
+    'revoked account mandate denied before HTTP even with S2S reports.read'
+);
+httpPeer($case, 0);
+$mandate['status'] = 'active';
+$mandate['company_id'] = 'company_beta';
+$case = httpCase('mandate-cross-tenant');
+httpRuntimeDenied(
+    fn() => httpRead('google_ads', httpTransport('google_ads', $authority, $readCredential), $authority),
+    'account mandate for another company must not authorize same account id'
+);
+httpPeer($case, 0);
+$mandate['company_id'] = 'company_alfa';
+$service['active'] = false;
+$case = httpCase('mandate-service-revoked');
+httpRuntimeDenied(
+    fn() => httpRead('google_ads', httpTransport('google_ads', $authority, $readCredential), $authority),
+    'current account mandate cannot replace revoked S2S delegation'
+);
+httpPeer($case, 0);
+$service['active'] = true;
+
+// Rotation during metadata-to-report transition: the resolver sees the update
+// and the original lease is rechecked before report bytes are transferred.
+$case = httpCase('mandate-rotates-between-pages', [
+    httpResponse(httpMetadata('google_ads')),
+], [httpExpectation('google_ads', true)]);
+$resolveCalls = 0;
+$rotatingResolver = static function(string $c, string $p, string $a, string $lease)
+    use (&$resolveCalls, &$mandate, $readCredential): ?array {
+    if (++$resolveCalls === 2) $mandate['revision']++;
+    return $readCredential($c, $p, $a, $lease);
+};
+httpFailure(
+    fn() => httpRead('google_ads', httpTransport('google_ads', $authority, $rotatingResolver), $authority),
+    'authorization_revoked', 'mandate revision change between pages prevents second transfer'
+);
+httpSame(2, $resolveCalls, 'mandate resolver called before second transfer');
+httpPeer($case, 1);
 
 echo "OK: $assertions native HTTPS, TLS, credential custody, consent, bounded I/O and origin assertions; synthetic loopback peers only\n";

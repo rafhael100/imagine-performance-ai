@@ -32,3 +32,7 @@ A fonte humana do Portal ainda precisa confrontar identidade e MFA ao emitir o m
 **Para a próxima integração:** construir fonte persistida de mandato no Portal com FORCE RLS, revisão/expiração/revogação e histórico append-only; provar em dois bancos/identidades reais de staging que o mesmo lease alcança as consultas; vincular a referência a um cofre autorizado. Uma revogação deve impedir a próxima página, não apenas o próximo login. O contrato completo deve ser revisado antes de ativar runtime.
 
 NÃO há merge, deploy, DNS, credenciais, contas oficiais, faturamento, escrita de anúncios ou custos novos. O transporte continua `http_unverified`, `billable=false`, sem promover `official_evidence`.
+
+## Prova de transporte HTTP com mandato sintético
+
+O ensaio `tests/admin_phase10_ads_http_transport_test.php` agora compõe o gate com o transporte nativo dentro de Docker `--network none`, por meio de dois resolvedores locais independentes. Exercita uma leitura válida da conta Google e uma página, nega conta revogada, empresa cruzada e serviço técnico desabilitado **antes de usar a rede**; uma rotação de revisão entre metadados e relatório impede o segundo pedido. Esse teste não instala a autoridade no receiver operacional, nem transforma o HTTPS de peer sintético em prova de consentimento ou extrato oficial.
