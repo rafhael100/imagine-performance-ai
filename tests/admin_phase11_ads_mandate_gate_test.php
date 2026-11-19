@@ -128,6 +128,49 @@ $mandate = $originalMandate;
 $ok($gate->lease('company_beta','google_ads',$account) === null,'same provider account cannot cross companies');
 $ok($gate->lease($company,'meta_ads',$account) === null,'provider swap denied');
 
+// A denied S2S delegation must not invoke the account authority at all.
+// Its callback can be privileged; a missing/grant-revoked principal may not
+// enumerate nominal account mandates merely because it supplied account_id.
+$accountReadsOnDeniedService = 0;
+$deniedAccountSource = static function() use (&$accountReadsOnDeniedService): never {
+    $accountReadsOnDeniedService++;
+    throw new RuntimeException('ACCOUNT_AUTHORITY_SHOULD_NOT_BE_CALLED');
+};
+foreach ([
+    ['active'=>false],
+    ['revoked_at'=>$now],
+    ['company_id'=>'company_beta'],
+    ['principal'=>'imagine_other_s2s'],
+    ['expires_at'=>$now],
+] as $badServiceValues) {
+    $badService = array_replace($originalService, $badServiceValues);
+    $testService = static function() use ($badService): array { return $badService; };
+    $deniedGate = new Gate($principal, $testService, $deniedAccountSource,
+        static function() use (&$now): int { return $now; });
+    $ok($deniedGate->lease($company,'google_ads',$account) === null,
+        'invalid delegated principal fails before account lookup');
+}
+$deniedGate = new Gate($principal,
+    static function(): never { throw new RuntimeException('S2S_UNAVAILABLE'); },
+    $deniedAccountSource, static function() use (&$now): int { return $now; });
+$ok($deniedGate->lease($company,'google_ads',$account) === null,
+    'service resolver error denies without account query');
+$ok($accountReadsOnDeniedService === 0,
+    'six rejected S2S cases never invoked nominal account authority');
+// A valid independent S2S resolver must still consult the account source.
+$allowedAccountReads = 0;
+$allowedAccountSource = static function() use (&$allowedAccountReads,&$originalMandate): array {
+    $allowedAccountReads++;
+    return $originalMandate;
+};
+$allowedGate = new Gate($principal,
+    static function() use (&$originalService): array { return $originalService; },
+    $allowedAccountSource, static function() use (&$now): int { return $now; });
+$ok(is_string($allowedGate->lease($company,'google_ads',$account)),
+    'valid delegated principal obtains the same read-only scoped lease');
+$ok($allowedAccountReads === 1,
+    'valid S2S invokes account authority once');
+
 // A company-wide delegated principal MUST NOT inherit a mandate issued to a
 // different S2S principal, even for the same company/provider/account.
 $otherPrincipal = 'imagine_other_s2s';
