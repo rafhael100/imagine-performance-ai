@@ -168,8 +168,8 @@ $allowedGate = new Gate($principal,
     $allowedAccountSource, static function() use (&$now): int { return $now; });
 $ok(is_string($allowedGate->lease($company,'google_ads',$account)),
     'valid delegated principal obtains the same read-only scoped lease');
-$ok($allowedAccountReads === 1,
-    'valid S2S invokes account authority once');
+$ok($allowedAccountReads === 2,
+    'valid S2S rereads account authority after verifying delegation');
 
 // A valid S2S snapshot can be revoked/rotated WHILE a privileged account
 // resolver runs. The second service read must detect this TOCTOU boundary;
@@ -228,15 +228,65 @@ $reorderedService = static function() use (&$reorderedServiceReads, $originalSer
 };
 $reorderedAccountReads = 0;
 $reorderedAccount = static function() use (&$reorderedAccountReads, $originalMandate): array {
-    $reorderedAccountReads++;
-    return $originalMandate;
+    return ++$reorderedAccountReads === 1
+        ? $originalMandate : array_reverse($originalMandate, true);
 };
 $reorderedGate = new Gate($principal, $reorderedService, $reorderedAccount,
     static function() use (&$now): int { return $now; });
 $ok($reorderedGate->lease($company,'google_ads',$account) === $initial['lease'],
     'identical reordered S2S snapshot stays authorized');
-$ok($reorderedServiceReads === 2 && $reorderedAccountReads === 1,
-    'positive case also revalidates S2S exactly twice');
+$ok($reorderedServiceReads === 2 && $reorderedAccountReads === 2,
+    'positive case revalidates both independent authorities twice');
+
+// The second S2S resolver can change the independent ACCOUNT mandate while
+// returning an unchanged service grant. Never issue a lease from the first
+// account snapshot without rereading and comparing its full authority state.
+foreach ([
+    ['status' => 'suspended'],
+    ['revoked_at' => $now],
+    ['revision' => $originalMandate['revision'] + 1],
+    ['credential_ref' => 'vault-ads-alpha-002'],
+    ['consent_reference' => 'consent-20261119-rotated'],
+    ['service_principal' => 'imagine_other_s2s'],
+    ['expires_at' => $now],
+] as $accountChangedDuringService) {
+    $accountAfterFirstRead = $originalMandate;
+    $serviceReadCount = 0;
+    $accountReadCount = 0;
+    $changingService = static function() use (
+        &$accountAfterFirstRead, &$serviceReadCount, $accountChangedDuringService, $originalService
+    ): array {
+        if (++$serviceReadCount === 2) {
+            $accountAfterFirstRead = array_replace($accountAfterFirstRead, $accountChangedDuringService);
+        }
+        return $originalService;
+    };
+    $changingAccount = static function() use (&$accountAfterFirstRead, &$accountReadCount): array {
+        $accountReadCount++;
+        return $accountAfterFirstRead;
+    };
+    $changingGate = new Gate($principal, $changingService, $changingAccount,
+        static function() use (&$now): int { return $now; });
+    $denied(fn() => $changingGate->current($company,'google_ads',$account),
+        'account mutation during second S2S lookup denied');
+    $ok($serviceReadCount === 2 && $accountReadCount === 2,
+        'changed account checked twice without issuing a lease');
+}
+// If the second account lookup fails, sanitize the source error and reject
+// instead of trusting the earlier consent or credential reference.
+$secondAccountFailureCount = 0;
+$secondAccountFailure = static function() use (&$secondAccountFailureCount, $originalMandate): array {
+    if (++$secondAccountFailureCount === 2) {
+        throw new RuntimeException('PRIVATE_ACCOUNT_AUTHORITY_FAILED');
+    }
+    return $originalMandate;
+};
+$secondAccountFailureGate = new Gate($principal,
+    static function() use ($originalService): array { return $originalService; },
+    $secondAccountFailure, static function() use (&$now): int { return $now; });
+$denied(fn() => $secondAccountFailureGate->current($company,'google_ads',$account),
+    'second nominal account lookup failure is sanitized');
+$ok($secondAccountFailureCount === 2, 'second nominal account resolver called and failed');
 
 // A company-wide delegated principal MUST NOT inherit a mandate issued to a
 // different S2S principal, even for the same company/provider/account.
