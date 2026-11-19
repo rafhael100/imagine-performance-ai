@@ -14,7 +14,7 @@ use Throwable;
  */
 final class AdministrativeAdsAccountMandateGate
 {
-    public const VERSION = 'imagine.performance.ads.account-mandate.v1';
+    public const VERSION = 'imagine.performance.ads.account-mandate.v2';
     public const SERVICE_VERSION = 'imagine.performance.ads.service-delegation.v1';
     public const OPERATION = 'reports.read';
     public const PURPOSE = 'ads_reporting_read';
@@ -49,9 +49,9 @@ final class AdministrativeAdsAccountMandateGate
             if (!is_int($now) || $now <= 0) self::deny();
 
             $service = ($this->resolveService)($this->principal, $company, self::OPERATION);
-            $mandate = ($this->resolveAccount)($company, $provider, $account, self::OPERATION);
+            $mandate = ($this->resolveAccount)($company, $provider, $account, self::OPERATION, $this->principal);
             self::serviceIsCurrent($service, $this->principal, $company, $now);
-            self::mandateIsCurrent($mandate, $company, $provider, $account, $now);
+            self::mandateIsCurrent($mandate, $this->principal, $company, $provider, $account, $now);
 
             // The source must supply the persisted revisions; merely knowing
             // account_id or holding a token cannot produce a valid grant.
@@ -117,15 +117,16 @@ final class AdministrativeAdsAccountMandateGate
     }
 
     private static function mandateIsCurrent(
-        #[\SensitiveParameter] mixed $grant, string $company, string $provider, string $account, int $now
+        #[\SensitiveParameter] mixed $grant, string $principal, string $company, string $provider, string $account, int $now
     ): void {
         self::exactKeys($grant, [
-            'account_id', 'company_id', 'consent_reference', 'credential_ref',
+            'account_id', 'company_id', 'consent_reference', 'credential_ref', 'service_principal',
             'expires_at', 'operation', 'provider', 'purpose', 'revision',
             'revoked_at', 'status', 'version',
         ]);
         if ($grant['version'] !== self::VERSION || $grant['status'] !== 'active'
-            || $grant['company_id'] !== $company || $grant['provider'] !== $provider
+            || $grant['company_id'] !== $company || $grant['service_principal'] !== $principal
+            || $grant['provider'] !== $provider
             || $grant['account_id'] !== $account || $grant['operation'] !== self::OPERATION
             || $grant['purpose'] !== self::PURPOSE || $grant['revoked_at'] !== null
             || !self::revision($grant['revision']) || !self::future($grant['expires_at'], $now)
