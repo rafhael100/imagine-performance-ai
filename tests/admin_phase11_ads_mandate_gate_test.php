@@ -342,4 +342,16 @@ $gateStableClock = new Gate($principal, $getService, $getMandate,
 $ok($gateStableClock->lease($company,'google_ads',$account) === $originalLease,
     'valid S2S and account lease stable after second time check');
 
+// An injected or skewed clock must not roll backward during callbacks.
+// Without a monotonic final observation, the gate could issue a lease from
+// an earlier instant rather than the time after authority resolution.
+$rollbackClockReads = 0;
+$rollbackClock = static function() use (&$rollbackClockReads, &$now): int {
+    return ++$rollbackClockReads === 1 ? $now + 20 : $now;
+};
+$rollbackGate = new Gate($principal, $getService, $getMandate, $rollbackClock);
+$denied(fn() => $rollbackGate->current($company,'google_ads',$account),
+    'rollback in post-resolver clock denied even with valid snapshots');
+$ok($rollbackClockReads === 2, 'rollback post-resolver clock was observed');
+
 echo "OK: $checks scoped account mandate, S2S delegation, cross-tenant, rotation, revocation and fail-closed assertions; no provider called\n";

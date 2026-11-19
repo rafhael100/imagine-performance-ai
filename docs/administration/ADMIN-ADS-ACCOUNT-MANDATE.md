@@ -156,3 +156,14 @@ promete revogação instantânea ou consistência transacional em fonte remota.
 Faltam ponte SQL001→S2S, prova de identidade e consentimento reais,
 IAM/cofre, revisão AppSec/DBA/LGPD e homologação Leaseweb. Contrato,
 credenciais e contas seguem exclusivamente sintéticos, sem GO operacional.
+
+## Relógio não regressivo entre verificações (somente laboratório)
+
+Após resolver as fontes S2S/mandato, o segundo instante observado pelo
+gate deve ser maior ou igual ao primeiro. A custódia da referência também
+recusa um relógio que ande para trás durante a segunda validação do lease,
+mesmo com credencial sintética válida. As suítes testam o caso negativo de
+retrocesso e mantêm os casos positivos de relógio estável. Trata-se de
+proteção fail-closed contra relógio injetado ou dessincronizado, não garantia
+de tempo monotônico entre máquinas nem autorização real de Ads. Sem ponte
+SQL001→S2S, IAM/cofre, consentimento, acesso oficial ou homologação.
