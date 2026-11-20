@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Unicode C1, bidi/zero-width formatting in requested-but-discarded Ads campaign
- * descriptors must not enter the synthetic read-only boundary unnoticed.
+ * Unicode controls, private-use, unassigned/noncharacter and bidi/zero-width
+ * campaign labels must not enter the synthetic read-only boundary unnoticed.
  * Pure fixture test: no provider calls, consent, IAM, cofre or official source.
  */
 require_once __DIR__.'/../src/Domain/Administration/AdministrativeAdsReadPlan.php';
@@ -33,6 +33,11 @@ $invalid = [
     'unicode C1 next line' => "\u{0085}",
     'unicode C1 device control' => "\u{0081}",
     'unicode C1 control sequence introducer' => "\u{009B}",
+    'private-use BMP' => "\u{E000}",
+    'private-use supplementary' => "\u{F0000}",
+    'unassigned reserved scalar' => "\u{0378}",
+    'noncharacter FDD0' => "\u{FDD0}",
+    'noncharacter plane terminator' => "\u{10FFFF}",
     'byte order mark' => "\u{FEFF}",
     'unicode line separator' => "\u{2028}",
     'unicode paragraph separator' => "\u{2029}",
