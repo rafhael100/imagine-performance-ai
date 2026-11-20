@@ -92,8 +92,13 @@ $ok($guard($company,'google_ads',$account,$lease) === null,
     'legacy developer token shape checked before transport');
 $secrets=$validEnvelope;
 $secrets['developer_token']='syntheticDeveloperToken_XYZ';
-$ok($guard($company,'google_ads',$account,$lease) === $secrets,
-    'valid legacy Google field accepted only in expected envelope');
+$legacyResult = $guard($company,'google_ads',$account,$lease);
+$expectedLegacyResult = $secrets;
+unset($expectedLegacyResult['developer_token']);
+$ok($legacyResult === $expectedLegacyResult,
+    'valid legacy Google source is accepted but its developer token is stripped');
+$ok(is_array($legacyResult) && !array_key_exists('developer_token', $legacyResult),
+    'legacy Google secret never crosses custody boundary into read transport');
 $secrets=$validEnvelope;
 
 // A spoofed payload is not trusted merely because company/account/lease match.
