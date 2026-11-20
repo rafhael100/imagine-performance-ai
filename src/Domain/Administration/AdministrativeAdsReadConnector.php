@@ -81,6 +81,12 @@ final class AdministrativeAdsReadConnector {
    if(array_key_exists('context_timezone',$page)&&$page['context_timezone']!==$timezone)throw new RuntimeException('Provider report timezone denied');
    try{$bytes=json_encode($page,JSON_THROW_ON_ERROR);}catch(\Throwable){throw new RuntimeException('Provider response denied');}
    if(strlen($bytes)>1048576)throw new RuntimeException('Provider response limit');
+   // Preserve the established JSON/size denial precedence, then reject
+   // undeclared callback page fields before inspecting any report rows.
+   // Unknown tenant identifiers and tokens cannot be silently normalized.
+   foreach(array_keys($page) as $field)
+    if(!is_string($field)||!in_array($field,['source_kind','context_timezone','rows','next_cursor'],true))
+     throw new RuntimeException('Provider source denied');
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    // A decoded JSON collection must be a list, not an object or sparse PHP map.
    // Never normalize an attacker-keyed row map as if it were a page of rows.
@@ -89,6 +95,11 @@ final class AdministrativeAdsReadConnector {
     // Injected provider rows are untrusted: reject non-arrays and non-string
     // currency values before array indexing or preg_match can raise PHP errors.
     if(!is_array($r)||!is_string($r['currency']??null))throw new RuntimeException('Provider scope denied');
+    // The read-only result uses a closed row schema. Optional metrics remain
+    // optional for legacy fixtures, but unknown/numeric fields are denied.
+    foreach(array_keys($r) as $field)
+     if(!is_string($field)||!in_array($field,['account_id','campaign_id','currency','date','spend','impressions','clicks'],true))
+      throw new RuntimeException('Provider scope denied');
     $date=$r['date']??null;
     if(!is_string($date)||!preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D',$date)
      ||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4))
