@@ -91,8 +91,15 @@ final class AdministrativeAdsBoundCredentialResolver
             // checked. Never return an already expired bearer, even if both
             // mandate snapshots remain unchanged.
             $afterGate = $this->clock === null ? time() : ($this->clock)();
-            return is_int($afterGate) && $afterGate > 0 && $afterGate >= $now
-                && $candidate['expires_at'] > $afterGate ? $candidate : null;
+            if (!is_int($afterGate) || $afterGate <= 0 || $afterGate < $now
+                || $candidate['expires_at'] <= $afterGate) return null;
+
+            // The optional legacy Google developer_token is tolerated only
+            // when validating an old custody record. It is not needed by the
+            // read-only transport; never pass that secret to the next layer.
+            // The mandatory scoped bearer/lease/ref fields remain unchanged.
+            if ($provider === 'google_ads') unset($candidate['developer_token']);
+            return $candidate;
         } catch (Throwable) {
             // Never surface callback exception text or chain to callers.
             return null;
