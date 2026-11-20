@@ -1,7 +1,7 @@
 name: ADMIN phase2 isolated contracts and PG18 candidate
 on:
   pull_request:
-    paths: ['src/Domain/Administration/**','src/Domain/Commercial/ExactJsonNumberLexicalParser.php','contracts/admin/phase2/**','tests/admin_phase2*','tests/admin_phase3*','tests/admin_phase4_ads_connector_test.php','tests/admin_phase8_ads_wire_adapter_test.php','tests/admin_phase9_ads_account_test.php','tests/admin_phase10_ads_http_transport_test.php','tests/admin_phase11_ads_mandate_gate_test.php','tests/admin_phase11_ads_connector_denial_test.php','tests/admin_phase11_ads_provider_callback_failure_test.php','tests/admin_phase11_ads_read_trace_redaction_test.php','tests/admin_phase11_ads_return_lease_test.php','tests/admin_phase11_ads_malformed_row_test.php','tests/admin_phase11_ads_row_collection_shape_test.php','tests/admin_phase11_ads_closed_envelope_test.php','tests/admin_phase11_ads_raw_provider_schema_test.php','tests/admin_phase11_ads_meta_cursor_schema_test.php','tests/admin_phase11_ads_meta_previous_page_test.php','tests/admin_phase11_ads_meta_paging_query_test.php','tests/admin_phase11_ads_google_metric_attributes_test.php','tests/admin_phase11_ads_google_unused_metadata_test.php','tests/admin_phase12_ads_ref_guard_test.php','tests/fixtures/ads-http/**','tests/docker/ads-http/**','tests/chatgpt_ads_exact_wire_money_test.php','.github/workflows/admin-phase2-candidate.yml']
+    paths: ['src/Domain/Administration/**','src/Domain/Commercial/ExactJsonNumberLexicalParser.php','contracts/admin/phase2/**','tests/admin_phase2*','tests/admin_phase3*','tests/admin_phase4_ads_connector_test.php','tests/admin_phase8_ads_wire_adapter_test.php','tests/admin_phase9_ads_account_test.php','tests/admin_phase10_ads_http_transport_test.php','tests/admin_phase11_ads_mandate_gate_test.php','tests/admin_phase11_ads_connector_denial_test.php','tests/admin_phase11_ads_provider_callback_failure_test.php','tests/admin_phase11_ads_read_trace_redaction_test.php','tests/admin_phase11_ads_return_lease_test.php','tests/admin_phase11_ads_malformed_row_test.php','tests/admin_phase11_ads_row_collection_shape_test.php','tests/admin_phase11_ads_closed_envelope_test.php','tests/admin_phase11_ads_raw_provider_schema_test.php','tests/admin_phase11_ads_meta_cursor_schema_test.php','tests/admin_phase11_ads_meta_previous_page_test.php','tests/admin_phase11_ads_meta_paging_query_test.php','tests/admin_phase11_ads_google_metric_attributes_test.php','tests/admin_phase11_ads_google_unused_metadata_test.php','tests/admin_phase11_ads_campaign_descriptor_types_test.php','tests/admin_phase12_ads_ref_guard_test.php','tests/fixtures/ads-http/**','tests/docker/ads-http/**','tests/chatgpt_ads_exact_wire_money_test.php','.github/workflows/admin-phase2-candidate.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -71,6 +71,8 @@ jobs:
               php tests/admin_phase11_ads_google_metric_attributes_test.php
               php -l tests/admin_phase11_ads_google_unused_metadata_test.php
               php tests/admin_phase11_ads_google_unused_metadata_test.php
+              php -l tests/admin_phase11_ads_campaign_descriptor_types_test.php
+              php tests/admin_phase11_ads_campaign_descriptor_types_test.php
               php tests/admin_phase12_ads_ref_guard_test.php
               APP_ENV=testing \
                 PERF_ADS_READONLY_BOUNDARY_LAB=1 \

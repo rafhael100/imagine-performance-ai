@@ -202,6 +202,15 @@ final class AdministrativeAdsReadWireAdapter
                 self::fail('scope_denied');
             }
             $campaignId = self::identifier($campaign->id ?? null);
+            // Campaign labels/status are requested by the synthetic read plan,
+            // but are NOT returned in the normalized API. Validate their type
+            // and bound rather than silently discarding arbitrary nested data.
+            if (property_exists($campaign, 'name')) self::campaignName($campaign->name);
+            if (property_exists($campaign, 'status')
+                && (!is_string($campaign->status)
+                    || !in_array($campaign->status, ['ENABLED', 'PAUSED', 'REMOVED'], true))) {
+                self::fail('scope_denied');
+            }
             if (property_exists($campaign, 'resourceName')
                 && $campaign->resourceName !== 'customers/'.$this->account.'/campaigns/'.$campaignId) {
                 self::fail('scope_denied');
@@ -273,6 +282,7 @@ final class AdministrativeAdsReadWireAdapter
                 'account_id', 'account_currency', 'campaign_id', 'campaign_name',
                 'date_start', 'date_stop', 'spend', 'impressions', 'clicks',
             ], 'scope_denied');
+            if (property_exists($result, 'campaign_name')) self::campaignName($result->campaign_name);
             $date = $this->date($result->date_start ?? null);
             if (($result->date_stop ?? null) !== $date) self::fail('date_denied');
             $rows[] = [
@@ -413,6 +423,15 @@ final class AdministrativeAdsReadWireAdapter
     {
         if (!is_string($value) || !preg_match('/\A[0-9]{1,32}\z/D', $value)) self::fail('scope_denied');
         return $value;
+    }
+
+    private static function campaignName(#[\SensitiveParameter] mixed $value): void
+    {
+        // A display label must never be an unvalidated JSON object capable of
+        // hiding account selectors or credential references. No HTML, logging
+        // or operational provider schema is inferred from this lab constraint.
+        if (!is_string($value) || strlen($value) > 512
+            || preg_match('/[\x00-\x1F\x7F]/', $value)) self::fail('scope_denied');
     }
 
     private static function currency(#[\SensitiveParameter] mixed $value): string
