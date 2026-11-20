@@ -144,7 +144,13 @@ final class AdministrativeAdsReadWireAdapter
 
     private function googleResults(#[\SensitiveParameter] stdClass $body): array
     {
-        self::allowedKeys($body, ['results', 'nextPageToken', 'fieldMask', 'totalResultsCount', 'queryResourceConsumption', 'metricAttributes']);
+        // These optional provider metadata fields are neither consumed nor
+        // independently authenticated by this offline reader. Accepting and
+        // discarding arbitrary values could conceal foreign tenants or secret
+        // material in a provider-shaped fixture. An explicit reviewed schema
+        // is required before supporting them; never upgrade this lab gate to
+        // an operational Google contract by inference.
+        self::allowedKeys($body, ['results', 'nextPageToken', 'metricAttributes']);
         if (property_exists($body, 'metricAttributes')) {
             // Google provider metadata must not become a side channel for
             // credential, tenant or unrequested metrics. Empty attributes are
