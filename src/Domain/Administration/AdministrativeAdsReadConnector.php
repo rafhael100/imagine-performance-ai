@@ -29,6 +29,25 @@ final class AdministrativeAdsReadConnector {
    return null;
   }
  }
+ /** Keep only the wire codec's finite safe classifications. Injected callbacks
+  * may throw errors containing tokens, private tenant identifiers or URL bodies. */
+ private function invokeProvider(#[\SensitiveParameter] Closure $callback,#[\SensitiveParameter] array $arguments,string $message):mixed {
+  try{return $callback(...$arguments);}
+  catch(AdministrativeAdsWireFailure $failure){
+   $safe=['authentication_required','permission_denied','rate_limited','upstream_unavailable',
+    'provider_error','request_denied','timezone_denied','cursor_denied','transport_failed',
+    'response_denied','response_limit','invalid_json','scope_denied','pagination_denied',
+    'date_denied','metric_denied','credentials_unavailable','credentials_denied',
+    'credentials_expired','credential_changed','authorization_denied','authorization_revoked',
+    'read_deadline_exceeded','transport_unavailable','transport_timeout','tls_failed',
+    'response_headers_denied','response_encoding_denied','redirect_denied'];
+   if(in_array($failure->reason,$safe,true)
+    && ($failure->httpStatus===null || ($failure->httpStatus>=100 && $failure->httpStatus<=599)))
+    throw $failure;
+   throw new RuntimeException($message);
+  }
+  catch(\Throwable){throw new RuntimeException($message);}
+ }
  public function read(string $company,string $provider,string $account,string $from,string $until,string $timezone):array {
   if($this->boundContext!==null){
    foreach(['company_id'=>$company,'provider'=>$provider,'account_id'=>$account,'from'=>$from,'until'=>$until] as $key=>$value)
@@ -42,7 +61,7 @@ final class AdministrativeAdsReadConnector {
   $accountContext=null;
   if($this->accountMetadata!==null){
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
-   $metadata=($this->accountMetadata)($plan);
+   $metadata=$this->invokeProvider($this->accountMetadata,[$plan],'Provider account metadata unavailable');
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    if(!is_array($metadata))throw new RuntimeException('Provider account metadata denied');
    $metadataKeys=array_keys($metadata);sort($metadataKeys,SORT_STRING);
@@ -57,10 +76,11 @@ final class AdministrativeAdsReadConnector {
   }
   for($i=0;$i<10;$i++){
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
-   $page=($this->page)($plan,$cursor);
+   $page=$this->invokeProvider($this->page,[$plan,$cursor],'Provider report unavailable');
    if(!is_array($page)||($page['source_kind']??null)!==$this->sourceKind)throw new RuntimeException('Provider source denied');
    if(array_key_exists('context_timezone',$page)&&$page['context_timezone']!==$timezone)throw new RuntimeException('Provider report timezone denied');
-   $bytes=json_encode($page,JSON_THROW_ON_ERROR);if(strlen($bytes)>1048576)throw new RuntimeException('Provider response limit');
+   try{$bytes=json_encode($page,JSON_THROW_ON_ERROR);}catch(\Throwable){throw new RuntimeException('Provider response denied');}
+   if(strlen($bytes)>1048576)throw new RuntimeException('Provider response limit');
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    if(!is_array($page['rows']??null)||count($page['rows'])>10000)throw new RuntimeException('Provider rows denied');
    foreach($page['rows'] as $r){
