@@ -96,6 +96,27 @@ final class AdministrativeAdsAccountMandateGate
             ksort($accountAfterComparison, SORT_STRING);
             if ($accountBeforeComparison !== $accountAfterComparison) self::deny();
 
+            // The final privileged account lookup itself can revoke/rotate the
+            // independent S2S delegation. Observe its current state once more
+            // before issuing a laboratory lease. This narrows one deterministic
+            // TOCTOU window; it is NOT an atomic cross-source authorization.
+            $serviceAfterFinalAccount = ($this->resolveService)(
+                $this->principal, $company, self::OPERATION
+            );
+            $finalNow = $this->clock === null ? time() : ($this->clock)();
+            if (!is_int($finalNow) || $finalNow <= 0
+                || $finalNow < $afterResolvers
+                || !self::future($service['expires_at'], $finalNow)
+                || !self::future($mandate['expires_at'], $finalNow)) {
+                self::deny();
+            }
+            self::serviceIsCurrent(
+                $serviceAfterFinalAccount, $this->principal, $company, $finalNow
+            );
+            $serviceFinalComparison = $serviceAfterFinalAccount;
+            ksort($serviceFinalComparison, SORT_STRING);
+            if ($serviceBeforeComparison !== $serviceFinalComparison) self::deny();
+
             // The source must supply the persisted revisions; merely knowing
             // account_id or holding a token cannot produce a valid grant.
             // Resolver array insertion order is not authority state. Keep the
