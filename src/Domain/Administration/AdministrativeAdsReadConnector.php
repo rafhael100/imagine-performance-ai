@@ -78,15 +78,15 @@ final class AdministrativeAdsReadConnector {
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    $page=$this->invokeProvider($this->page,[$plan,$cursor],'Provider report unavailable');
    if(!is_array($page)||($page['source_kind']??null)!==$this->sourceKind)throw new RuntimeException('Provider source denied');
-   // Reject unrecognized page fields before serialization or normalization:
-   // callback-injected secrets, tenant identifiers or malformed envelopes cannot
-   // be silently accepted as a complete provider response.
-   foreach(array_keys($page) as $field)
-    if(!is_string($field)||!in_array($field,['source_kind','context_timezone','rows','next_cursor'],true))
-     throw new RuntimeException('Provider source denied');
    if(array_key_exists('context_timezone',$page)&&$page['context_timezone']!==$timezone)throw new RuntimeException('Provider report timezone denied');
    try{$bytes=json_encode($page,JSON_THROW_ON_ERROR);}catch(\Throwable){throw new RuntimeException('Provider response denied');}
    if(strlen($bytes)>1048576)throw new RuntimeException('Provider response limit');
+   // Preserve the established JSON/size denial precedence, then reject
+   // undeclared callback page fields before inspecting any report rows.
+   // Unknown tenant identifiers and tokens cannot be silently normalized.
+   foreach(array_keys($page) as $field)
+    if(!is_string($field)||!in_array($field,['source_kind','context_timezone','rows','next_cursor'],true))
+     throw new RuntimeException('Provider source denied');
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    // A decoded JSON collection must be a list, not an object or sparse PHP map.
    // Never normalize an attacker-keyed row map as if it were a page of rows.
