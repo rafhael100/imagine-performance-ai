@@ -37,7 +37,10 @@ final class AdministrativeAdsReadConnector {
    $safe=['authentication_required','permission_denied','rate_limited','upstream_unavailable',
     'provider_error','request_denied','timezone_denied','cursor_denied','transport_failed',
     'response_denied','response_limit','invalid_json','scope_denied','pagination_denied',
-    'date_denied','metric_denied'];
+    'date_denied','metric_denied','credentials_unavailable','credentials_denied',
+    'credentials_expired','credential_changed','authorization_denied','authorization_revoked',
+    'read_deadline_exceeded','transport_unavailable','transport_timeout','tls_failed',
+    'response_headers_denied','response_encoding_denied','redirect_denied'];
    if(in_array($failure->reason,$safe,true)
     && ($failure->httpStatus===null || ($failure->httpStatus>=100 && $failure->httpStatus<=599)))
     throw $failure;
