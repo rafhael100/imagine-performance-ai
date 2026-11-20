@@ -430,8 +430,15 @@ final class AdministrativeAdsReadWireAdapter
         // A display label must never be an unvalidated JSON object capable of
         // hiding account selectors or credential references. No HTML, logging
         // or operational provider schema is inferred from this lab constraint.
+        // Unicode formatting controls (including bidi overrides, isolates and
+        // zero-width markers) and Unicode line/paragraph separators must not
+        // be accepted as inert display text. Such metadata is discarded by this
+        // lab normalizer today but must not become a spoofable future audit label.
+        // The provider JSON decoder already enforces valid UTF-8.
         if (!is_string($value) || strlen($value) > 512
-            || preg_match('/[\x00-\x1F\x7F]/', $value)) self::fail('scope_denied');
+            || preg_match('/[\x00-\x1F\x7F]|[\p{Cf}\p{Zl}\p{Zp}]/u', $value) !== 0) {
+            self::fail('scope_denied');
+        }
     }
 
     private static function currency(#[\SensitiveParameter] mixed $value): string
