@@ -356,12 +356,17 @@ final class AdministrativeAdsReadWireAdapter
         foreach ($pairs as $pair) {
             $parts = explode('=', $pair, 2);
             $key = urldecode($parts[0]);
-            if ($key === '' || isset($seen[$key])) self::fail('pagination_denied');
+            // Until a provider-approved query schema exists, a paging link is
+            // ONLY an assertion about the matching cursor. Even though the
+            // link is never followed, reject opaque tokens, tenant selectors,
+            // credential references and any other discarded query metadata.
+            if ($key !== $direction || isset($seen[$key])) self::fail('pagination_denied');
             $seen[$key] = true;
-            if ($key === $direction) $found = urldecode($parts[1] ?? '');
+            $found = urldecode($parts[1] ?? '');
         }
         if ($found !== $cursor) self::fail('pagination_denied');
-        // Other query params, including any legacy token, are never forwarded.
+        // Links are never transport targets; the cursor-only laboratory
+        // profile is not a verified official Meta Graph API contract.
     }
 
     private function errorReason(int $status, #[\SensitiveParameter] mixed $body): string
