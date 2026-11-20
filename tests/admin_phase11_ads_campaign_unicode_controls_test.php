@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Unicode bidi/zero-width formatting in requested-but-discarded Ads campaign
+ * Unicode C1, bidi/zero-width formatting in requested-but-discarded Ads campaign
  * descriptors must not enter the synthetic read-only boundary unnoticed.
  * Pure fixture test: no provider calls, consent, IAM, cofre or official source.
  */
@@ -30,6 +30,9 @@ $invalid = [
     'zero-width space' => "\u{200B}",
     'zero-width joiner' => "\u{200D}",
     'arabic letter mark' => "\u{061C}",
+    'unicode C1 next line' => "\u{0085}",
+    'unicode C1 device control' => "\u{0081}",
+    'unicode C1 control sequence introducer' => "\u{009B}",
     'byte order mark' => "\u{FEFF}",
     'unicode line separator' => "\u{2028}",
     'unicode paragraph separator' => "\u{2029}",
