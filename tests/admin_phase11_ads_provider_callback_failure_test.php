@@ -120,6 +120,18 @@ $expectDenied(
     'Ads read failed: authentication_required', 'approved wire classification preserved'
 );
 $expectDenied(
+    static fn() => $read(static function(): never {
+        throw new WireFailure('credential_changed');
+    }),
+    'Ads read failed: credential_changed', 'native credential rotation reason stays finite'
+);
+$expectDenied(
+    static fn() => $read(static function(): never {
+        throw new WireFailure('authentication_required', 999);
+    }),
+    'Provider report unavailable', 'invalid upstream HTTP status cannot escape'
+);
+$expectDenied(
     static fn() => $read(static function() use ($row): array {
         return ['source_kind'=>'laboratory_fixture','rows'=>[$row],
             'private_debug'=>"\xB1PRIVATE_TOKEN_IN_EXCEPTION"];
