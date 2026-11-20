@@ -190,3 +190,25 @@ outra ainda existe janela TOCTOU. SQL001→S2S, fonte real de consentimento,
 cofre/IAM, autorização Google/Meta, revisão AppSec/DBA/LGPD e homologação
 Leaseweb **continuam ausentes e bloqueiam GO**. Sem operação Ads, merge,
 deploy ou mudanças de produção.
+
+
+## Revogação S2S durante a segunda consulta nominal (laboratório, NO-GO)
+
+A segunda consulta da fonte nominal pode revogar/rotacionar a delegação S2S
+**depois** da sua segunda leitura. O gate agora realiza uma terceira leitura
+S2S **após** a segunda consulta nominal, compara o snapshot inteiro com
+a primeira leitura (independentemente da ordem das chaves), verifica status,
+revisão, principal, prazo e clock final; divergência, expiração ou exceção
+negam o lease sem expor o erro da fonte. O teste negativo induz revogação,
+rotação de revisão e expiração durante a segunda consulta nominal; também
+induz falha na terceira leitura S2S e preserva o controle positivo.
+
+**Limite de segurança:** essa terceira checagem reduz somente a janela
+determinística dentro da sequência dos callbacks. Não fornece consistência
+atômica entre duas autoridades externas e não prova revogação instantânea
+após o retorno. A futura fonte operacional deve demonstrar autenticação,
+identidade do aprovador, trilha atribuível de consentimento por conta e
+revogação, leitura consistente e autorização Google/Meta atual, com revisão
+AppSec/DBA/LGPD. Não existe ponte SQL001→S2S autorizada nem cofre real.
+Os registros Portal continuam `synthetic_candidate` e
+`operational_enabled=false`; nenhum caminho de API real é habilitado.

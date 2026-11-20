@@ -235,8 +235,8 @@ $reorderedGate = new Gate($principal, $reorderedService, $reorderedAccount,
     static function() use (&$now): int { return $now; });
 $ok($reorderedGate->lease($company,'google_ads',$account) === $initial['lease'],
     'identical reordered S2S snapshot stays authorized');
-$ok($reorderedServiceReads === 2 && $reorderedAccountReads === 2,
-    'positive case revalidates both independent authorities twice');
+$ok($reorderedServiceReads === 3 && $reorderedAccountReads === 2,
+    'positive case revalidates S2S after both independent account reads');
 
 // The second S2S resolver can change the independent ACCOUNT mandate while
 // returning an unchanged service grant. Never issue a lease from the first
@@ -270,8 +270,58 @@ foreach ([
     $denied(fn() => $changingGate->current($company,'google_ads',$account),
         'account mutation during second S2S lookup denied');
     $ok($serviceReadCount === 2 && $accountReadCount === 2,
-        'changed account checked twice without issuing a lease');
+        'changed account denied after two S2S and two nominal reads');
 }
+// The FINAL nominal account resolver may revoke S2S after the second
+// technical check. A previously acceptable pair of snapshots must not issue
+// a synthetic lease if that third S2S observation differs or fails.
+foreach ([
+    ['active' => false],
+    ['revoked_at' => $now],
+    ['revision' => $originalService['revision'] + 1],
+    ['expires_at' => $now],
+] as $lateServiceMutation) {
+    $lateService = $originalService;
+    $lateServiceReads = 0;
+    $lateAccountReads = 0;
+    $lateServiceSource = static function() use (&$lateService, &$lateServiceReads): array {
+        $lateServiceReads++;
+        return $lateService;
+    };
+    $lateAccountSource = static function() use (
+        &$lateService, &$lateAccountReads, $lateServiceMutation, $originalMandate
+    ): array {
+        if (++$lateAccountReads === 2) {
+            $lateService = array_replace($lateService, $lateServiceMutation);
+        }
+        return $originalMandate;
+    };
+    $lateGate = new Gate($principal, $lateServiceSource, $lateAccountSource,
+        static function() use (&$now): int { return $now; });
+    $denied(fn() => $lateGate->current($company,'google_ads',$account),
+        'S2S revocation or rotation during final account lookup denied');
+    $ok($lateServiceReads === 3 && $lateAccountReads === 2,
+        'late change detected by third S2S query without extra account query');
+}
+$thirdServiceReads = 0;
+$thirdAccountReads = 0;
+$thirdServiceSource = static function() use (&$thirdServiceReads, $originalService): array {
+    if (++$thirdServiceReads === 3) {
+        throw new RuntimeException('PRIVATE_FINAL_S2S_AUTHORITY_UNAVAILABLE');
+    }
+    return $originalService;
+};
+$thirdAccountSource = static function() use (&$thirdAccountReads, $originalMandate): array {
+    $thirdAccountReads++;
+    return $originalMandate;
+};
+$thirdServiceGate = new Gate($principal, $thirdServiceSource, $thirdAccountSource,
+    static function() use (&$now): int { return $now; });
+$denied(fn() => $thirdServiceGate->current($company,'google_ads',$account),
+    'third S2S source failure is sanitized and cannot issue stale lease');
+$ok($thirdServiceReads === 3 && $thirdAccountReads === 2,
+    'third S2S failure closes final lookup without other effects');
+
 // If the second account lookup fails, sanitize the source error and reject
 // instead of trusting the earlier consent or credential reference.
 $secondAccountFailureCount = 0;
