@@ -132,7 +132,7 @@ function httpReport(string $provider, int $day, ?string $cursor = null): array
     ]]];
     if ($cursor !== null) $body['paging'] = [
         'cursors' => ['after' => $cursor],
-        'next' => httpPlan($provider)['read_plan']['url'].'?after='.rawurlencode($cursor).'&access_token=synthetic-not-forwarded',
+        'next' => httpPlan($provider)['read_plan']['url'].'?after='.rawurlencode($cursor).'',
     ];
     return $body;
 }

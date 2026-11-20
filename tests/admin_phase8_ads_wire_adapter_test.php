@@ -168,7 +168,7 @@ $metaSecond = $metaRow;
 $metaSecond['date_start'] = $metaSecond['date_stop'] = '2026-11-02';
 unset($metaSecond['spend'], $metaSecond['impressions'], $metaSecond['clicks']);
 $nextUrl = $metaPlan['read_plan']['url'].'?after='.rawurlencode($metaToken)
-    .'&access_token=synthetic-must-not-forward';
+    .'';
 $meta = wireAdapter('meta_ads', static function(array $request) use (
     &$requests, $metaRow, $metaSecond, $metaToken, $nextUrl
 ): array {

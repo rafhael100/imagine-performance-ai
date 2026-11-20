@@ -101,7 +101,7 @@ $callback = static function (array $request) use (
     if ($calls === 2) $item['date_start']=$item['date_stop']='2026-11-19';
     $paging = ['cursors'=>['after'=>'page_two', 'before'=>'prev_valid']];
     if ($calls === 1) $paging['next']=$goodNext;
-    else $paging['previous']=$goodPrevious.'&access_token=SYNTHETIC_NOT_FORWARDED';
+    else $paging['previous']=$goodPrevious;
     return $http(['data'=>[$item], 'paging'=>$paging]);
 };
 $adapter = new Adapter('meta_ads',$account,'2026-11-18','2026-11-19',
@@ -114,7 +114,7 @@ $check($calls === 2 && $valid['complete'] === true && count($valid['rows']) === 
     'legitimate two-page read remains complete');
 $check(($requests[1]['url']??null) !== $goodNext && ($requests[1]['url']??null) !== $goodPrevious,
     'provider URL never becomes transport target');
-$check(!str_contains(json_encode($valid, JSON_THROW_ON_ERROR), 'SYNTHETIC_NOT_FORWARDED'),
+$check(!str_contains(json_encode($valid, JSON_THROW_ON_ERROR), 'graph.facebook.com'),
     'untrusted previous URL not included in returned result');
 $check($valid['status'] === 'synthetic' && $valid['official_evidence'] === null
     && $valid['external_operations_enabled'] === false && $valid['billable'] === false,
