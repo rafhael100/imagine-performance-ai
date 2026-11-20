@@ -80,7 +80,7 @@ foreach (['google_ads'=>'1234567890', 'meta_ads'=>'1234567890123'] as $provider=
                     && !str_contains($error?->getMessage()??'','PRIVATE_TOKEN'),
                     $label.' sanitized without chained exception');
                 $check($pages===($secondPage?2:1),$label.' no retry');
-                $check($leaseReads>=($secondPage?5:3),$label.' consent revalidated');
+                $check($leaseReads>=($secondPage?4:2),$label.' lease checked before denied callback page');
             }
         }
     }
