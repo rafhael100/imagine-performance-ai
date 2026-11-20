@@ -31,7 +31,7 @@ final class AdministrativeAdsReadConnector {
  }
  /** Keep only the wire codec's finite safe classifications. Injected callbacks
   * may throw errors containing tokens, private tenant identifiers or URL bodies. */
- private function invokeProvider(#[\\SensitiveParameter] Closure $callback,#[\\SensitiveParameter] array $arguments,string $message):mixed {
+ private function invokeProvider(#[\SensitiveParameter] Closure $callback,#[\SensitiveParameter] array $arguments,string $message):mixed {
   try{return $callback(...$arguments);}
   catch(AdministrativeAdsWireFailure $failure){
    $safe=['authentication_required','permission_denied','rate_limited','upstream_unavailable',
@@ -43,7 +43,7 @@ final class AdministrativeAdsReadConnector {
     throw $failure;
    throw new RuntimeException($message);
   }
-  catch(\\Throwable){throw new RuntimeException($message);}
+  catch(\Throwable){throw new RuntimeException($message);}
  }
  public function read(string $company,string $provider,string $account,string $from,string $until,string $timezone):array {
   if($this->boundContext!==null){
