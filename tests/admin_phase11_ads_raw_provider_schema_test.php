@@ -61,7 +61,8 @@ foreach (['google_ads'=>'1234567890', 'meta_ads'=>'1234567890123'] as $provider=
     foreach ([false,true] as $secondPage) {
         foreach ($cases as $case) {
             $label = array_key_first($case);
-            [$path,$reason] = $case[$label];
+            $path = $case[$label];
+            $reason = $case[0];
             $calls = 0;
             $callback = static function (array $request) use (
                 &$calls, $provider, $account, $base, $path, $secondPage
