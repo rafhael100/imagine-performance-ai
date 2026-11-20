@@ -269,8 +269,8 @@ foreach ([
         static function() use (&$now): int { return $now; });
     $denied(fn() => $changingGate->current($company,'google_ads',$account),
         'account mutation during second S2S lookup denied');
-    $ok($serviceReadCount === 3 && $accountReadCount === 2,
-        'changed account checked twice and S2S checked finally before denial');
+    $ok($serviceReadCount === 2 && $accountReadCount === 2,
+        'changed account denied after two S2S and two nominal reads');
 }
 // The FINAL nominal account resolver may revoke S2S after the second
 // technical check. A previously acceptable pair of snapshots must not issue
