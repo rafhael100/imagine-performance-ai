@@ -263,8 +263,19 @@ final class AdministrativeAdsReadWireAdapter
         if (property_exists($body, 'paging')) {
             if (!$body->paging instanceof stdClass) self::fail('pagination_denied');
             self::allowedKeys($body->paging, ['cursors', 'next', 'previous'], 'pagination_denied');
-            if (property_exists($body->paging, 'cursors') && !$body->paging->cursors instanceof stdClass) {
-                self::fail('pagination_denied');
+            if (property_exists($body->paging, 'cursors')) {
+                if (!$body->paging->cursors instanceof stdClass) self::fail('pagination_denied');
+                // A provider cursor object is still untrusted data, including
+                // on the last page where its contents are otherwise discarded.
+                // Reject undeclared tenant or credential fields, not just an
+                // invalid "after" value on a page with "next".
+                self::allowedKeys($body->paging->cursors, ['after', 'before'], 'pagination_denied');
+                foreach (['after', 'before'] as $direction) {
+                    if (property_exists($body->paging->cursors, $direction)
+                        && !AdministrativeAdsReadPlan::validCursor($body->paging->cursors->$direction)) {
+                        self::fail('pagination_denied');
+                    }
+                }
             }
             // Cursors can appear on the final page; only next means continuation.
             if (property_exists($body->paging, 'next')) {
