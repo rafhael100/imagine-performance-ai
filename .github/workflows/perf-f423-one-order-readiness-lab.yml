@@ -1,0 +1,53 @@
+name: Performance F423 single-order two-channel readiness offline (NO-GO)
+
+on:
+  pull_request:
+    paths:
+      - 'tests/fixtures/SyntheticTwoChannelOrderReadiness.php'
+      - 'tests/admin_phase13_two_channel_order_readiness_test.php'
+      - '.github/workflows/perf-f423-one-order-readiness-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  one-fake-order:
+    name: F423 offline order review PHP ${{ matrix.php }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Pin historical F423 simulated provider checkout source (provenance, NOT execution)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: rafhael100/imagine-portal
+          ref: 9c833ef0230229763ea33a3e71e6cf3380c71a4b
+          path: portal-f423-reference
+          persist-credentials: false
+      - name: Verify exact Portal F423 source SHA without running provider/PSP
+        run: |
+          set -euo pipefail
+          test "$(git -C portal-f423-reference rev-parse HEAD)" = "9c833ef0230229763ea33a3e71e6cf3380c71a4b"
+          test -f portal-f423-reference/apps/portal/ops/private-purchase/test_sandbox_performance_activation.py
+          grep -Fq 'assert row['"'"'amount_cents'"'"'] == 98000' portal-f423-reference/apps/portal/ops/private-purchase/test_sandbox_performance_activation.py
+          grep -Fq 'api.payment['"'"'status'"'"']='"'"'RECEIVED'"'"'' portal-f423-reference/apps/portal/ops/private-purchase/test_sandbox_performance_activation.py
+          echo 'F423 source SHA and fake callback test present; NOT a replay of Portal HTTP/DB/browser tests.'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+          coverage: none
+      - name: Pure PHP order -> exact synthetic briefing -> scoped gate -> offline review
+        run: |
+          set -euo pipefail
+          php -l src/Domain/Administration/AdministrativeAdsAccountMandateGate.php
+          php -l tests/fixtures/SyntheticTwoChannelOrderReadiness.php
+          php -l tests/admin_phase13_two_channel_order_readiness_test.php
+          php tests/admin_phase13_two_channel_order_readiness_test.php
