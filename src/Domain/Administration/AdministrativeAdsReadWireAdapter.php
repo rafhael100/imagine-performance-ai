@@ -145,8 +145,28 @@ final class AdministrativeAdsReadWireAdapter
     private function googleResults(#[\SensitiveParameter] stdClass $body): array
     {
         self::allowedKeys($body, ['results', 'nextPageToken', 'fieldMask', 'totalResultsCount', 'queryResourceConsumption', 'metricAttributes']);
-        if (property_exists($body, 'metricAttributes')
-            && (!is_array($body->metricAttributes) || !array_is_list($body->metricAttributes))) self::fail('response_denied');
+        if (property_exists($body, 'metricAttributes')) {
+            // Google provider metadata must not become a side channel for
+            // credential, tenant or unrequested metrics. Empty attributes are
+            // the only lab profile approved until an official field contract
+            // has received independent review.
+            if (!is_array($body->metricAttributes) || !array_is_list($body->metricAttributes)
+                || count($body->metricAttributes) > 3) self::fail('response_denied');
+            $seenMetrics = [];
+            foreach ($body->metricAttributes as $attribute) {
+                if (!$attribute instanceof stdClass) self::fail('response_denied');
+                self::allowedKeys($attribute, ['name', 'attributes']);
+                $name = $attribute->name ?? null;
+                if (!is_string($name)
+                    || !in_array($name, ['metrics.impressions', 'metrics.clicks', 'metrics.costMicros'], true)
+                    || isset($seenMetrics[$name])
+                    || !property_exists($attribute, 'attributes')
+                    || !is_array($attribute->attributes)
+                    || !array_is_list($attribute->attributes)
+                    || $attribute->attributes !== []) self::fail('response_denied');
+                $seenMetrics[$name] = true;
+            }
+        }
         // ProtoJSON may omit an empty repeated field; this remains an unverified empty result.
         $results = property_exists($body, 'results') ? $body->results : [];
         self::rowList($results);
