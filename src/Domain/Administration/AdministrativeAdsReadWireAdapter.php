@@ -163,6 +163,13 @@ final class AdministrativeAdsReadWireAdapter
                 || !(($result->segments ?? null) instanceof stdClass)) self::fail('scope_denied');
             $customer = $result->customer;
             $campaign = $result->campaign;
+            // A synthetically supplied provider JSON row must not smuggle
+            // tenant identifiers, bearer material or undeclared nested fields
+            // through a normalizer that would silently discard them.
+            self::allowedKeys($result, ['customer', 'campaign', 'segments', 'metrics'], 'scope_denied');
+            self::allowedKeys($customer, ['id', 'currencyCode', 'timeZone', 'resourceName'], 'scope_denied');
+            self::allowedKeys($campaign, ['id', 'name', 'status', 'resourceName'], 'scope_denied');
+            self::allowedKeys($result->segments, ['date'], 'scope_denied');
             if (($customer->id ?? null) !== $this->account) self::fail('scope_denied');
             if (($customer->timeZone ?? null) !== $this->timezone) self::fail('timezone_denied');
             if (property_exists($customer, 'resourceName') && $customer->resourceName !== 'customers/'.$this->account) {
@@ -175,6 +182,7 @@ final class AdministrativeAdsReadWireAdapter
             }
             $metrics = property_exists($result, 'metrics') ? $result->metrics : new stdClass();
             if (!$metrics instanceof stdClass) self::fail('metric_denied');
+            self::allowedKeys($metrics, ['costMicros', 'impressions', 'clicks'], 'metric_denied');
             $rows[] = [
                 'account_id' => $customer->id,
                 'campaign_id' => $campaignId,
@@ -235,6 +243,10 @@ final class AdministrativeAdsReadWireAdapter
             if (!$result instanceof stdClass || ($result->account_id ?? null) !== $this->account) {
                 self::fail('scope_denied');
             }
+            self::allowedKeys($result, [
+                'account_id', 'account_currency', 'campaign_id', 'campaign_name',
+                'date_start', 'date_stop', 'spend', 'impressions', 'clicks',
+            ], 'scope_denied');
             $date = $this->date($result->date_start ?? null);
             if (($result->date_stop ?? null) !== $date) self::fail('date_denied');
             $rows[] = [
