@@ -84,6 +84,9 @@ final class AdministrativeAdsReadConnector {
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    if(!is_array($page['rows']??null)||count($page['rows'])>10000)throw new RuntimeException('Provider rows denied');
    foreach($page['rows'] as $r){
+    // Injected provider rows are untrusted: reject non-arrays and non-string
+    // currency values before array indexing or preg_match can raise PHP errors.
+    if(!is_array($r)||!is_string($r['currency']??null))throw new RuntimeException('Provider scope denied');
     $date=$r['date']??null;
     if(!is_string($date)||!preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D',$date)
      ||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4))
