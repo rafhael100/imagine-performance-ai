@@ -82,7 +82,9 @@ final class AdministrativeAdsReadConnector {
    try{$bytes=json_encode($page,JSON_THROW_ON_ERROR);}catch(\Throwable){throw new RuntimeException('Provider response denied');}
    if(strlen($bytes)>1048576)throw new RuntimeException('Provider response limit');
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
-   if(!is_array($page['rows']??null)||count($page['rows'])>10000)throw new RuntimeException('Provider rows denied');
+   // A decoded JSON collection must be a list, not an object or sparse PHP map.
+   // Never normalize an attacker-keyed row map as if it were a page of rows.
+   if(!is_array($page['rows']??null)||!array_is_list($page['rows'])||count($page['rows'])>10000)throw new RuntimeException('Provider rows denied');
    foreach($page['rows'] as $r){
     // Injected provider rows are untrusted: reject non-arrays and non-string
     // currency values before array indexing or preg_match can raise PHP errors.
