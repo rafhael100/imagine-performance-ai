@@ -78,6 +78,12 @@ final class AdministrativeAdsReadConnector {
    if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    $page=$this->invokeProvider($this->page,[$plan,$cursor],'Provider report unavailable');
    if(!is_array($page)||($page['source_kind']??null)!==$this->sourceKind)throw new RuntimeException('Provider source denied');
+   // Reject unrecognized page fields before serialization or normalization:
+   // callback-injected secrets, tenant identifiers or malformed envelopes cannot
+   // be silently accepted as a complete provider response.
+   foreach(array_keys($page) as $field)
+    if(!is_string($field)||!in_array($field,['source_kind','context_timezone','rows','next_cursor'],true))
+     throw new RuntimeException('Provider source denied');
    if(array_key_exists('context_timezone',$page)&&$page['context_timezone']!==$timezone)throw new RuntimeException('Provider report timezone denied');
    try{$bytes=json_encode($page,JSON_THROW_ON_ERROR);}catch(\Throwable){throw new RuntimeException('Provider response denied');}
    if(strlen($bytes)>1048576)throw new RuntimeException('Provider response limit');
@@ -89,6 +95,11 @@ final class AdministrativeAdsReadConnector {
     // Injected provider rows are untrusted: reject non-arrays and non-string
     // currency values before array indexing or preg_match can raise PHP errors.
     if(!is_array($r)||!is_string($r['currency']??null))throw new RuntimeException('Provider scope denied');
+    // The read-only result uses a closed row schema. Optional metrics remain
+    // optional for legacy fixtures, but unknown/numeric fields are denied.
+    foreach(array_keys($r) as $field)
+     if(!is_string($field)||!in_array($field,['account_id','campaign_id','currency','date','spend','impressions','clicks'],true))
+      throw new RuntimeException('Provider scope denied');
     $date=$r['date']??null;
     if(!is_string($date)||!preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D',$date)
      ||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4))
