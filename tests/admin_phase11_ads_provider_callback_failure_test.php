@@ -88,11 +88,13 @@ $expectDenied(
 );
 $secondPageReads = 0;
 $expectDenied(
-    static fn() => $read(static function(array $plan, ?string $cursor) use (&$secondPageReads, $row): array {
-        $secondPageReads++;
-        if ($cursor !== null) throw new LogicException('PRIVATE_TOKEN_IN_EXCEPTION');
-        return ['source_kind'=>'laboratory_fixture', 'rows'=>[$row], 'next_cursor'=>'page2'];
-    }),
+    static function() use ($read, $row, &$secondPageReads): array {
+        return $read(static function(array $plan, ?string $cursor) use (&$secondPageReads, $row): array {
+            $secondPageReads++;
+            if ($cursor !== null) throw new LogicException('PRIVATE_TOKEN_IN_EXCEPTION');
+            return ['source_kind'=>'laboratory_fixture', 'rows'=>[$row], 'next_cursor'=>'page2'];
+        });
+    },
     'Provider report unavailable', 'second page callback exception'
 );
 $ok($secondPageReads === 2, 'second-page exception does not retry or publish first page');
