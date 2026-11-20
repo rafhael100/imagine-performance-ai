@@ -107,6 +107,9 @@ final class AdministrativeAdsReadConnector {
    if($cursor===null){$complete=true;break;}
    if(!AdministrativeAdsReadPlan::validCursor($cursor)||isset($seen[$cursor]))throw new RuntimeException('Invalid pagination cursor');$seen[$cursor]=true;
   }
+  // A consent lease may be withdrawn during normalization of the last page.
+  // Recheck before releasing any rows, including an incomplete paginated read.
+  if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
   return ['version'=>'imagine.performance.ads.read.result.v1','source_kind'=>$this->sourceKind,'status'=>$complete?($this->sourceKind==='http_unverified'?'unverified':'synthetic'):'partial',
    'company_id'=>$company,'provider'=>$provider,'api_version'=>$plan['read_plan']['api_version'],'timezone'=>$timezone,'currency'=>$currency,'from'=>$from,'until'=>$until,
    'complete'=>$complete,'rows'=>$rows,'account_metadata'=>$accountContext,'http_transport_used'=>$this->sourceKind==='http_unverified',
