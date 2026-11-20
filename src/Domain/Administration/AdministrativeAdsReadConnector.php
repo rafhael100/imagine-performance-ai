@@ -20,6 +20,15 @@ final class AdministrativeAdsReadConnector {
   $connector->sourceKind='http_unverified';$connector->boundContext=$boundContext;
   return $connector;
  }
+ /** An authorization resolver can throw private tenant details: never leak them. */
+ private function authorizedLease(string $company,string $provider,string $account):?string {
+  try {
+   $lease=($this->authorize)($company,$provider,$account);
+   return is_string($lease)&&preg_match('/\A[a-f0-9]{64}\z/D',$lease)===1?$lease:null;
+  } catch (\Throwable) {
+   return null;
+  }
+ }
  public function read(string $company,string $provider,string $account,string $from,string $until,string $timezone):array {
   if($this->boundContext!==null){
    foreach(['company_id'=>$company,'provider'=>$provider,'account_id'=>$account,'from'=>$from,'until'=>$until] as $key=>$value)
@@ -27,14 +36,14 @@ final class AdministrativeAdsReadConnector {
   }
   $plan=AdministrativeAdsReadPlan::prepare($provider,$account,$from,$until);
   if(!in_array($timezone,\DateTimeZone::listIdentifiers(),true))throw new RuntimeException('Account timezone required');
-  $lease=($this->authorize)($company,$provider,$account);
-  if(!is_string($lease)||!preg_match('/\A[a-f0-9]{64}\z/D',$lease))throw new RuntimeException('Account consent denied');
+  $lease=$this->authorizedLease($company,$provider,$account);
+  if($lease===null)throw new RuntimeException('Account consent denied');
   $rows=[];$cursor=null;$seen=[];$rowKeys=[];$currency=null;$complete=false;
   $accountContext=null;
   if($this->accountMetadata!==null){
-   if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
+   if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    $metadata=($this->accountMetadata)($plan);
-   if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
+   if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    if(!is_array($metadata))throw new RuntimeException('Provider account metadata denied');
    $metadataKeys=array_keys($metadata);sort($metadataKeys,SORT_STRING);
    if($metadataKeys!==['account_id','api_version','context_timezone','currency','provider','source_kind','timezone']
@@ -47,12 +56,12 @@ final class AdministrativeAdsReadConnector {
     'account_id'=>$account,'currency'=>$currency,'timezone'=>$timezone];
   }
   for($i=0;$i<10;$i++){
-   if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
+   if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    $page=($this->page)($plan,$cursor);
    if(!is_array($page)||($page['source_kind']??null)!==$this->sourceKind)throw new RuntimeException('Provider source denied');
    if(array_key_exists('context_timezone',$page)&&$page['context_timezone']!==$timezone)throw new RuntimeException('Provider report timezone denied');
    $bytes=json_encode($page,JSON_THROW_ON_ERROR);if(strlen($bytes)>1048576)throw new RuntimeException('Provider response limit');
-   if(($this->authorize)($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
+   if($this->authorizedLease($company,$provider,$account)!==$lease)throw new RuntimeException('Account consent revoked');
    if(!is_array($page['rows']??null)||count($page['rows'])>10000)throw new RuntimeException('Provider rows denied');
    foreach($page['rows'] as $r){
     $date=$r['date']??null;
