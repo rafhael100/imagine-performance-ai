@@ -48,7 +48,7 @@ final class AdministrativeAdsReadConnector {
   }
   catch(\Throwable){throw new RuntimeException($message);}
  }
- public function read(string $company,string $provider,string $account,string $from,string $until,string $timezone):array {
+ public function read(#[\SensitiveParameter] string $company,#[\SensitiveParameter] string $provider,#[\SensitiveParameter] string $account,#[\SensitiveParameter] string $from,#[\SensitiveParameter] string $until,#[\SensitiveParameter] string $timezone):array {
   if($this->boundContext!==null){
    foreach(['company_id'=>$company,'provider'=>$provider,'account_id'=>$account,'from'=>$from,'until'=>$until] as $key=>$value)
     if($this->boundContext[$key]!==$value)throw new RuntimeException('Provider source context denied');
