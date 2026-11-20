@@ -277,6 +277,13 @@ final class AdministrativeAdsReadWireAdapter
                     }
                 }
             }
+            // Previous links are never followed, but they are still untrusted
+            // tenant-scoped URLs: do not silently ignore malformed or foreign links.
+            if (property_exists($body->paging, 'previous')) {
+                $previousCursor = $body->paging->cursors->before ?? null;
+                if (!AdministrativeAdsReadPlan::validCursor($previousCursor)) self::fail('pagination_denied');
+                $this->validateMetaPrevious($body->paging->previous, $previousCursor);
+            }
             // Cursors can appear on the final page; only next means continuation.
             if (property_exists($body->paging, 'next')) {
                 $cursor = $body->paging->cursors->after ?? null;
@@ -289,10 +296,26 @@ final class AdministrativeAdsReadWireAdapter
 
     private function validateMetaNext(#[\SensitiveParameter] mixed $next, #[\SensitiveParameter] string $cursor): void
     {
-        if (!is_string($next) || strlen($next) > 16384 || preg_match('/[\x00-\x20\x7f]/', $next)) {
+        $this->validateMetaPagingLink($next, 'after', $cursor);
+    }
+
+    private function validateMetaPrevious(#[\SensitiveParameter] mixed $previous, #[\SensitiveParameter] string $cursor): void
+    {
+        $this->validateMetaPagingLink($previous, 'before', $cursor);
+    }
+
+    /** Provider URLs are metadata, NEVER outbound transport targets. Both
+     * directions must be scoped to the same fixed HTTPS account endpoint and
+     * the matching validated cursor. No URLs, credentials or params returned. */
+    private function validateMetaPagingLink(
+        #[\SensitiveParameter] mixed $link,
+        string $direction,
+        #[\SensitiveParameter] string $cursor
+    ): void {
+        if (!is_string($link) || strlen($link) > 16384 || preg_match('/[\\x00-\\x20\\x7f]/', $link)) {
             self::fail('pagination_denied');
         }
-        $url = parse_url($next);
+        $url = parse_url($link);
         if (!is_array($url) || ($url['scheme'] ?? null) !== 'https'
             || ($url['host'] ?? null) !== 'graph.facebook.com'
             || ($url['path'] ?? null) !== '/'.$this->plan['read_plan']['api_version'].'/act_'.$this->account.'/insights'
@@ -300,7 +323,7 @@ final class AdministrativeAdsReadWireAdapter
             || !isset($url['query']) || preg_match('/%(?![a-fA-F0-9]{2})/', $url['query'])) {
             self::fail('pagination_denied');
         }
-        $after = null;
+        $found = null;
         $seen = [];
         $pairs = explode('&', $url['query']);
         if (count($pairs) > 32) self::fail('pagination_denied');
@@ -309,10 +332,10 @@ final class AdministrativeAdsReadWireAdapter
             $key = urldecode($parts[0]);
             if ($key === '' || isset($seen[$key])) self::fail('pagination_denied');
             $seen[$key] = true;
-            if ($key === 'after') $after = urldecode($parts[1] ?? '');
+            if ($key === $direction) $found = urldecode($parts[1] ?? '');
         }
-        if ($after !== $cursor) self::fail('pagination_denied');
-        // Other URL parameters (possibly access_token) are discarded, never forwarded.
+        if ($found !== $cursor) self::fail('pagination_denied');
+        // Other query params, including any legacy token, are never forwarded.
     }
 
     private function errorReason(int $status, #[\SensitiveParameter] mixed $body): string
