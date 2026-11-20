@@ -215,6 +215,44 @@ $invalidClock = new Guard($gate, $readByReference, static fn(): string => 'inval
 $ok($invalidClock($company,'google_ads',$account,$lease) === null,
     'invalid custody clock fails closed without leaked exception');
 
+// The bearer may outlive BOTH nominal authorities. A custody lookup can
+// finish before expiry while the final clock observation reaches an authority
+// deadline. Never release that bearer, even though its own TTL is still valid.
+// These offline clocks deliberately differ from the gate's fixture clock to
+// cover the boundary between its last lookup and the credential return.
+foreach ([
+    ['account mandate', $now + 400, 400],
+    ['S2S delegation', $now + 800, 500],
+] as [$label, $mandateExpiry, $clockAdvance]) {
+    $mandate = $originalMandate;
+    $mandate['expires_at'] = $mandateExpiry;
+    $scopedLease = $gate->lease($company, 'google_ads', $account);
+    $ok(is_string($scopedLease), $label.' fixture has current nominal lease');
+    $secrets = $validEnvelope;
+    $secrets['lease'] = $scopedLease;
+    $secrets['expires_at'] = $now + 900;
+    $clockReads = 0;
+    $custodyClock = static function() use (&$clockReads, $now, $clockAdvance): int {
+        return ++$clockReads === 1 ? $now : $now + $clockAdvance;
+    };
+    $guardAtAuthorityDeadline = new Guard($gate, $readByReference, $custodyClock);
+    $ok($guardAtAuthorityDeadline($company, 'google_ads', $account, $scopedLease) === null,
+        $label.' expiry after lookup denies an otherwise unexpired bearer');
+    $ok($clockReads === 2, $label.' deadline checked after second authority resolution');
+}
+$mandate = $originalMandate;
+$secrets = $validEnvelope;
+$secrets['expires_at'] = $now + 900;
+$positiveClockReads = 0;
+$positiveClock = static function() use (&$positiveClockReads, $now): int {
+    return ++$positiveClockReads === 1 ? $now : $now + 399;
+};
+$positiveGuard = new Guard($gate, $readByReference, $positiveClock);
+$ok($positiveGuard($company, 'google_ads', $account, $lease) === $secrets,
+    'unexpired nominal authorities accept a longer-lived scoped bearer');
+$ok($positiveClockReads === 2, 'positive long-lived bearer uses final custody clock');
+$secrets = $validEnvelope;
+
 // Meta has an independent account scope and a smaller custody envelope.
 // Google-only login and legacy developer claims must NEVER be accepted for Meta.
 $mandate['provider']='meta_ads';
