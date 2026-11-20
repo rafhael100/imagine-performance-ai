@@ -162,4 +162,89 @@ $ok($metaPages === 1 && $metaResult['status'] === 'synthetic'
 $ok($metaResult['official_evidence'] === null && $metaResult['billable'] === false,
     'Meta fixture is never billable or official');
 
+
+// The connector is also a boundary for injected authorization callbacks.
+// Exceptions from a trusted-looking resolver may carry private error text:
+// they must fail closed with a fixed message and no previous exception.
+// Cover initial, metadata, page, post-page and pagination checkpoints.
+$authorizationCallbackTrial = static function(
+    string $label, int $failOnCall, bool $withMetadata,
+    int $expectedPages, int $expectedMetadata, string $message
+) use ($ok, $company, $account): void {
+    $authorizationReads = 0;
+    $pageReads = 0;
+    $metadataReads = 0;
+    $authorization = static function() use (&$authorizationReads, $failOnCall): string {
+        if (++$authorizationReads === $failOnCall) {
+            throw new LogicException('PRIVATE_TENANT_RESOLVER_FAILURE_WITH_SECRET');
+        }
+        return str_repeat('b', 64);
+    };
+    $page = static function(array $plan, ?string $cursor) use (&$pageReads, $account): array {
+        $pageReads++;
+        return [
+            'source_kind'=>'laboratory_fixture',
+            'context_timezone'=>'America/Sao_Paulo',
+            'rows'=>[[
+                'account_id'=>$account,'campaign_id'=>'11223344','currency'=>'BRL',
+                'date'=>$cursor===null ? '2026-11-18' : '2026-11-19',
+                'spend'=>'1000000','impressions'=>'10','clicks'=>'1',
+            ]],
+            'next_cursor'=>$cursor===null ? 'page2' : null,
+        ];
+    };
+    $metadata = $withMetadata
+        ? static function() use (&$metadataReads, $account): array {
+            $metadataReads++;
+            return [
+                'source_kind'=>'laboratory_fixture','provider'=>'google_ads',
+                'api_version'=>'v26','account_id'=>$account,'currency'=>'BRL',
+                'timezone'=>'America/Sao_Paulo','context_timezone'=>'America/Sao_Paulo',
+            ];
+        }
+        : null;
+    $connector = new Connector($authorization, $page, $metadata);
+    $response = null;
+    $failure = null;
+    try {
+        $response = $connector->read(
+            $company, 'google_ads', $account, '2026-11-18', '2026-11-19', 'America/Sao_Paulo'
+        );
+    } catch (RuntimeException $error) {
+        $failure = $error;
+    }
+    if ($failOnCall > 0) {
+        $ok($response === null && $failure?->getMessage() === $message,
+            $label.' sanitized fixed authorization error');
+        $ok($failure?->getPrevious() === null && !str_contains($failure?->getMessage() ?? '',
+            'PRIVATE_TENANT_RESOLVER_FAILURE_WITH_SECRET'), $label.' no secret or exception chain');
+        $ok($authorizationReads === $failOnCall, $label.' no authorization retries');
+    } else {
+        $ok($failure === null && $response['complete'] === true
+            && $response['status'] === 'synthetic' && count($response['rows']) === 2,
+            $label.' legitimate synthetic two-page read remains valid');
+        $ok($response['official_evidence'] === null && $response['billable'] === false,
+            $label.' valid fixture is never official or billable');
+    }
+    $ok($pageReads === $expectedPages, $label.' page callback count');
+    $ok($metadataReads === $expectedMetadata, $label.' account metadata callback count');
+};
+foreach ([
+    ['initial',1,false,0,0,'Account consent denied'],
+    ['before first page',2,false,0,0,'Account consent revoked'],
+    ['after first page',3,false,1,0,'Account consent revoked'],
+    ['before next page',4,false,1,0,'Account consent revoked'],
+    ['before metadata',2,true,0,0,'Account consent revoked'],
+    ['after metadata',3,true,0,1,'Account consent revoked'],
+    ['before metadata report page',4,true,0,1,'Account consent revoked'],
+    ['after metadata report page',5,true,1,1,'Account consent revoked'],
+    ['before metadata second page',6,true,1,1,'Account consent revoked'],
+    ['stable report pages',0,false,2,0,''],
+    ['stable metadata and report pages',0,true,2,1,''],
+] as [$label,$failOnCall,$withMetadata,$expectedPages,$expectedMetadata,$message]) {
+    $authorizationCallbackTrial(
+        $label,$failOnCall,$withMetadata,$expectedPages,$expectedMetadata,$message
+    );
+}
+
 echo 'OK: '.$checks.' scoped connector positive/negative assertions; zero HTTP, no Vault or Ads API'.PHP_EOL;
