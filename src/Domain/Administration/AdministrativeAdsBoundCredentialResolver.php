@@ -84,15 +84,20 @@ final class AdministrativeAdsBoundCredentialResolver
             }
 
             // Fail closed when the source changes during a slow secret lookup.
-            $latest = $this->gate->credentialReference($company, $provider, $account, $expectedLease);
-            if ($latest === null || !hash_equals($reference, $latest)) return null;
+            // Read the current authority snapshot again after the custody
+            // callback. Revalidate its lease AND reference, retaining the
+            // authority expiry for the final clock check below.
+            $latest = $this->gate->current($company, $provider, $account);
+            if (!hash_equals($expectedLease, $latest['lease'])
+                || !hash_equals($reference, $latest['credential_ref'])) return null;
 
-            // A secret may expire while the second S2S/account gate is being
-            // checked. Never return an already expired bearer, even if both
-            // mandate snapshots remain unchanged.
+            // The bearer can outlive the account mandate or delegated S2S
+            // service. A clock step during the final gate must not return a
+            // still-valid token once EITHER authority has expired.
             $afterGate = $this->clock === null ? time() : ($this->clock)();
             if (!is_int($afterGate) || $afterGate <= 0 || $afterGate < $now
-                || $candidate['expires_at'] <= $afterGate) return null;
+                || $candidate['expires_at'] <= $afterGate
+                || $latest['expires_at'] <= $afterGate) return null;
 
             // The optional legacy Google developer_token is tolerated only
             // when validating an old custody record. It is not needed by the
